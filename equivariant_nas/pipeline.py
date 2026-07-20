@@ -9,7 +9,7 @@ import random
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from torch_geometric.loader import DataLoader
 
@@ -31,7 +31,7 @@ def evaluate_candidate_pipeline(
     symmetry_threshold: float = 2.5e-1,
     symmetry_warning_threshold: float = 1.0e-2,
     run_symmetry: bool = True,
-    gpu_budget_hours: float = 5.0,
+    gpu_budget_hours: Optional[float] = None,
     resume_checkpoint: str = "",
 ) -> Dict[str, Any]:
     """Evaluate one architecture with hard gates before optional training."""
@@ -71,9 +71,15 @@ def evaluate_candidate_pipeline(
         "seed": int(seed),
         "cache_hit": False,
     }
-    ledger = BudgetLedger(
-        str(project / "runs" / "budget_ledger.jsonl"), gpu_budget_hours
+    resolved_budget_hours = (
+        float(gpu_budget_hours)
+        if gpu_budget_hours is not None
+        else float(os.environ.get("NAS_GPU_BUDGET_HOURS", "5.0"))
     )
+    ledger_path = os.environ.get(
+        "NAS_BUDGET_LEDGER", str(project / "runs" / "budget_ledger.jsonl")
+    )
+    ledger = BudgetLedger(ledger_path, resolved_budget_hours)
     started = time.perf_counter()
     gpu_started = None
     try:

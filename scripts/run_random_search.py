@@ -108,7 +108,7 @@ def main():
             max_steps=args.max_steps,
             seed=0,
             run_symmetry=True,
-            gpu_budget_hours=5.0,
+            gpu_budget_hours=None,
         )
         record = {
             "iteration": iteration,

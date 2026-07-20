@@ -42,3 +42,9 @@ evidence reflection from factor-local editing. The LLM never emits trusted
 training code. MAP-Elites cells use equivariant capacity descriptors (`lmax`,
 higher-order fraction, parameter ratio and depth), and compiler, duplicate and
 evaluator failures share a same-factor repair loop.
+
+Phase 2 begins with a six-candidate micro gate (two trained-valid candidates per
+method) capped at 2.8 A100-hours. It is a framework kill gate, not evidence of
+search superiority. The previously estimated 8.2-hour single-seed screen is
+unlocked only if the micro gate passes its preregistered checks; no later gate
+runs automatically.

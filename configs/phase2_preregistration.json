@@ -1,0 +1,94 @@
+{
+  "protocol_version": 1,
+  "registered_before_phase2_gpu_work": true,
+  "dataset": "QM9",
+  "target": 1,
+  "target_name": "isotropic polarizability alpha",
+  "test_during_search": false,
+  "batch_size": 64,
+  "search_fidelity_steps": 5000,
+  "trainer_seed": 0,
+  "trained_valid_candidates_per_run": 6,
+  "micro_gate_trained_valid_candidates_per_run": 2,
+  "time_to_threshold_mae": 0.70,
+  "parameter_ratio_limit": 1.2,
+  "methods": {
+    "full": {
+      "description": "OpenEvolve + equivariant MAP-Elites + ECFR + RC/SAR + SPAG + IACC",
+      "driver": "scripts/run_factorized_evolution.py",
+      "extra_args": ["--router-mode", "evidence", "--valid-target", "6", "--max-proposals", "30"]
+    },
+    "uniform_router": {
+      "description": "Same typed LLM evolution and RC/SAR, but uniform factor routing",
+      "driver": "scripts/run_factorized_evolution.py",
+      "extra_args": ["--router-mode", "uniform", "--valid-target", "6", "--max-proposals", "30"]
+    },
+    "typed_random": {
+      "description": "Factor-local typed random search with matched trained-valid budget",
+      "driver": "scripts/run_random_search.py",
+      "extra_args": ["--valid-target", "6", "--max-proposals", "30"]
+    }
+  },
+  "gate2a_micro": {
+    "search_seeds": [101],
+    "trained_valid_candidates_per_method": 2,
+    "max_proposals_per_method": 10,
+    "incremental_a100_hour_cap": 2.8,
+    "purpose": "cheap framework kill gate; not a search-quality or publication claim",
+    "unlock_gate2a_extension_if": {
+      "each_method_reaches_valid_target": true,
+      "full_has_at_least_one_novel_nonduplicate_candidate": true,
+      "full_best_validation_mae_not_worse_than_baseline_by_more_than_fraction": 0.15,
+      "full_auc_not_worse_than_typed_random_by_more_than_fraction": 0.10,
+      "no_protocol_or_test_split_violation": true
+    }
+  },
+  "gate2a": {
+    "search_seeds": [101],
+    "trained_valid_candidates_per_method_total": 6,
+    "run_only_if_gate2a_micro_passes": true,
+    "additional_trained_valid_candidates_per_method": 4,
+    "cumulative_a100_hour_cap_including_micro_gate": 8.2,
+    "purpose": "single-seed continuation screen, not a publication claim",
+    "unlock_gate2a2_if": {
+      "full_valid_rate_minimum": 0.8,
+      "full_auc_relative_improvement_vs_each_control": 0.05,
+      "full_final_best_wins_vs_typed_random": true,
+      "no_protocol_or_test_split_violation": true
+    }
+  },
+  "gate2a2": {
+    "additional_search_seeds": [102],
+    "incremental_a100_hour_cap": 8.2,
+    "run_only_if_gate2a_passes": true,
+    "unlock_gate2b_only_if_both_seeds_pass_registered_screen": true
+  },
+  "gate2b": {
+    "additional_search_seeds": [103, 104, 105],
+    "run_only_if_gate2a_and_gate2a2_pass": true,
+    "target_total_search_seeds": 5,
+    "primary_statistics": [
+      "normalized best-so-far AUC",
+      "final best validation MAE",
+      "time-to-threshold",
+      "exact paired sign-flip p-value",
+      "paired bootstrap confidence interval"
+    ]
+  },
+  "conditional_ablations": {
+    "no_rc": ["--skip-reflection"],
+    "no_iacc": ["--disable-iacc"],
+    "uniform_router": ["--router-mode", "uniform"],
+    "dynamic_qd_scaling": "restore OpenEvolve default scaling only in an isolated ablation",
+    "untrusted_short_fidelity": "calibration-only; never selection-eligible"
+  },
+  "promotion": {
+    "minimum_source_fidelity_trust": true,
+    "calibration_results_selection_eligible": false,
+    "intermediate_confirmation_steps": 20000,
+    "intermediate_seeds": [0, 1, 2],
+    "final_steps": 257700,
+    "final_seeds": [0, 1, 2],
+    "test_once_after_architecture_freeze": true
+  }
+}

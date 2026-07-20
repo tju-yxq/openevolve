@@ -37,6 +37,8 @@ export http_proxy=http://127.0.0.1:12356
 export https_proxy="$http_proxy"
 export HTTP_PROXY="$http_proxy"
 export HTTPS_PROXY="$http_proxy"
+export NAS_BUDGET_LEDGER=/home/20262202788/equivariant-nas/runs/phase2_micro_budget.jsonl
+export NAS_GPU_BUDGET_HOURS=2.8
 
 /home/20262202788/conda-envs/openevolve/bin/python \
   scripts/run_factorized_evolution.py \
@@ -110,3 +112,50 @@ audited endpoints and evaluate the sibling under the same protocol:
 
 Search and calibration commands do not pass `--evaluate-test`. The 257,700-step
 three-seed final protocol is intentionally absent from all automatic scripts.
+
+## Phase 2 micro gate (not authorized to auto-run)
+
+The first continuation is intentionally limited to two trained-valid candidates
+for each of three methods on search seed 101. The six completed candidates are
+reused if the registered continuation gate passes. Run methods sequentially so
+the `2.8` A100-hour aggregate cap can be enforced from the shared budget ledger.
+
+```bash
+source /home/20262202788/.config/openevolve/apis.env
+export http_proxy=http://127.0.0.1:12356
+export https_proxy="$http_proxy"
+export HTTP_PROXY="$http_proxy"
+export HTTPS_PROXY="$http_proxy"
+
+/home/20262202788/conda-envs/openevolve/bin/python \
+  scripts/run_factorized_evolution.py \
+  --initial-program openevolve_adapter/initial_program.py \
+  --evaluator-file openevolve_adapter/evaluator.py \
+  --config /home/20262202788/openevolve/configs/local_glm_5_2.yaml \
+  --output runs/phase2_seed101_full_micro \
+  --max-steps 5000 --seed 101 --valid-target 2 --max-proposals 10 \
+  --router-mode evidence --repair-attempts 1 \
+  --initial-metrics runs/candidates/8639c8a64dad5d25/seed0_steps5000_87020e2c61/result.json
+
+/home/20262202788/conda-envs/openevolve/bin/python \
+  scripts/run_factorized_evolution.py \
+  --initial-program openevolve_adapter/initial_program.py \
+  --evaluator-file openevolve_adapter/evaluator.py \
+  --config /home/20262202788/openevolve/configs/local_glm_5_2.yaml \
+  --output runs/phase2_seed101_uniform_micro \
+  --max-steps 5000 --seed 101 --valid-target 2 --max-proposals 10 \
+  --router-mode uniform --repair-attempts 1 \
+  --initial-metrics runs/candidates/8639c8a64dad5d25/seed0_steps5000_87020e2c61/result.json
+
+/home/20262202788/conda-envs/equiformer/bin/python \
+  scripts/run_random_search.py \
+  --output runs/phase2_seed101_random_micro \
+  --max-steps 5000 --seed 101 --valid-target 2 --max-proposals 10
+```
+
+The authoritative stop and unlock rules are frozen in
+`configs/phase2_preregistration.json`. Completing the micro gate does not
+authorize extension to six candidates per method, seed 102, or later gates.
+All three commands must use the same `NAS_BUDGET_LEDGER`; the evaluator reserves
+the observed median candidate cost with a 20% safety factor before starting CUDA
+work and refuses a candidate that would exceed the aggregate cap.

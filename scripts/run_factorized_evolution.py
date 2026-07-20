@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import json
 import os
+import random
 import sys
 import uuid
 from pathlib import Path
@@ -22,6 +23,7 @@ from equivariant_nas.router import (
     prompt_for_reflection,
 )
 from equivariant_nas.semantics import validate_qm9_alpha_reasoning
+from equivariant_nas.spec import EvolutionFactor
 
 
 def append_jsonl(path, record):
@@ -140,6 +142,7 @@ async def run(args):
     initialize_equivariant_feature_ranges(database)
     ensemble = LLMEnsemble(config.llm.models)
     router = EvidenceCalibratedRouter(seed=args.seed)
+    factor_rng = random.Random(args.seed + 100003)
     os.environ["NAS_MAX_STEPS"] = str(args.max_steps)
     os.environ["NAS_SKIP_SYMMETRY"] = "1" if args.skip_symmetry else "0"
     initial_code = Path(args.initial_program).read_text(encoding="utf-8")
@@ -164,7 +167,11 @@ async def run(args):
         {"iteration": 0, "kind": "initial", "metrics": initial_metrics},
     )
 
-    for iteration in range(1, args.iterations + 1):
+    proposal_limit = args.max_proposals if args.valid_target > 0 else args.iterations
+    valid_children = 0
+    completed_iterations = 0
+    for iteration in range(1, proposal_limit + 1):
+        completed_iterations = iteration
         parent, inspirations = database.sample(num_inspirations=2)
         parent_spec = extract_literal_spec_source(parent.code)
         context = {
@@ -174,7 +181,11 @@ async def run(args):
             / max(args.baseline_step_time_ms, 1.0e-12),
             "parameter_ratio": float(parent.metrics.get("parameter_ratio", 1.0)),
         }
-        factor = router.select(context)
+        factor = (
+            router.select(context)
+            if args.router_mode == "evidence"
+            else factor_rng.choice(list(EvolutionFactor))
+        )
         artifacts = {
             "last_failure": parent.metrics.get("error", ""),
             "layerwise_symmetry": parent.metrics.get("symmetry_report", {}).get(
@@ -202,24 +213,32 @@ async def run(args):
             "reflection_prompt": reflection_prompt,
         }
         try:
-            reflection_response = await ensemble.generate_with_context(
-                system_message=reflection_prompt["system"],
-                messages=[{"role": "user", "content": reflection_prompt["user"]}],
-            )
-            try:
-                reflection = parse_json_response(reflection_response)
-                validate_qm9_alpha_reasoning(json.dumps(reflection, sort_keys=True))
-            except Exception as reflection_exc:
-                record["reflection_error"] = "{}: {}".format(
-                    type(reflection_exc).__name__, str(reflection_exc)[:1000]
-                )
+            if args.skip_reflection:
+                reflection_response = ""
                 reflection = {
-                    "direction": "Use only measured metrics and the selected-factor schema.",
-                    "evidence": [
-                        "reflection was rejected as non-JSON or scientifically inconsistent"
-                    ],
-                    "risk": "untrusted reflection; SAR must rely on measured metrics and hard constraints",
+                    "direction": "No RC stage in this registered ablation.",
+                    "evidence": ["SAR receives measured metrics and hard constraints only."],
+                    "risk": "removing reflection may reduce semantic edit quality",
                 }
+            else:
+                reflection_response = await ensemble.generate_with_context(
+                    system_message=reflection_prompt["system"],
+                    messages=[{"role": "user", "content": reflection_prompt["user"]}],
+                )
+                try:
+                    reflection = parse_json_response(reflection_response)
+                    validate_qm9_alpha_reasoning(json.dumps(reflection, sort_keys=True))
+                except Exception as reflection_exc:
+                    record["reflection_error"] = "{}: {}".format(
+                        type(reflection_exc).__name__, str(reflection_exc)[:1000]
+                    )
+                    reflection = {
+                        "direction": "Use only measured metrics and the selected-factor schema.",
+                        "evidence": [
+                            "reflection was rejected as non-JSON or scientifically inconsistent"
+                        ],
+                        "risk": "untrusted reflection; SAR must rely on measured metrics and hard constraints",
+                    }
             prompt = prompt_for_factor(
                 factor=factor,
                 parent_json=parent_spec.canonical_json(),
@@ -308,7 +327,11 @@ async def run(args):
             credit = factor_credit(parent.metrics, metrics) if metrics.get("valid") else {}
             counterfactual_required = False
             ancestor = database.get(parent.parent_id) if parent.parent_id else None
-            if ancestor is not None and metrics.get("valid"):
+            if (
+                not args.disable_iacc
+                and ancestor is not None
+                and metrics.get("valid")
+            ):
                 required_keys = ("validation_alpha_mae",)
                 if all(
                     key in candidate.metrics
@@ -369,6 +392,7 @@ async def run(args):
                 )
                 database.add(child, iteration=iteration)
                 seen.add(architecture_id)
+                valid_children += 1
             record["metrics"] = metrics
             record["credit"] = credit
         except Exception as exc:
@@ -391,10 +415,14 @@ async def run(args):
             ),
             flush=True,
         )
+        if args.valid_target > 0 and valid_children >= args.valid_target:
+            break
 
     best = database.get(database.best_program_id) if database.best_program_id else None
     summary = {
-        "iterations": args.iterations,
+        "iterations": completed_iterations,
+        "requested_valid_target": args.valid_target,
+        "valid_children": valid_children,
         "unique_architectures": len(seen),
         "best_program_id": database.best_program_id,
         "best_metrics": best.metrics if best else None,
@@ -414,6 +442,8 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--openevolve-root", default="/home/20262202788/openevolve")
     parser.add_argument("--iterations", type=int, default=5)
+    parser.add_argument("--valid-target", type=int, default=0)
+    parser.add_argument("--max-proposals", type=int, default=30)
     parser.add_argument("--max-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--skip-symmetry", action="store_true")
@@ -421,6 +451,11 @@ def main():
     parser.add_argument("--baseline-step-time-ms", type=float, default=210.0)
     parser.add_argument("--repair-attempts", type=int, default=1)
     parser.add_argument("--initial-metrics", default="")
+    parser.add_argument(
+        "--router-mode", choices=("evidence", "uniform"), default="evidence"
+    )
+    parser.add_argument("--skip-reflection", action="store_true")
+    parser.add_argument("--disable-iacc", action="store_true")
     args = parser.parse_args()
     asyncio.run(run(args))
 

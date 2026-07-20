@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.tmp/
+runs/
+reports/generated/
+reports/stage1_preview/
+*.pth
+*.pt
+*.log
+.env
+gate1_training.json
+budget_ledger.jsonl

@@ -1,0 +1,23 @@
+[
+  {
+    "name": "baseline",
+    "proxy_mae": 3.4779662284851076,
+    "reference_mae": 0.7535404392242432,
+    "proxy_steps": 300,
+    "reference_steps": 5000
+  },
+  {
+    "name": "factorized_300_winner",
+    "proxy_mae": 2.840219583129883,
+    "reference_mae": 1.1705959045410157,
+    "proxy_steps": 300,
+    "reference_steps": 5000
+  },
+  {
+    "name": "random_300_winner",
+    "proxy_mae": 3.137686180114746,
+    "reference_mae": 0.7055507484436035,
+    "proxy_steps": 300,
+    "reference_steps": 5000
+  }
+]

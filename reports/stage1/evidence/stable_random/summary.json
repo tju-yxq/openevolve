@@ -1,0 +1,224 @@
+{
+  "best_val_mae": 0.8915916275024414,
+  "iterations": 2,
+  "records": [
+    {
+      "architecture_id": "ea3af66bac51e79f",
+      "factor": "MACRO",
+      "iteration": 1,
+      "metrics": {
+        "architecture_id": "ea3af66bac51e79f",
+        "best_step": 5000,
+        "best_validation_alpha_mae": 1.0195988208770752,
+        "cache_hit": false,
+        "charged_gpu_seconds": 1486.566852580756,
+        "combined_score": -1.0195988208770752,
+        "endpoint_step": 5000,
+        "evaluation_wall_time_sec": 1506.8245668374002,
+        "failure_stage": "",
+        "fidelity_steps": 5000,
+        "higher_order_fraction": 0.14285714285714285,
+        "lmax": 2,
+        "max_symmetry_error": 0.0016815686831250787,
+        "num_layers": 6,
+        "parameter_count": 3531715,
+        "parameter_ratio": 1.0,
+        "resumed_from": "",
+        "seed": 0,
+        "step_time_ms": 287.47120361328126,
+        "symmetry_report": {
+          "layerwise_rotation_equivariance": {
+            "block_0": {
+              "maximum": 0.0013373787514865398,
+              "mean": 0.001212783099617809,
+              "values": [
+                0.0013373787514865398,
+                0.0010881874477490783
+              ]
+            },
+            "block_1": {
+              "maximum": 0.001487216679379344,
+              "mean": 0.0013465805677697062,
+              "values": [
+                0.001487216679379344,
+                0.0012059444561600685
+              ]
+            },
+            "block_2": {
+              "maximum": 0.0015727044083178043,
+              "mean": 0.001442762149963528,
+              "values": [
+                0.0015727044083178043,
+                0.0013128198916092515
+              ]
+            },
+            "block_3": {
+              "maximum": 0.001669366261921823,
+              "mean": 0.0015216636238619685,
+              "values": [
+                0.001669366261921823,
+                0.001373960985802114
+              ]
+            },
+            "block_4": {
+              "maximum": 0.0016815686831250787,
+              "mean": 0.0015319397207349539,
+              "values": [
+                0.0016815686831250787,
+                0.001382310758344829
+              ]
+            },
+            "block_5": {
+              "maximum": 0.0012114301789551973,
+              "mean": 0.0010922574438154697,
+              "values": [
+                0.0012114301789551973,
+                0.0009730847086757421
+              ]
+            }
+          },
+          "permutation_invariance": {
+            "maximum": 0.0007368378574028611,
+            "mean": 0.0007368378574028611,
+            "values": [
+              0.0007368378574028611
+            ]
+          },
+          "rotation_invariance": {
+            "maximum": 0.0012084681075066328,
+            "mean": 0.0006724374034092762,
+            "values": [
+              0.0012084681075066328,
+              0.0001364066993119195
+            ]
+          },
+          "translation_invariance": {
+            "maximum": 0.0007192805642262101,
+            "mean": 0.0005740241322200745,
+            "values": [
+              0.00042876770021393895,
+              0.0007192805642262101
+            ]
+          }
+        },
+        "symmetry_warning": false,
+        "training_time_sec": 1402.1251655071974,
+        "training_wall_time_sec": 1437.3560180664062,
+        "used_gpu_hours": 3.7037227219933024,
+        "valid": true,
+        "validation_alpha_mae": 1.0195988208770752
+      },
+      "parent_id": "8639c8a64dad5d25"
+    },
+    {
+      "architecture_id": "3e180c4c629310e0",
+      "factor": "ACTION",
+      "iteration": 2,
+      "metrics": {
+        "architecture_id": "3e180c4c629310e0",
+        "best_step": 5000,
+        "best_validation_alpha_mae": 0.8915916275024414,
+        "cache_hit": false,
+        "charged_gpu_seconds": 1346.3914888463914,
+        "combined_score": -0.8915916275024414,
+        "endpoint_step": 5000,
+        "evaluation_wall_time_sec": 1365.5230856090784,
+        "failure_stage": "",
+        "fidelity_steps": 5000,
+        "higher_order_fraction": 0.14285714285714285,
+        "lmax": 2,
+        "max_symmetry_error": 0.003962497226893902,
+        "num_layers": 6,
+        "parameter_count": 3531715,
+        "parameter_ratio": 1.0,
+        "resumed_from": "",
+        "seed": 0,
+        "step_time_ms": 260.61559326574206,
+        "symmetry_report": {
+          "layerwise_rotation_equivariance": {
+            "block_0": {
+              "maximum": 0.003216602373868227,
+              "mean": 0.0023111056070774794,
+              "values": [
+                0.0014056088402867317,
+                0.003216602373868227
+              ]
+            },
+            "block_1": {
+              "maximum": 0.003759911749511957,
+              "mean": 0.0026856299373321235,
+              "values": [
+                0.0016113481251522899,
+                0.003759911749511957
+              ]
+            },
+            "block_2": {
+              "maximum": 0.003962497226893902,
+              "mean": 0.002809502533636987,
+              "values": [
+                0.0016565078403800726,
+                0.003962497226893902
+              ]
+            },
+            "block_3": {
+              "maximum": 0.003903257194906473,
+              "mean": 0.002779170055873692,
+              "values": [
+                0.001655082916840911,
+                0.003903257194906473
+              ]
+            },
+            "block_4": {
+              "maximum": 0.00393211655318737,
+              "mean": 0.0028107042890042067,
+              "values": [
+                0.001689292024821043,
+                0.00393211655318737
+              ]
+            },
+            "block_5": {
+              "maximum": 0.002339423866942525,
+              "mean": 0.0017259616870433092,
+              "values": [
+                0.0011124995071440935,
+                0.002339423866942525
+              ]
+            }
+          },
+          "permutation_invariance": {
+            "maximum": 0.00016239895194303244,
+            "mean": 0.00016239895194303244,
+            "values": [
+              0.00016239895194303244
+            ]
+          },
+          "rotation_invariance": {
+            "maximum": 0.0016460373299196362,
+            "mean": 0.0010889238328672945,
+            "values": [
+              0.0005318103358149529,
+              0.0016460373299196362
+            ]
+          },
+          "translation_invariance": {
+            "maximum": 0.0003769579343497753,
+            "mean": 0.00026623810117598623,
+            "values": [
+              0.00015551826800219715,
+              0.0003769579343497753
+            ]
+          }
+        },
+        "symmetry_warning": false,
+        "training_time_sec": 1268.278671465814,
+        "training_wall_time_sec": 1303.0779663287103,
+        "used_gpu_hours": 4.077720357783966,
+        "valid": true,
+        "validation_alpha_mae": 0.8915916275024414
+      },
+      "parent_id": "8639c8a64dad5d25"
+    }
+  ],
+  "requested_valid_target": 2,
+  "valid": 2
+}

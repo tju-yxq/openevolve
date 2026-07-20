@@ -1,0 +1,22 @@
+{
+  "dataset": "QM9",
+  "target": 1,
+  "target_name": "alpha",
+  "batch_size": 64,
+  "final_max_steps": 257700,
+  "pilot_search_steps": 5000,
+  "reference_steps_per_epoch": 859,
+  "warmup_steps": 4295,
+  "eval_interval_steps": 859,
+  "loss": "l1",
+  "optimizer": "adamw",
+  "learning_rate": 0.0005,
+  "minimum_learning_rate": 0.000001,
+  "weight_decay": 0.005,
+  "test_during_search": false,
+  "parameter_ratio_limit": 1.2,
+  "trial_gpu_hours_limit": 5.0,
+  "full_training_requires_explicit_approval": true,
+  "primary_llm": "glm-5.2",
+  "final_seeds": [0, 1, 2]
+}

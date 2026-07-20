@@ -1,0 +1,20 @@
+[
+  {
+    "name": "baseline",
+    "program": "/home/20262202788/equivariant-nas/openevolve_adapter/initial_program.py",
+    "checkpoint": "/home/20262202788/equivariant-nas/runs/candidates/8639c8a64dad5d25/seed0_steps1000_cc934a9505/training/checkpoint_last.pth",
+    "seed": 0
+  },
+  {
+    "name": "factorized_best_300",
+    "program": "/home/20262202788/equivariant-nas/runs/smoke_factorized_seed44/candidates/iteration_0004.py",
+    "checkpoint": "/home/20262202788/equivariant-nas/runs/candidates/36a56d97fa7703cc/seed0_steps1000_2ed4a18ecf/training/checkpoint_last.pth",
+    "seed": 0
+  },
+  {
+    "name": "random_best_300",
+    "program": "/home/20262202788/equivariant-nas/runs/random_seed44/candidate_0003.py",
+    "checkpoint": "/home/20262202788/equivariant-nas/runs/candidates/63ee926702488f11/seed0_steps1000_e5a30ac6a8/training/checkpoint_last.pth",
+    "seed": 0
+  }
+]

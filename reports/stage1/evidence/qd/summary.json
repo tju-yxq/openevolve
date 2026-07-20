@@ -1,0 +1,48 @@
+{
+  "best_metrics": {
+    "architecture_id": "8639c8a64dad5d25",
+    "cache_hit": true,
+    "charged_gpu_seconds": 0.0,
+    "combined_score": 0.0,
+    "evaluation_wall_time_sec": 20.64886913076043,
+    "failure_stage": "",
+    "fidelity_steps": 0,
+    "higher_order_fraction": 0.14285714285714285,
+    "lmax": 2,
+    "num_layers": 6,
+    "parameter_count": 3531715,
+    "parameter_ratio": 1.0,
+    "seed": 0,
+    "used_gpu_hours": 2.467476050761632,
+    "valid": true
+  },
+  "best_program_id": "17dbdbcd-3a95-4a7a-bb5a-47c9c5bb448c",
+  "iterations": 4,
+  "router": {
+    "ACTION": {
+      "attempts": 1,
+      "total_efficiency_gain": 0.0,
+      "total_mae_gain": 0.0,
+      "valid": 1
+    },
+    "MACRO": {
+      "attempts": 1,
+      "total_efficiency_gain": -0.897792,
+      "total_mae_gain": 0.0,
+      "valid": 1
+    },
+    "OPERATOR": {
+      "attempts": 1,
+      "total_efficiency_gain": 0.27389,
+      "total_mae_gain": 0.0,
+      "valid": 1
+    },
+    "REPRESENTATION": {
+      "attempts": 1,
+      "total_efficiency_gain": -0.376144,
+      "total_mae_gain": 0.0,
+      "valid": 1
+    }
+  },
+  "unique_architectures": 5
+}

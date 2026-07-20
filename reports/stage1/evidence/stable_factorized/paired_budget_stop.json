@@ -1,0 +1,6 @@
+{
+  "completed_evolutionary_candidates": 2,
+  "fidelity_steps": 5000,
+  "matched_random_valid_target": 2,
+  "reason": "intentional paired-budget stop"
+}

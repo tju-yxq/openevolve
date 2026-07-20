@@ -1,0 +1,378 @@
+[
+  {
+    "ancestor_architecture_id": "8639c8a64dad5d25",
+    "ancestor_mae": 0.7535404392242432,
+    "ancestor_spec": {
+      "action": {
+        "alpha_drop": 0.2,
+        "drop_path": 0.0,
+        "norm_layer": "layer",
+        "output_drop": 0.0,
+        "projection_drop": 0.0,
+        "rescale_degree": false
+      },
+      "macro": {
+        "num_layers": 6,
+        "radius": 5.0
+      },
+      "operator": {
+        "basis_type": "gaussian",
+        "nonlinear_message": true,
+        "num_basis": 128,
+        "num_heads": 4,
+        "radial_hidden": [
+          64,
+          64
+        ]
+      },
+      "representation": {
+        "feature_channels": 512,
+        "head_l3_channels": 0,
+        "head_scalar_channels": 32,
+        "head_tensor_channels": 8,
+        "head_vector_channels": 16,
+        "l3_channels": 0,
+        "lmax": 2,
+        "mlp_multiplier": 3,
+        "scalar_channels": 128,
+        "tensor_channels": 32,
+        "vector_channels": 64
+      },
+      "schema_version": 1
+    },
+    "child_architecture_id": "423ad6a88d9315d5",
+    "child_mae": 0.6398895030975342,
+    "counterfactual_architecture_id": "b36c54046cc30a25",
+    "counterfactual_metrics": {
+      "architecture_id": "b36c54046cc30a25",
+      "best_step": 5000,
+      "best_validation_alpha_mae": 0.576446774673462,
+      "cache_hit": false,
+      "charged_gpu_seconds": 1349.102854307741,
+      "combined_score": -0.576446774673462,
+      "endpoint_step": 5000,
+      "evaluation_wall_time_sec": 1368.3032880276442,
+      "failure_stage": "",
+      "fidelity_steps": 5000,
+      "gradient_health": {
+        "all_finite": true,
+        "global_l2_norm": 42.029029338743705,
+        "gradients_present": true,
+        "loss": 10.96507740020752,
+        "maximum_absolute_gradient": 5.990779876708984
+      },
+      "higher_order_fraction": 0.14285714285714285,
+      "lmax": 2,
+      "max_layerwise_symmetry_error": 0.48498278856277466,
+      "max_symmetry_error": 0.011289931833744049,
+      "num_layers": 6,
+      "parameter_count": 3502849,
+      "parameter_ratio": 0.9918266338025576,
+      "posttrain_symmetry_report": {
+        "layerwise_rotation_equivariance": {
+          "block_0": {
+            "maximum": 0.31096532940864563,
+            "mean": 0.24708196818828582,
+            "values": [
+              0.30861932039260864,
+              0.1874116212129593,
+              0.25073662400245667,
+              0.1776769459247589,
+              0.31096532940864563
+            ]
+          },
+          "block_1": {
+            "maximum": 0.42598798871040344,
+            "mean": 0.3354203224182129,
+            "values": [
+              0.4258582293987274,
+              0.25759726762771606,
+              0.33316513895988464,
+              0.23449298739433289,
+              0.42598798871040344
+            ]
+          },
+          "block_2": {
+            "maximum": 0.4630003273487091,
+            "mean": 0.3641999185085297,
+            "values": [
+              0.46072813868522644,
+              0.27939191460609436,
+              0.3635779023170471,
+              0.2543013095855713,
+              0.4630003273487091
+            ]
+          },
+          "block_3": {
+            "maximum": 0.4790179133415222,
+            "mean": 0.37617586851119994,
+            "values": [
+              0.474460244178772,
+              0.28691649436950684,
+              0.379102885723114,
+              0.2613818049430847,
+              0.4790179133415222
+            ]
+          },
+          "block_4": {
+            "maximum": 0.48498278856277466,
+            "mean": 0.3829957365989685,
+            "values": [
+              0.4816576838493347,
+              0.29740655422210693,
+              0.3816417157649994,
+              0.26928994059562683,
+              0.48498278856277466
+            ]
+          },
+          "block_5": {
+            "maximum": 0.1616695374250412,
+            "mean": 0.12025493830442428,
+            "values": [
+              0.15947167575359344,
+              0.08860497176647186,
+              0.11907000839710236,
+              0.07245849817991257,
+              0.1616695374250412
+            ]
+          }
+        },
+        "permutation_invariance": {
+          "maximum": 4.144954800722189e-05,
+          "mean": 4.144954800722189e-05,
+          "values": [
+            4.144954800722189e-05
+          ]
+        },
+        "rotation_invariance": {
+          "maximum": 0.011289931833744049,
+          "mean": 0.004475113947410137,
+          "values": [
+            0.0003230308066122234,
+            0.0049943262711167336,
+            0.011289931833744049,
+            0.004283284302800894,
+            0.0014849965227767825
+          ]
+        },
+        "translation_invariance": {
+          "maximum": 0.0002372765156906098,
+          "mean": 0.00016005499037419213,
+          "values": [
+            0.00023481514654122293,
+            8.073308890743647e-06,
+            0.0002372765156906098
+          ]
+        }
+      },
+      "pretrain_max_layerwise_symmetry_error": 0.533163845539093,
+      "pretrain_max_symmetry_error": 0.7248456478118896,
+      "pretrain_symmetry_report": {
+        "layerwise_rotation_equivariance": {
+          "block_0": {
+            "maximum": 0.4295164942741394,
+            "mean": 0.3800865262746811,
+            "values": [
+              0.3306565582752228,
+              0.4295164942741394
+            ]
+          },
+          "block_1": {
+            "maximum": 0.4913434088230133,
+            "mean": 0.43628381192684174,
+            "values": [
+              0.38122421503067017,
+              0.4913434088230133
+            ]
+          },
+          "block_2": {
+            "maximum": 0.46007823944091797,
+            "mean": 0.4197147488594055,
+            "values": [
+              0.37935125827789307,
+              0.46007823944091797
+            ]
+          },
+          "block_3": {
+            "maximum": 0.5230090618133545,
+            "mean": 0.4735342264175415,
+            "values": [
+              0.4240593910217285,
+              0.5230090618133545
+            ]
+          },
+          "block_4": {
+            "maximum": 0.533163845539093,
+            "mean": 0.48419205844402313,
+            "values": [
+              0.43522027134895325,
+              0.533163845539093
+            ]
+          },
+          "block_5": {
+            "maximum": 0.14591780304908752,
+            "mean": 0.13670899718999863,
+            "values": [
+              0.12750019133090973,
+              0.14591780304908752
+            ]
+          }
+        },
+        "permutation_invariance": {
+          "maximum": 0.0011529355542734265,
+          "mean": 0.0011529355542734265,
+          "values": [
+            0.0011529355542734265
+          ]
+        },
+        "rotation_invariance": {
+          "maximum": 0.7248456478118896,
+          "mean": 0.5738977193832397,
+          "values": [
+            0.7248456478118896,
+            0.42294979095458984
+          ]
+        },
+        "translation_invariance": {
+          "maximum": 0.010868774726986885,
+          "mean": 0.009599314071238041,
+          "values": [
+            0.008329853415489197,
+            0.010868774726986885
+          ]
+        }
+      },
+      "pretrain_symmetry_warning": true,
+      "resumed_from": "",
+      "seed": 0,
+      "step_time_ms": 255.25746033266188,
+      "symmetry_report": {
+        "layerwise_rotation_equivariance": {
+          "block_0": {
+            "maximum": 0.31096532940864563,
+            "mean": 0.24708196818828582,
+            "values": [
+              0.30861932039260864,
+              0.1874116212129593,
+              0.25073662400245667,
+              0.1776769459247589,
+              0.31096532940864563
+            ]
+          },
+          "block_1": {
+            "maximum": 0.42598798871040344,
+            "mean": 0.3354203224182129,
+            "values": [
+              0.4258582293987274,
+              0.25759726762771606,
+              0.33316513895988464,
+              0.23449298739433289,
+              0.42598798871040344
+            ]
+          },
+          "block_2": {
+            "maximum": 0.4630003273487091,
+            "mean": 0.3641999185085297,
+            "values": [
+              0.46072813868522644,
+              0.27939191460609436,
+              0.3635779023170471,
+              0.2543013095855713,
+              0.4630003273487091
+            ]
+          },
+          "block_3": {
+            "maximum": 0.4790179133415222,
+            "mean": 0.37617586851119994,
+            "values": [
+              0.474460244178772,
+              0.28691649436950684,
+              0.379102885723114,
+              0.2613818049430847,
+              0.4790179133415222
+            ]
+          },
+          "block_4": {
+            "maximum": 0.48498278856277466,
+            "mean": 0.3829957365989685,
+            "values": [
+              0.4816576838493347,
+              0.29740655422210693,
+              0.3816417157649994,
+              0.26928994059562683,
+              0.48498278856277466
+            ]
+          },
+          "block_5": {
+            "maximum": 0.1616695374250412,
+            "mean": 0.12025493830442428,
+            "values": [
+              0.15947167575359344,
+              0.08860497176647186,
+              0.11907000839710236,
+              0.07245849817991257,
+              0.1616695374250412
+            ]
+          }
+        },
+        "permutation_invariance": {
+          "maximum": 4.144954800722189e-05,
+          "mean": 4.144954800722189e-05,
+          "values": [
+            4.144954800722189e-05
+          ]
+        },
+        "rotation_invariance": {
+          "maximum": 0.011289931833744049,
+          "mean": 0.004475113947410137,
+          "values": [
+            0.0003230308066122234,
+            0.0049943262711167336,
+            0.011289931833744049,
+            0.004283284302800894,
+            0.0014849965227767825
+          ]
+        },
+        "translation_invariance": {
+          "maximum": 0.0002372765156906098,
+          "mean": 0.00016005499037419213,
+          "values": [
+            0.00023481514654122293,
+            8.073308890743647e-06,
+            0.0002372765156906098
+          ]
+        }
+      },
+      "symmetry_warning": true,
+      "training_time_sec": 1244.9141818992794,
+      "training_wall_time_sec": 1276.2873016633093,
+      "used_gpu_hours": 4.513295328617096,
+      "valid": true,
+      "validation_alpha_mae": 0.576446774673462
+    },
+    "factor_replacement": {
+      "basis_type": "bessel",
+      "nonlinear_message": true,
+      "num_basis": 64,
+      "num_heads": 4,
+      "radial_hidden": [
+        64,
+        64
+      ]
+    },
+    "interaction_contrast": {
+      "baseline_mae": 0.7535404392242432,
+      "epistasis_mae": -0.4826190509796141,
+      "factor_a_gain": -0.5460617794036865,
+      "factor_a_only_mae": 1.2996022186279297,
+      "factor_b_gain_with_a": 0.6597127155303955,
+      "factor_b_gain_without_a": 0.17709366455078124,
+      "factor_b_only_mae": 0.576446774673462,
+      "joint_mae": 0.6398895030975342
+    },
+    "iteration": 2,
+    "parent_mae": 1.2996022186279297,
+    "selected_factor": "OPERATOR",
+    "status": "resolved"
+  }
+]

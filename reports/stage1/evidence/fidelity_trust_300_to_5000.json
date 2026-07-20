@@ -1,0 +1,34 @@
+{
+  "cohort_size": 3,
+  "kendall_tau": -0.3333333333333333,
+  "normalized_selection_regret": 0.6591236096386686,
+  "pairs": [
+    {
+      "name": "baseline",
+      "proxy_mae": 3.4779662284851076,
+      "proxy_steps": 300,
+      "reference_mae": 0.7535404392242432,
+      "reference_steps": 5000
+    },
+    {
+      "name": "factorized_300_winner",
+      "proxy_mae": 2.840219583129883,
+      "proxy_steps": 300,
+      "reference_mae": 1.1705959045410157,
+      "reference_steps": 5000
+    },
+    {
+      "name": "random_300_winner",
+      "proxy_mae": 3.137686180114746,
+      "proxy_steps": 300,
+      "reference_mae": 0.7055507484436035,
+      "reference_steps": 5000
+    }
+  ],
+  "reason": "failed: cohort, spearman, top_k_recall, selection_regret",
+  "selection_regret": 0.46504515609741215,
+  "spearman": -0.4999999999999999,
+  "top_k": 1,
+  "top_k_recall": 0.0,
+  "trustworthy": false
+}

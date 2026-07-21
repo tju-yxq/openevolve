@@ -132,10 +132,12 @@ reference_steps_per_epoch = 859
 
 这里必须区分两个概念：
 
-- **data cycle**：batch=64 时完整遍历一次 110,000 个训练样本约需 1,718 个 batch；
-- **reference epoch**：为了复用原论文按 859 steps/epoch 定义的 warmup、cosine 学习率相位与评估节奏，仍把每 859 optimizer steps 记作一个参考 epoch。
+- **data cycle（真实数据遍历周期）**：batch=64 时，110,000 个训练样本被打乱并拆分成约 1,718 个 batch；完成这些 batch 后，训练集中的样本都已参与一次训练，然后再次打乱并开始下一个 cycle。因此，batch 变小并不意味着只使用部分训练集或永久遗漏一半样本；每个 cycle 仍覆盖完整训练集。
+- **reference epoch（学习率参考刻度）**：为了复用原论文按 859 steps/epoch 定义的 warmup、cosine 学习率相位与评估节奏，仍把每 859 次 optimizer update 记作一个 reference epoch。它只是调度与记录刻度，不表示 batch=64 时已经完整遍历一次训练集。
 
-所以在同为 257,700 steps 时，batch=64 的总样本曝光量约为 batch=128 的一半。这是用户有意指定的“固定更新次数、改变每步批量”的实验，不应误写成完全等算量对照，也不能称为“少跑 epoch”。阶段一搜索比较必须在候选之间共享同一 batch=64、同一 step endpoint，保证内部公平。
+当前协议固定的是 **optimizer update 次数**：batch=128 和 batch=64 都执行 257,700 次参数更新。由于 batch=64 每次更新使用 64 个样本，而原 batch=128 每次更新使用 128 个样本，因此截至相同 step，batch=64 大约完成 150 次完整数据遍历，原配置约完成 300 次。这里减少的是训练集的**重复遍历次数**以及累计参与计算的样本实例数，不是训练集的覆盖范围。
+
+因此，`batch_size=64, max_steps=257700` 正是本项目需要的“固定更新次数、改变每次更新的 batch 大小”协议。它不应描述为遗漏数据，也不应把 reference epoch 当成真实 data epoch。阶段一所有候选共享同一 batch=64、同一 global-step endpoint 和同一学习率参考刻度，从而保证搜索内部比较公平。
 
 ### 2.4 最初 Handoff 规划与最终实现为什么不同
 

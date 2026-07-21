@@ -46,6 +46,7 @@ def main():
         "METHOD.md",
         "REPRODUCE.md",
         "PHASE2_PREREGISTRATION.md",
+        "STAGE1_TRACEABILITY.md",
         "configs/protocol.json",
         "configs/phase2_preregistration.json",
         "configs/stage1_factor_memory.json",

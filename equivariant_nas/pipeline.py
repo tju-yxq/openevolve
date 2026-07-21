@@ -48,7 +48,6 @@ def evaluate_candidate_pipeline(
             "symmetry_threshold": symmetry_threshold,
             "symmetry_warning_threshold": symmetry_warning_threshold,
             "parameter_ratio_limit": parameter_ratio_limit,
-            "resume_checkpoint": str(resume_checkpoint or ""),
             "checkpoint_interval_steps": 859,
             "evaluation_interval_steps": int(max_steps),
         },
@@ -319,6 +318,7 @@ def evaluate_candidate_pipeline(
                     ),
                     "combined_score": -validation_mae,
                     "resumed_from": effective_resume_checkpoint,
+                    "test_evaluated": bool(summary.get("test_evaluated", False)),
                 }
             )
             if run_symmetry:

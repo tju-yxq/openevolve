@@ -204,79 +204,413 @@ LLM 不得改变以上任何字段。运行器即使收到错误提案，也只�
 
 ## 4. 完整端到端工作流
 
-### 4.1 总体闭环
+### 4.1 先用几段话理解整个系统
+
+这个系统的输入不是一段任由 LLM 改写的 Equiformer 源代码，而是一个已经通过验证的 **父代架构规格**。该规格把模型结构拆成 REPRESENTATION、OPERATOR、ACTION 和 MACRO 四类决策。每次进化只允许选择其中一个因子进行修改，其他三个因子必须与父代完全相同。这样做的目的，是让一次实验结果能够较清楚地归因于某一类结构变化，同时防止 LLM 顺手修改数据、训练轮数、损失函数等与架构无关的内容。
+
+一次迭代开始时，OpenEvolve 从已有候选库中选择一个 parent（父代）和 2 个 inspirations（参考候选）。随后 ECFR 根据历史实验中各因子的有效率、验证 MAE 改善和效率收益，决定本次修改哪个 factor。TCRE 再从父代谱系中提取已经真实测量过的验证 MAE、过去改过哪些因子、近期是否仍在改善等信息。LLM 的第一阶段 RC 只负责阅读这些证据并提出修改方向；第二阶段 SAR 才把方向转换成一个严格受限的 factor JSON。也就是说，LLM 负责“提出结构假设”，可信代码负责“决定它是否能成为真实模型”。
+
+LLM 给出的 JSON 不会立即送到 GPU。SPAG 编译器首先检查字段、取值、irrep 关系、科学语义和单因子不变量，然后可信 builder 才用官方 Equiformer 模块构建模型。接下来按从便宜到昂贵的顺序检查参数量、前向传播、反向传播、梯度是否有限、预算是否足够以及训练前对称性诊断。任何候选如果在这些阶段失败，就记录失败原因并停止，不消耗后续 5,000-step 训练预算。
+
+通过廉价门的候选进入固定 step 训练。搜索阶段统一使用 QM9 `target=1`、batch size 64、trainer seed 0 和 5,000 optimizer steps，只用 validation MAE 评价结构。训练完成后必须重新加载 checkpoint，再检查旋转、平移和原子置换后的最终标量输出是否稳定。通过训练与对称性硬门的候选，才有资格进入 OpenEvolve 档案，并成为以后可能被采样的父代。
+
+候选归档前还要解决“信用应该记给谁”的问题。普通情况下，用 parent 与 child 的 validation MAE 差更新本次 factor 的统计；如果出现“父代先退化、子代又被另一个因子大幅救援”的链条，则触发 IACC，额外训练一个 sibling（兄弟候选），把新因子的独立收益和两个因子的交互收益拆开。最后，低 fidelity 是否能用于晋级不是单个候选自己决定的，而是等一批候选同时拥有短、长两个 fidelity 的结果后，由 SCFTG 在群体层面检查排序相关性、top-k 保留率和选择后悔值。未通过时，短训练只能作为校准资料，不能决定哪个架构晋级。
+
+### 4.2 八个阶段的总览
 
 ```mermaid
 flowchart TD
-    P0["冻结协议<br/>QM9 target=1 / batch=64 / validation-only"] --> P1["载入 OpenEvolve ProgramDatabase<br/>islands / lineage / MAP-Elites"]
-    P1 --> P2["采样 parent 与 inspirations"]
-    P2 --> P3["FEM 提供阶段一冻结先验"]
-    P3 --> P4["ECFR 选择且只选择一个 factor"]
-    P4 --> P5["TCRE 由可信代码提取谱系、同 fidelity MAE 与 plateau"]
-    P5 --> P6["RC reviewer 输出 direction / evidence / risk"]
-    P6 --> P7["SAR editor 输出该 factor 的完整 replacement JSON"]
-    P7 --> P8["SPAG literal AST 解析、schema、语义、单因子检查"]
-    P8 -->|"失败"| P9["同 factor compiler repair"]
-    P9 --> P8
-    P8 -->|"通过"| P10["可信 Equiformer builder"]
-    P10 --> P11["SAPF：参数、构建、forward/backward、资源门"]
-    P11 -->|"拒绝"| P20["记录失败原因，不进入 archive"]
-    P11 -->|"通过"| P12["训练前 symmetry profile<br/>当前仅 warning"]
-    P12 --> P13["fixed-step trainer<br/>同 batch、同 step、同 seed"]
-    P13 --> P14["重载 checkpoint<br/>validation MAE + 训练后 observable symmetry"]
-    P14 -->|"硬门失败"| P20
-    P14 -->|"通过"| P15{"是否形成 degraded-parent rescue chain?"}
-    P15 -->|"是"| P16["IACC 构造 ancestor+sibling 反事实"]
-    P16 --> P17["拆分 standalone main effect 与 epistasis"]
-    P15 -->|"否"| P18["普通 parent-child factor credit"]
-    P17 --> P19["信用只回写一次"]
-    P18 --> P19
-    P19 --> P21["更新 archive、lineage、QD cell、router state"]
-    P21 --> P2
-    P13 --> P22["LRPF 提取学习率相位响应"]
-    P22 --> P23["SCFTG 检查跨 fidelity 排名可信度"]
-    P23 -->|"不可信"| P24["仅 calibration，不得影响选择"]
-    P23 -->|"可信"| P25["允许同批候选晋级"]
+    S0["阶段 0：冻结实验协议<br/>数据、目标、batch、steps、loss、optimizer、test policy"]
+    S1["阶段 1：初始化搜索状态<br/>baseline + ProgramDatabase + islands + MAP-Elites + FEM"]
+    S2["阶段 2：选择父代和修改因子<br/>parent/inspirations + ECFR"]
+    S3["阶段 3：LLM 提出结构假设<br/>TCRE → RC → SAR"]
+    S4["阶段 4：可信编译与廉价门控<br/>SPAG → builder → 参数/梯度/预算/symmetry profile"]
+    S5["阶段 5：固定协议训练<br/>QM9 alpha + batch 64 + 5,000 optimizer steps"]
+    S6["阶段 6：训练后审计与归档<br/>validation MAE + checkpoint symmetry + archive/QD cell"]
+    S7["阶段 7：信用分配<br/>parent-child credit 或 IACC sibling 反事实"]
+    S8["阶段 8：群体级 fidelity 判断<br/>LRPF 轨迹 + SCFTG → 禁止或允许晋级"]
+    S0 --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
+    S7 -->|"继续下一次 proposal"| S2
+    S6 --> S8
 ```
 
-### 4.2 单次候选从产生到归档的严格顺序
+这里的“阶段 8”不是普通单次候选循环中的自动尾步骤。主搜索 pipeline 默认只在候选 endpoint 做完整 validation；若要构造 LRPF，必须让同一候选在预先指定的学习率相位端点产生可比较观测，或运行专门的多 fidelity 校准实验。SCFTG 则必须等到一组共同候选都拥有 proxy 与 reference 两种 fidelity 结果后，才能进行群体排序判断。
 
-1. OpenEvolve 从当前 island/database 采样 parent 和 inspirations；
-2. ECFR 根据冻结先验和已测 factor credit 选择一个 factor；uniform 对照则均匀选择；
-3. TCRE 从可信 lineage 记录生成有界历史，不允许 LLM 自己总结原始日志；
-4. RC 只解释证据、给出方向和风险，不写代码；
-5. SAR 只返回已选 factor 的完整 JSON 对象；
-6. `ast.literal_eval`/JSON/schema 验证拒绝可执行语句、未知字段、非法取值；
-7. `assert_factor_local_change` 保证 parent→child 恰好只变一个 factor；
-8. architecture canonical JSON 生成稳定 SHA-256 短 ID，用于去重、缓存和追溯；
-9. 可信 builder 把规格映射到官方 Equiformer constructor；
-10. 参数量、模型构建、前向、反向、梯度有限性和预算预留先执行；
-11. 训练前输出和 layerwise symmetry 只形成诊断 profile；
-12. 通过门后才分配 5,000 optimizer steps；
-13. 保存结果、metrics、checkpoint 与实际 GPU 时间；
-14. 训练后重载 checkpoint，以 5 次随机旋转、平移和原子置换审计最终标量输出；
-15. 若候选是对退化 parent 的强救援，先标记信用 provisional，并补跑 sibling；
-16. 解析后的 standalone factor gain 只写回 router 一次；
-17. 合法候选进入 OpenEvolve archive、lineage 和固定范围 MAP-Elites cell；
-18. 任何跨 fidelity 晋级必须通过 SCFTG，或者明确标记为 calibration-only。
-
-### 4.3 数据、控制和证据流
+### 4.3 阶段 0：冻结实验协议，先定义什么绝对不能搜索
 
 ```mermaid
 flowchart LR
-    D1["冻结输入<br/>QM9 split / alpha / protocol"] --> E1["可信 evaluator"]
-    L1["LLM 输出<br/>reflection + factor JSON"] --> C1["编译与科学语义守卫"]
-    C1 --> E1
-    E1 --> A1["结构化 metrics/result.json"]
-    E1 --> K1["checkpoint + telemetry + budget ledger"]
-    A1 --> O1["OpenEvolve archive / lineage / MAP-Elites"]
-    A1 --> R1["ECFR / IACC / FEM / TCRE"]
-    A1 --> F1["LRPF / SCFTG"]
-    O1 --> L1
-    R1 --> L1
-    F1 --> G1["promotion authorization"]
-    T1["test split"] -. "搜索期间物理隔离" .-> X1["冻结最终架构后一次性评估"]
+    A["QM9 固定划分"] --> F["可信训练/评估协议"]
+    B["target=1：极化率 alpha"] --> F
+    C["batch=64；候选 fidelity=5,000 steps"] --> F
+    D["L1 + AdamW + 固定 LR schedule"] --> F
+    E["search 时 test=false"] --> F
+    F --> G["只有 ArchitectureSpec 可以变化"]
 ```
+
+这一阶段没有 LLM 参与。`configs/protocol.json` 固定数据集、target、batch、optimizer、learning rate、weight decay、step budget、参数上限和 test policy。它定义了公平比较的共同坐标系。若让 LLM 改变训练步数或数据划分，较低 MAE 就无法再归因于架构本身。
+
+**输入：** 冻结 protocol 和 QM9 数据。
+
+**输出：** 所有候选共同使用的 evaluator 配置。
+
+**失败处理：** 候选中出现协议字段时直接拒绝；这些字段根本不属于 genotype。
+
+### 4.4 阶段 1：建立 OpenEvolve 搜索状态
+
+```mermaid
+flowchart LR
+    B0["baseline ArchitectureSpec"] --> DB["ProgramDatabase<br/>候选、指标、谱系"]
+    FEM["FEM 冻结因子统计"] --> R["ECFR router state"]
+    DB --> I1["Island 1"]
+    DB --> I2["Island 2"]
+    DB --> I3["Island 3"]
+    DB --> QD["MAP-Elites 网格<br/>lmax × 高阶通道比例 × 参数比 × 深度"]
+```
+
+`ProgramDatabase` 是搜索过程的结构化候选库，保存候选代码容器、metrics、父子关系和发现迭代。Island（岛屿）是相对独立的子种群，用于避免所有候选过早集中到同一种结构。MAP-Elites 不是只保存一个全局最优，而是在多个结构特征格子中分别保存表现好的 elite（精英候选），从而同时维持精度与架构多样性。
+
+阶段一实现最多使用 3 个 islands、population size 最多 100、archive size 最多 30。MAP-Elites 的四个维度和格子数为：
+
+| 维度 | 中文含义 | bins |
+|---|---|---:|
+| `lmax` | 最高角动量阶数 | 3 |
+| `higher_order_fraction` | 二阶及以上通道占总通道比例 | 4 |
+| `parameter_ratio` | 候选参数量 / baseline 参数量 | 4 |
+| `num_layers` | Transformer block 数 | 4 |
+
+这些范围在插入候选前固定，避免动态 min-max 使同一候选因到达顺序不同而落入不同格子。
+
+### 4.5 阶段 2：采样父代并选择本次只改哪个因子
+
+```mermaid
+flowchart TD
+    DB["ProgramDatabase"] --> P["采样 parent"]
+    DB --> INS["采样 inspirations"]
+    MEM["FEM：阶段一冻结证据"] --> ECFR["ECFR 因子路由"]
+    PM["parent metrics<br/>MAE、参数比、step time、symmetry warning"] --> ECFR
+    ECFR --> F{"本次 selected factor"}
+    F --> R["REPRESENTATION"]
+    F --> O["OPERATOR"]
+    F --> A["ACTION"]
+    F --> M["MACRO"]
+    P --> OUT["父代 + 参考候选 + 唯一 selected factor"]
+    INS --> OUT
+    F --> OUT
+```
+
+Parent 是本次将被修改的父代；inspirations 是供 LLM 参考的其他已有候选，它们可以提示哪些方向已尝试，但不能被直接拼接为不受约束的代码。ECFR 是一个带探索项的因子路由器，其核心分数可概括为：
+
+```text
+factor score
+= 平均验证 MAE 收益
++ 0.05 × 平均效率收益
++ exploration × 不确定性项
+- 无效候选惩罚
++ 小幅上下文 bonus
+```
+
+代码中 `exploration=0.35`。尚未尝试的因子获得最高探索优先级；历史上频繁产生非法候选的因子会被惩罚。上下文 bonus 最大只起小幅辅助作用，主要信用仍来自真实 parent-child 结果。uniform-router 对照跳过这套证据打分，四个因子均匀选择。
+
+**输入：** database、parent metrics、FEM prior。
+
+**输出：** parent、inspirations、唯一 selected factor。
+
+**失败处理：** 该阶段不产生模型；若 prior 与 QM9 target 1 不匹配或未覆盖四个因子，直接停止运行。
+
+### 4.6 阶段 3：TCRE、RC 和 SAR 如何共同生成候选
+
+```mermaid
+sequenceDiagram
+    participant DB as ProgramDatabase
+    participant T as TCRE（可信历史摘要）
+    participant RC as RC Reviewer（反思者）
+    participant SAR as SAR Editor（编辑者）
+    participant C as SPAG Compiler（编译器）
+    DB->>T: parent 谱系与可信 metrics
+    T->>RC: lineage depth、MAE history、factor history、plateau
+    RC->>RC: 分析证据、风险与修改方向
+    RC->>SAR: direction + evidence + risk
+    SAR->>C: selected factor 的完整 replacement JSON
+    C-->>SAR: 若非法，返回具体错误并要求同 factor 修复
+    SAR->>C: 最多 repair_attempts 次修订
+```
+
+TCRE 的作用不是让 LLM“自由回忆历史”，而是先由代码生成受信任摘要。默认最多观察最近 4 个谱系节点；至少有 3 个同 fidelity validation MAE 才判断 plateau。若近期 best 改善小于 `0.02 a₀³`，标记 plateau=`yes`，SAR 才可在已经选定的 factor 内采用更探索性的修改；证据不足则必须为 `unknown`。
+
+RC 和 SAR 是 SPARK 使用的模块简称；当前仓库材料主要按功能描述它们，并未给出需要在本文强行展开的统一英文全称。本文把 RC 解释为“反思/审阅阶段”：它回答已有测量证据支持什么方向、潜在风险是什么、下一次结构假设为何合理，但不输出 Python，也不直接修改架构。SAR 解释为“结构编辑阶段”：它接收 RC 的方向，只输出 selected factor 的完整 JSON replacement。`--skip-reflection` 是 Phase 2 的 no-RC 消融开关。SPARK 还使用 ASR 来选择 OPERATOR 或 ACTION；本项目没有原样沿用 ASR，而是以四因子的 ECFR 取代其选择职责。
+
+**输入：** parent spec、inspirations、selected factor、可信历史摘要。
+
+**输出：** factor replacement JSON 和 reasoning。
+
+**失败处理：** JSON/schema/科学语义错误可按 `repair_attempts` 在同 factor 内修复；默认只允许 1 次修复，仍失败则记录 invalid proposal。
+
+### 4.7 阶段 4：SPAG 编译和训练前廉价门控
+
+```mermaid
+flowchart TD
+    J["SAR factor JSON"] --> A1["1. JSON/AST literal 解析"]
+    A1 --> A2["2. schema 与允许值检查"]
+    A2 --> A3["3. irrep 和科学语义检查"]
+    A3 --> A4["4. parent→child 恰好一个 factor"]
+    A4 --> A5["5. canonical JSON → architecture_id"]
+    A5 --> D{"是否 duplicate/cache hit?"}
+    D -->|"是"| C["读取可信缓存或做 duplicate repair"]
+    D -->|"否"| U["GPU budget 成本估计与可用性检查"]
+    U --> B["可信 Equiformer builder"]
+    B --> P["参数量 ratio ≤ 1.2"]
+    P --> S["训练前 symmetry profile（warning）"]
+    S --> G["forward/backward + 梯度 finite"]
+    G --> PASS["允许进入训练"]
+    A1 -->|"失败"| REJ["记录 failure stage，不训练"]
+    A2 -->|"失败"| REJ
+    A3 -->|"失败"| REJ
+    A4 -->|"失败"| REJ
+    P -->|"失败"| REJ
+    U -->|"不足"| REJ
+    G -->|"失败"| REJ
+```
+
+SPAG 是 Symmetry-Preserving Architecture Grammar，即“保持对称性语义的架构语法”。它只解析字面量，不 import LLM 文件。通过 canonical JSON 计算 16 位 architecture ID；同一规格无论字段书写顺序如何，ID 都一致，因此可去重和缓存。
+
+训练前门控的重要参数：
+
+| 参数 | 当前值 | 作用 |
+|---|---:|---|
+| `parameter_ratio_limit` | 1.2 | 候选参数量不得超过 baseline 的 1.2 倍 |
+| `symmetry_warning_threshold` | 0.01 | 超过后记录 warning，但训练前不硬拒绝 |
+| `symmetry_threshold` | 0.25 | 训练后 observable symmetry 的灾难性硬阈值 |
+| `NAS_GPU_BUDGET_HOURS` | 随 gate 设置 | 整个运行允许消耗的 GPU 小时 |
+| `NAS_BUDGET_LEDGER` | 共享 JSONL 路径 | 记录和约束多个方法的共同预算 |
+
+训练前 symmetry/gradient 诊断从 train split 取一个 batch size 为 2 的小批次，默认做 2 次随机旋转、2 次平移以及置换检查。它的目的不是估计 validation MAE，而是在正式 5,000-step 训练前发现明显的数值或梯度故障。
+
+预算估计对已有 fidelity 使用历史中位耗时并增加 20% 安全裕量；新 fidelity 使用保守 fallback。预算不足时必须在训练开始前拒绝。
+
+### 4.8 阶段 5：固定 step 训练到底执行了什么
+
+```mermaid
+flowchart TD
+    T0["读取 QM9 train/validation"] --> T1["按 seed 打乱训练集"]
+    T1 --> T2["batch_size=64 取一个 batch"]
+    T2 --> T3["forward → L1 loss → backward"]
+    T3 --> T4["optimizer.step：global_step + 1"]
+    T4 --> T5{"到本次 evaluator 指定的 eval interval?"}
+    T5 -->|"是"| T6["计算 validation alpha MAE<br/>保存 metrics/checkpoint"]
+    T5 -->|"否"| T7{"global_step 到 max_steps?"}
+    T6 --> T7
+    T7 -->|"否；数据用完则重新打乱"| T2
+    T7 -->|"是"| T8["结束训练并写 summary"]
+```
+
+在 Phase 2 搜索中，`max_steps=5000` 表示每个 trained-valid candidate 完成 5,000 次 `optimizer.step()`。batch=64 时每次更新使用 64 个样本；训练集在一个 data cycle 用完后重新按确定性 seed 打乱并继续。`reference_steps_per_epoch=859` 用于推进与原 batch=128 配置一致的学习率参考相位。需要特别区分：当前 NAS pipeline 调用 5,000-step 候选训练时传入 `eval_interval_steps=max_steps`，所以用于候选主评分的 validation 在 5,000-step endpoint 执行；它并不是每 859 steps 都做一次完整 validation。若单独运行长期 fixed-step 训练，可把 `eval_interval_steps` 配置为 859，以获得逐 reference epoch 曲线。
+
+搜索中的 trainer seed 固定为 0，使不同架构尽可能经历相同的随机初始化规则和数据顺序；search seed 101/102/... 则控制 LLM sampling、父代采样、island 和 factor routing。两类 seed 不能混为一谈。
+
+训练输出至少包括：validation MAE、best step、step time、training time、checkpoint、学习率、global step、data cycle 和是否读取 test。搜索期间 `test_evaluated` 必须为 false。
+
+### 4.9 阶段 6：训练后审计、评分和归档
+
+```mermaid
+flowchart TD
+    CK["训练完成 checkpoint"] --> LOAD["重新加载模型权重"]
+    LOAD --> V["计算 validation alpha MAE"]
+    LOAD --> R["5 次随机旋转"]
+    LOAD --> TR["整体平移测试"]
+    LOAD --> PE["原子置换测试"]
+    R --> H{"observable 最大误差 ≤ 0.25?"}
+    TR --> H
+    PE --> H
+    H -->|"否"| X["valid=false；禁止进入 archive"]
+    H -->|"是"| M["生成 metrics 与 QD descriptors"]
+    V --> M
+    M --> DB["ProgramDatabase + lineage"]
+    M --> QD["对应 MAP-Elites cell"]
+    M --> AR["archive / best-so-far"]
+```
+
+Validation MAE 是架构质量主指标，数值越低越好。参数量和 step time 是辅助效率指标以及 QD descriptors，不会被偷偷混成一个替代 MAE 的目标。`combined_score` 只是 OpenEvolve 接口需要的排序字段，原始 MAE、参数和所有门控状态仍单独保存。
+
+Archive（档案）是保留高质量候选的集合；lineage（谱系）记录父子关系；QD cell 是候选在 MAP-Elites 多样性网格中的位置。一个候选可以不是全局最低 MAE，但因占据不同容量区域而成为某个 cell 的 elite，从而保留为未来父代。
+
+训练后 symmetry audit 使用训练前保留的小批次重新检查 checkpoint，默认做 5 次随机旋转、3 次平移和 1 次原子置换。最终 observable 最大相对误差超过 0.25 时，候选被标记为 invalid；超过 0.01 但未达到 0.25 时保留 warning。未经校准的 layerwise error 即使较大也不单独触发硬拒绝。
+
+### 4.10 阶段 7：普通信用与 IACC 反事实信用
+
+```mermaid
+flowchart TD
+    A["ancestor 祖先"] --> P["parent 父代：修改 factor A"]
+    P --> C["child 子代：再修改 factor B"]
+    D{"parent 是否比 ancestor 退化，child 是否显著救援?"}
+    A --> D
+    P --> D
+    C --> D
+    D -->|"否"| PC["普通 parent-child credit<br/>收益记给本次 factor B"]
+    D -->|"是"| S["构造 sibling：ancestor 只应用 factor B"]
+    S --> E["同一 5,000-step 协议训练 sibling"]
+    E --> CONTRAST["四点对比<br/>A-only / B-only / A+B / baseline"]
+    CONTRAST --> MAIN["B standalone main effect"]
+    CONTRAST --> INT["A×B epistasis"]
+    MAIN --> ROUTER["只把独立收益回写 ECFR 一次"]
+```
+
+Credit 是“本次结构修改应得到多少收益评价”。普通 parent-child credit 使用 `parent_mae - child_mae`；正数表示 child 更好。IACC 是 Interaction-Aware Counterfactual Credit，即“交互感知反事实信用”。它只在 degraded-parent rescue chain（父代先退化、子代再被救援）出现时触发，不是每个候选都额外训练 sibling。
+
+Sibling 是与原 child 共享同一个新 factor B、但去掉之前 factor A 的兄弟候选。通过四点对比，系统区分 B 独立是否有用，以及 B 是否只在 A 存在时表现特殊。`--disable-iacc` 用于 no-IACC 消融；resolved counterfactual 通过唯一 key 防止重复回写。
+
+### 4.11 阶段 8：LRPF 与 SCFTG 的群体级晋级判断
+
+```mermaid
+flowchart TD
+    C["同一批 shared candidates"] --> P1["短 fidelity 结果与 LRPF 轨迹"]
+    C --> P2["较长 reference fidelity 结果"]
+    P1 --> ST["Spearman 排名相关"]
+    P1 --> KT["Kendall 成对顺序一致性"]
+    P1 --> TK["top-k recall"]
+    P1 --> RG["selection regret"]
+    P2 --> ST
+    P2 --> KT
+    P2 --> TK
+    P2 --> RG
+    ST --> G{"所有预注册门同时通过?"}
+    KT --> G
+    TK --> G
+    RG --> G
+    G -->|"否"| CAL["calibration-only<br/>可研究轨迹，不可决定候选晋级"]
+    G -->|"是"| PROM["selection-eligible<br/>允许用短 fidelity 选择晋级候选"]
+```
+
+LRPF 是 Learning-Rate-Phase-Aware Fidelity，即“学习率相位感知的保真度描述”。它利用专门保存的多个相位端点，不只比较一个早期 MAE，还描述学习率转换冲击和 warmup 恢复；普通 endpoint-only 搜索结果本身不足以构造完整 LRPF。SCFTG 是 Self-Calibrating Fidelity Trust Gate，即“自校准低保真信任门”。它在一批共同候选上比较短、长 fidelity 排名，而不是判断某个候选自身是否可信。
+
+SCFTG 默认/阶段一使用的核心判据包括：
+
+| 参数或指标 | 含义 | 门控方向 |
+|---|---|---|
+| `minimum_cohort` | 同时拥有两个 fidelity 的最少共同候选数 | 至少 8 |
+| Spearman | 两组完整排名的单调相关性 | 至少 0.5 |
+| Kendall τ | 任意候选对的相对顺序一致性 | 越高越好，作为报告指标 |
+| `top_k_recall` | 短 fidelity top-k 中有多少仍在长 fidelity top-k | 至少 0.5 |
+| normalized selection regret | 按短 fidelity 选出的 winner 在长 fidelity 上比真正最好者差多少 | 不超过 0.1 |
+
+阶段一只有 3 个共享候选，并且 Spearman=-0.5、top-1 recall=0、normalized regret=0.6591，因此 300-step proxy 没有 selection authority。这里的“失败”不是候选训练失败，而是短 fidelity 作为架构选择工具失败。
+
+### 4.12 搜索何时停止，何时继续
+
+单次搜索 run 受三类终止条件共同约束：
+
+1. `valid_target`：达到指定数量的 trained-valid children 后停止；
+2. `max_proposals` 或 `iterations`：即使合法候选不足，也不能无限调用 LLM；
+3. GPU budget ledger：预计下一个候选会超过共享预算时，训练前停止。
+
+Phase 2 micro 中，`valid_target=2`、`max_proposals=10`、每候选 `max_steps=5000`。完成某个方法的 2 个合法候选不代表自动进入 6 候选实验；必须等 full、uniform 和 typed random 三种方法都完成后，按预注册 gate 统一决定是否继续。
+
+### 4.13 工作流中的英文和缩写解释
+
+| 术语 | 中文解释 | 在本项目中具体指什么 |
+|---|---|---|
+| NAS | 神经网络架构搜索 | 自动寻找比固定 baseline 更好的 Equiformer 结构 |
+| LLM | 大语言模型 | 负责反思证据和提出 factor JSON，不直接执行模型代码 |
+| genotype | 基因型/搜索对象表示 | `ArchitectureSpec`，不是任意 Python |
+| candidate | 候选架构 | 一份合法规格及其训练/审计结果 |
+| parent / child | 父代 / 子代 | 修改前与修改后的架构 |
+| ancestor | 祖先 | parent 的上一级，用于 IACC 四点对比 |
+| inspiration | 参考候选 | OpenEvolve 采样给 LLM 作为历史参考的其他候选 |
+| proposal | 一次提案 | 从选 factor 到产生一个待验证 JSON 的完整尝试 |
+| factor | 架构决策因子 | REPRESENTATION、OPERATOR、ACTION、MACRO 之一 |
+| valid | 合法/有效 | 通过 schema、构建、资源、训练及相应硬门；不是“精度一定好” |
+| trained-valid | 完成训练且有效 | 真正消耗指定训练步数并通过训练后硬门的候选 |
+| fidelity | 评估保真度 | 一个候选被训练和评估到什么预算，例如 300 或 5,000 steps |
+| proxy fidelity | 代理保真度 | 希望用来预测更长训练排序的便宜训练预算 |
+| calibration | 校准 | 可以研究代理关系，但结果没有候选选择权 |
+| selection-eligible | 有资格用于选择 | 允许该证据决定候选晋级或保留 |
+| validation MAE | 验证集平均绝对误差 | 搜索主指标，越低越好，单位 `a₀³` |
+| test split | 测试集 | 搜索期间禁止读取，架构冻结后才使用 |
+| checkpoint | 训练检查点 | 模型权重及恢复训练所需状态 |
+| metrics | 结构化指标 | MAE、参数量、耗时、symmetry、valid 状态等 |
+| archive | 档案 | 保留优秀或有多样性价值的候选集合 |
+| lineage | 谱系 | parent-child 关系及历史修改路径 |
+| island | 岛屿子种群 | 减少整个种群过早收敛到同一结构区域 |
+| MAP-Elites | 质量—多样性档案算法 | 在多个结构特征格子中分别保留 elite |
+| elite | 精英候选 | 某个 QD cell 中表现较好的候选 |
+| QD cell | 质量—多样性格子 | 按 lmax、通道比例、参数比和深度划分的位置 |
+| reflection / RC | 反思/审阅阶段 | 根据可信证据提出方向、理由和风险 |
+| ASR | SPARK 中的因子选择模块简称 | 在 SPARK 中选择 OPERATOR/ACTION；本项目以四因子 ECFR 替代 |
+| SAR | 结构编辑阶段 | 把 RC 方向转成一个 factor replacement JSON |
+| repair | 修复 | 对非法提案在同一个 selected factor 内重试 |
+| schema | 数据结构规则 | 字段名、类型、取值范围及组合约束 |
+| AST literal | 抽象语法树字面量 | 只读取常量数据，不执行候选 Python |
+| irrep | 不可约表示 | 描述旋转下标量、向量、高阶特征如何变换 |
+| symmetry | 对称性 | 对旋转、平移、原子置换的等变/不变要求 |
+| warning / hard gate | 警告 / 硬门 | warning 记录风险；hard gate 失败则禁止归档 |
+| credit | 信用/收益归因 | 本次 factor 修改应获得的 MAE/效率收益 |
+| counterfactual | 反事实 | 构造未实际沿原谱系出现的 sibling 来隔离因素 |
+| sibling | 兄弟候选 | 从共同 ancestor 出发只应用新 factor 的候选 |
+| epistasis | 因子交互效应 | 一个 factor 的效果随另一个 factor 是否存在而变化 |
+| plateau | 平台期 | 同 fidelity 的近期最好 MAE 改善不足 |
+| promotion | 晋级 | 将候选送到更高训练预算进一步比较 |
+| rank correlation | 排名相关性 | 短、长 fidelity 对候选排序是否一致 |
+| selection regret | 选择后悔值 | 短代理选出的候选在长训练上比真正最优差多少 |
+| telemetry | 遥测 | GPU 利用率、显存、功耗等运行记录 |
+| budget ledger | 预算账本 | 按候选记录和限制 GPU 时间的 JSONL 文件 |
+
+### 4.14 控制工作流的主要运行参数
+
+| 参数 | 阶段二典型值 | 通俗解释 |
+|---|---:|---|
+| `dataset` / `target` | QM9 / 1 | 预测各向同性极化率 α |
+| `batch_size` | 64 | 每次 optimizer update 使用的分子数 |
+| `loss` | L1 | 优化绝对误差 |
+| `optimizer` | AdamW | 参数更新算法 |
+| `learning_rate` | 5e-4 | 峰值学习率 |
+| `minimum_learning_rate` | 1e-6 | cosine 调度最低学习率 |
+| `weight_decay` | 5e-3 | AdamW 权重衰减 |
+| `--max-steps` | 5,000 | 每个候选最多执行多少次 optimizer update |
+| `reference_steps_per_epoch` | 859（pipeline 内固定） | 每多少次 update 推进一个论文参考学习率 epoch |
+| `eval_interval_steps` | 搜索 pipeline 中等于 `max_steps` | 多久做一次完整 validation；5,000-step 搜索候选在 endpoint 评分 |
+| `--valid-target` | 2（micro）/6（扩展） | 本方法需要得到多少个 trained-valid children 才停止 |
+| `--max-proposals` | 10（micro）/30（扩展） | LLM 最多提出多少次，防止非法提案无限重试 |
+| `--seed` | 101 等 | search seed，控制搜索随机性，不是最终训练 seed |
+| `--router-mode` | evidence 或 uniform | 使用 ECFR 证据路由还是均匀选 factor |
+| `--router-prior` | FEM JSON | full 方法的冻结阶段一因子证据 |
+| `--repair-attempts` | 1 | 单个提案编译失败后允许的同 factor 修复次数 |
+| `--skip-reflection` | 默认 false | true 时移除 RC，用于消融 |
+| `--disable-iacc` | 默认 false | true 时不做交互反事实，用于消融 |
+| `--skip-symmetry` | 正式运行 false | 只允许零 GPU smoke 跳过对称性诊断 |
+| `--initial-metrics` | baseline 5k result | 避免每个 run 重复训练相同 baseline |
+| `--resolved-counterfactuals` | IACC 结果文件 | 将已解析的 standalone credit 一次性写回 router |
+| `num_inspirations` | 2（代码内固定） | 每次除 parent 外提供给 LLM 的参考候选数 |
+| `num_islands` | 最多 3 | OpenEvolve 并行维护的子种群数 |
+| `population_size` | 最多 100 | ProgramDatabase 活跃种群规模上限 |
+| `archive_size` | 最多 30 | archive 保存候选的规模上限 |
+| `ECFR exploration` | 0.35 | 因子路由的不确定性探索强度 |
+| `TCRE window` | 4 | 最多回看多少个谱系节点 |
+| `TCRE minimum_points` | 3 | 至少几个同 fidelity MAE 才判断 plateau |
+| `plateau_absolute_gain` | 0.02 `a₀³` | 近期最佳改善低于该值时判为平台期 |
+| `parameter_ratio_limit` | 1.2 | 参数量相对 baseline 的硬上限 |
+| `symmetry_warning_threshold` | 0.01 | 数值对称性警告阈值 |
+| `symmetry_threshold` | 0.25 | 训练后 observable symmetry 硬拒绝阈值 |
+| pretrain symmetry samples | 2 rotations / 2 translations | 训练前廉价诊断采样数 |
+| posttrain symmetry samples | 5 rotations / 3 translations | checkpoint 硬审计采样数 |
+| `SCFTG minimum_cohort` | 8 | 校准低 fidelity 至少需要的共享候选数 |
+| `NAS_GPU_BUDGET_HOURS` | micro 为 2.8 | 整个 matched gate 的 GPU 小时硬上限 |
+| `NAS_BUDGET_LEDGER` | 三方法共享路径 | 保证 full/uniform/random 共用同一预算账本 |
+
+### 4.15 工作流最终产生哪些文件
+
+```mermaid
+flowchart LR
+    RUN["一次搜索 run"] --> E["evolution.jsonl<br/>每次 proposal 的完整记录"]
+    RUN --> S["summary.json<br/>候选数、最好结果、终止状态"]
+    RUN --> R["router_state.json<br/>ECFR/FEM 统计"]
+    RUN --> D["database/<br/>OpenEvolve 程序、谱系和 archive"]
+    RUN --> C["candidates/<br/>每代 ArchitectureSpec 容器"]
+    RUN --> M["runs/candidates/.../result.json<br/>训练与审计指标"]
+    RUN --> K["checkpoint + metrics.jsonl"]
+    RUN --> B["budget_ledger.jsonl + GPU telemetry"]
+```
+
+`evolution.jsonl` 是回溯搜索决策的主线；candidate `result.json` 是回溯单个架构评估的主线；checkpoint 是复核训练后模型的主线；budget ledger 是证明成本公平的主线。四者缺一，最终论文图表都不能完整反向追踪。
 
 ## 5. 与 OpenEvolve、SPARK 和原始 Equiformer 的准确关系
 

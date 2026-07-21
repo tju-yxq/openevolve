@@ -11,14 +11,19 @@
       "sha256": "1d646fe865d851d5f1e00d17a1900e688cfd966fdc531c2c8b437300522fbf0f"
     },
     {
-      "bytes": 5970,
+      "bytes": 6148,
       "path": "REPRODUCE.md",
-      "sha256": "526ae9fa86eb9622a3920ec1c92a93a3761ef1dd35567934d60b6866fdddf5d0"
+      "sha256": "88819784f22e8f4ffdea63d36bb542e88af24ad53fa5a7bcbf3995408bb1b3c3"
     },
     {
       "bytes": 5707,
       "path": "PHASE2_PREREGISTRATION.md",
       "sha256": "6cc4e1c11a155870d8d018af33c35c69409e4d33002c44c005ab2675e401ae16"
+    },
+    {
+      "bytes": 65076,
+      "path": "STAGE1_TRACEABILITY.md",
+      "sha256": "4c2131f10339f2c980eb4ad6c855600b3fc9093327b1e6c60146c61b520ebf78"
     },
     {
       "bytes": 565,
@@ -216,9 +221,9 @@
       "sha256": "4fecad9ce62c4b6aab5d1e3287b149e381c0507d5e8d9618281df37e49455d98"
     },
     {
-      "bytes": 3572,
+      "bytes": 3606,
       "path": "scripts/build_stage1_manifest.py",
-      "sha256": "9bcc1749c02e65c0f93fdd4ca3c7d4f213c345f96b34d988afcc44941a39833d"
+      "sha256": "4c4e9ed430c62e37e4cd961c6c75d3b6d23218861f1ca23e23b585886db45127"
     },
     {
       "bytes": 2057,

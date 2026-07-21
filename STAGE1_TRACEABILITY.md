@@ -1056,12 +1056,12 @@ Pipeline 升级为 v5：
 cd /home/20262202788/equivariant-nas
 export PYTHONPATH=.
 
-/home/20262202788/conda-envs/openevolve/bin/python -m pytest -q
-/home/20262202788/conda-envs/openevolve/bin/python -m py_compile \
+/home/20262202788/conda-envs/equiformer/bin/python -m pytest -q
+/home/20262202788/conda-envs/equiformer/bin/python -m py_compile \
   equivariant_nas/*.py scripts/*.py reporting/generate_stage1_report.py
 ```
 
-阶段一冻结结果：`41 passed`，`py_compile: PASS`。
+完整测试必须使用 Equiformer 环境，因为 ISWT 测试导入 PyTorch；OpenEvolve 环境虽有 pytest，但不含 torch。阶段一冻结结果：`41 passed`，`py_compile: PASS`。
 
 ### 16.2 零 GPU 闭环 smoke
 

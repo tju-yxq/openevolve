@@ -14,10 +14,14 @@ export EQUIVARIANT_NAS_ROOT=/home/20262202788/equivariant-nas
 ## Verification
 
 ```bash
-/home/20262202788/conda-envs/openevolve/bin/python -m pytest -q
-/home/20262202788/conda-envs/openevolve/bin/python -m py_compile \
+/home/20262202788/conda-envs/equiformer/bin/python -m pytest -q
+/home/20262202788/conda-envs/equiformer/bin/python -m py_compile \
   equivariant_nas/*.py scripts/*.py reporting/generate_stage1_report.py
 ```
+
+The Equiformer environment is required for the full suite because the ISWT
+tests import PyTorch. The OpenEvolve environment has pytest but intentionally
+does not contain torch.
 
 ## Zero-GPU schema / quality-diversity smoke
 

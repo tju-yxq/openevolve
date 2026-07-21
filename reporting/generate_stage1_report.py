@@ -650,6 +650,9 @@ schema 编译失败、重复架构和 evaluator 拒绝均进入同一因子内�
 2. Asankhaya Sharma. *OpenEvolve: an open-source evolutionary coding agent*. GitHub software, 2025. [Repository](https://github.com/algorithmicsuperintelligence/openevolve).
 3. Zhen Liu et al. *Structured Progressive Knowledge Activation for LLM-Driven Neural Architecture Search*. arXiv preprint 2605.04057, 2026. [arXiv](https://arxiv.org/abs/2605.04057). 本报告将其作为 SPARK 方法来源，不把预印本状态表述为正式会议录用。
 """
+    addendum_path = Path(__file__).with_name("stage1_v2_addendum.md")
+    if addendum_path.exists():
+        report = report.rstrip() + "\n\n" + addendum_path.read_text(encoding="utf-8").strip() + "\n"
     path = OUT / "stage1_report.md"
     path.write_text(report, encoding="utf-8")
     print(path)

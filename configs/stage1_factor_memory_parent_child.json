@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "name": "stage1-naive-parent-child-factor-memory",
+  "dataset": "QM9",
+  "target": 1,
+  "fidelity_steps": 5000,
+  "frozen_before_phase2": true,
+  "description": "Registered no-IACC ablation memory. It uses the immediate OPERATOR rescue-chain gain and intentionally does not apply the sibling counterfactual correction.",
+  "source_sha256": {
+    "reports/stage1/evidence/stable_factorized/evolution.jsonl": "524bd227f8c35d7b5679d9c18e7d34d170ed50bc3dcee06074b65a7a5e95e21d",
+    "reports/stage1/evidence/interaction/results.json": "a90827e2667234442a336bf607acd0431f9dc5185342d18ed6b2c09514a65322"
+  },
+  "factor_stats": {
+    "REPRESENTATION": {
+      "attempts": 1,
+      "valid": 1,
+      "total_mae_gain": 0.0,
+      "total_efficiency_gain": 0.0
+    },
+    "OPERATOR": {
+      "attempts": 2,
+      "valid": 2,
+      "total_mae_gain": 0.6597127155303955,
+      "total_efficiency_gain": 0.028866
+    },
+    "ACTION": {
+      "attempts": 2,
+      "valid": 2,
+      "total_mae_gain": -0.5460617794036865,
+      "total_efficiency_gain": 0.0
+    },
+    "MACRO": {
+      "attempts": 1,
+      "valid": 1,
+      "total_mae_gain": 0.0,
+      "total_efficiency_gain": 0.0
+    }
+  }
+}

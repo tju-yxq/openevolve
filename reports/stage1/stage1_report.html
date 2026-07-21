@@ -76,49 +76,6 @@ table, img, pre { break-inside: avoid; }
 <header id="title-block-header">
 <h1 class="title">OpenEvolve × SPARK × Equiformer 第一阶段报告</h1>
 </header>
-<nav id="TOC" role="doc-toc">
-<ul>
-<li><a href="#openevolve-spark-equiformer等变神经网络架构自进化框架第一阶段报告" id="toc-openevolve-spark-equiformer等变神经网络架构自进化框架第一阶段报告">OpenEvolve
-× SPARK × Equiformer：等变神经网络架构自进化框架第一阶段报告</a>
-<ul>
-<li><a href="#结论摘要" id="toc-结论摘要">1. 结论摘要</a></li>
-<li><a href="#融合工作流" id="toc-融合工作流">2. 融合工作流</a></li>
-<li><a href="#方法创新点" id="toc-方法创新点">3. 方法创新点</a>
-<ul>
-<li><a href="#spag对称性保持架构语法" id="toc-spag对称性保持架构语法">3.1 SPAG：对称性保持架构语法</a></li>
-<li><a href="#ecfr证据校准的因子路由" id="toc-ecfr证据校准的因子路由">3.2 ECFR：证据校准的因子路由</a></li>
-<li><a href="#等变容量质量多样性地图" id="toc-等变容量质量多样性地图">3.3 等变容量质量多样性地图</a></li>
-<li><a href="#lrpf学习率相位感知-fidelity" id="toc-lrpf学习率相位感知-fidelity">3.4 LRPF：学习率相位感知
-fidelity</a></li>
-<li><a href="#scftg自校准-fidelity-信任门" id="toc-scftg自校准-fidelity-信任门">3.5 SCFTG：自校准 fidelity
-信任门</a></li>
-<li><a href="#科学语义与统一修复门" id="toc-科学语义与统一修复门">3.6
-科学语义与统一修复门</a></li>
-<li><a href="#iacc交互感知反事实信用" id="toc-iacc交互感知反事实信用">3.7 IACC：交互感知反事实信用</a></li>
-</ul></li>
-<li><a href="#安全性可复现性与预算" id="toc-安全性可复现性与预算">4.
-安全性、可复现性与预算</a></li>
-<li><a href="#gate-1搜索空间覆盖实验" id="toc-gate-1搜索空间覆盖实验">5.
-Gate 1：搜索空间覆盖实验</a></li>
-<li><a href="#初始自进化与随机搜索" id="toc-初始自进化与随机搜索">6.
-初始自进化与随机搜索</a></li>
-<li><a href="#跨-fidelity-排名反转" id="toc-跨-fidelity-排名反转">7. 跨
-fidelity 排名反转</a></li>
-<li><a href="#warmup-end-匹配实验" id="toc-warmup-end-匹配实验">8.
-Warmup-end 匹配实验</a></li>
-<li><a href="#iacc-交互反事实" id="toc-iacc-交互反事实">9. IACC
-交互反事实</a></li>
-<li><a href="#当前可以成立与不能成立的结论" id="toc-当前可以成立与不能成立的结论">10.
-当前可以成立与不能成立的结论</a></li>
-<li><a href="#第一阶段-gono-go" id="toc-第一阶段-gono-go">11. 第一阶段
-Go/No-Go</a></li>
-<li><a href="#复现入口与证据目录" id="toc-复现入口与证据目录">12.
-复现入口与证据目录</a></li>
-<li><a href="#直接相关文献与软件" id="toc-直接相关文献与软件">13.
-直接相关文献与软件</a></li>
-</ul></li>
-</ul>
-</nav>
 <h1 id="openevolve-spark-equiformer等变神经网络架构自进化框架第一阶段报告">OpenEvolve
 × SPARK × Equiformer：等变神经网络架构自进化框架第一阶段报告</h1>
 <blockquote>
@@ -239,7 +196,7 @@ baseline 标为约 0.40，因此不能把该 profile 直接当结构失效证据
 0.738，而训练后联合候选为 0.00926”的差异。因此训练前 profile
 只预警；真正决定 archive 资格的是同 fidelity 训练完成后的 checkpoint
 审计。</li>
-<li>最终自动化测试记录：<code>30 passed in 0.17s</code>。</li>
+<li>最终自动化测试记录：<code>38 passed in 0.26s</code>。</li>
 <li>当前累计计费 <strong>4.513 A100-hours</strong>；硬上限 5 小时。</li>
 <li>预算估计使用同 fidelity 历史中位耗时并加 20% 安全裕量。</li>
 </ul>
@@ -564,5 +521,111 @@ LLM-Driven Neural Architecture Search</em>. arXiv preprint 2605.04057,
 2026. <a href="https://arxiv.org/abs/2605.04057">arXiv</a>.
 本报告将其作为 SPARK 方法来源，不把预印本状态表述为正式会议录用。</li>
 </ol>
+<h2 id="第一阶段框架补强从双阶段提示升级为有记忆的自进化闭环">14.
+第一阶段框架补强：从双阶段提示升级为有记忆的自进化闭环</h2>
+<p>在第一版报告之后完成的代码审计发现：如果 ECFR
+每次从空统计开始，低预算实验的前几次提案主要用于轮询尚未尝试的因子；同时，IACC
+虽然能够计算 sibling
+反事实，但反事实主效应尚未自动回写路由器。这两个问题会让“证据驱动的自进化”弱化成一次性的提示工程。当前版本新增以下两个机制：</p>
+<ol type="1">
+<li><strong>Frozen Evidence
+Memory（FEM）</strong>：把第一阶段因子统计冻结为机器可读先验，并记录两份原始证据的
+SHA-256。每个因子都有一个中性虚拟观测，避免未观测因子产生无穷
+UCB；ACTION 使用实测有害增益 <code>-0.546062</code>，OPERATOR 使用 IACC
+隔离后的 standalone gain <code>0.177094</code>，而不是受 ACTION
+交互污染的 rescue gain <code>0.659713</code>。该先验仅供 full
+evidence-router 使用，uniform-router 与 typed-random 对照不读取。</li>
+<li><strong>Trajectory-Conditioned Reflect–Edit（TCRE）</strong>：在
+SPARK 式 RC/SAR 之前，由可信代码生成有界谱系摘要，包括 lineage
+depth、因子历史、同 fidelity 验证 MAE 历史、近期最优改善和 plateau
+status。证据不足时 plateau 必须为
+<code>unknown</code>；因此零步可行性检查不能被 LLM
+错称为收敛或平台期。只有出现实测平台期时，SAR
+才被允许在已选因子内部采用更探索性的修改。</li>
+<li><strong>IACC credit
+ingestion</strong>：已经解决的反事实主效应会以唯一 key
+回写路由器一次；interaction-specific rescue
+不再被当作一般因子收益重复强化。</li>
+<li><strong>Bounded scientific context</strong>：父代和 inspiration 只向
+LLM 暴露白名单指标；大型逐层对称性张量被压缩为每层最大值，减少 API token
+成本，并防止无关细节淹没科学证据。</li>
+</ol>
+<h3 id="零-gpu-真实闭环证据">14.1 零 GPU 真实闭环证据</h3>
+<p>在服务器运行了 <code>seed=117</code>、2 次提案的端到端
+smoke，强制设置
+<code>NAS_GPU_BUDGET_HOURS=0</code>、<code>max_steps=0</code> 且跳过
+CUDA 对称性诊断。该测试真实调用 OpenEvolve
+<code>ProgramDatabase</code>、LLM ensemble、FEM/ECFR、TCRE、SPAG
+compiler、可信 Equiformer builder 和 MAP-Elites。</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th style="text-align: right;">结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新提案数</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td>合法且唯一候选</td>
+<td style="text-align: right;">2/2</td>
+</tr>
+<tr>
+<td>总 archive 程序数</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td>占据的等变容量 cells</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td>第一代修改因子</td>
+<td style="text-align: right;">REPRESENTATION</td>
+</tr>
+<tr>
+<td>第二代修改因子</td>
+<td style="text-align: right;">MACRO</td>
+</tr>
+<tr>
+<td>第二代观测 lineage depth</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td>第二代观测因子历史</td>
+<td style="text-align: right;"><code>[REPRESENTATION]</code></td>
+</tr>
+<tr>
+<td>零证据 plateau 判定</td>
+<td style="text-align: right;"><code>unknown</code></td>
+</tr>
+<tr>
+<td>三次构建累计 GPU 秒数</td>
+<td style="text-align: right;"><code>0.0</code></td>
+</tr>
+</tbody>
+</table>
+<p>两代候选分别达到参数比 <code>1.142023</code>，均低于
+<code>1.2×</code> 硬上限。第二代记录证明谱系信息确实穿过 OpenEvolve
+parent-child 链进入 RC/SAR，而不是仅存在于独立单元测试。router state
+同时保存先验名称、冻结标志和证据哈希。</p>
+<p>证据文件：</p>
+<ul>
+<li><code>reports/stage1/evidence/memory_smoke/evolution.jsonl</code></li>
+<li><code>reports/stage1/evidence/memory_smoke/summary.json</code></li>
+<li><code>reports/stage1/evidence/memory_smoke/router_state.json</code></li>
+<li><code>reports/stage1/evidence/memory_smoke/database_metadata.json</code></li>
+<li><code>reports/stage1/evidence/memory_smoke/budget_ledger.jsonl</code></li>
+</ul>
+<h3 id="更新后的严谨结论">14.2 更新后的严谨结论</h3>
+<p>该补强证明 OpenEvolve、SPARK 的历史条件化 reviewer/editor
+思路和类型化 Equiformer
+搜索已经形成带持久证据记忆、谱系上下文和反事实信用回写的可执行闭环。它显著强于“两个
+LLM 顺序调用”的表面融合。但零 GPU smoke
+仍只证明工程语义和控制逻辑；FEM/ECFR/TCRE 是否提高 5,000-step
+搜索效率，仍必须由预注册的 matched controls 和独立 search seeds
+验证，不能提前声称达到 CCF-A oral 证据标准。</p>
 </body>
 </html>

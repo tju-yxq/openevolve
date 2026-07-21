@@ -18,6 +18,12 @@ as statistical proof of search superiority.
 5. SCFTG rejects proxies with poor cross-fidelity rank agreement and reduces
    selection regret relative to unconditional successive halving.
 
+The full method loads `configs/stage1_factor_memory.json`, frozen before Phase 2.
+The file contains one neutral virtual observation per factor plus stage-one
+credit, with source SHA-256 hashes. In particular, the OPERATOR prior uses the
+IACC standalone gain rather than the larger rescue-chain gain. The uniform
+router and typed-random controls do not read this memory.
+
 ## Why five search seeds are eventually necessary
 
 The search algorithm itself is stochastic through LLM sampling, parent and
@@ -78,7 +84,9 @@ Conditional ablations use the same typed genotype and trusted evaluator:
 
 - uniform factor router: removes ECFR while preserving RC/SAR;
 - no RC: SAR receives metrics and hard constraints without reflection;
-- no IACC: rescue-chain MAE credit is applied immediately;
+- no IACC: rescue-chain MAE credit is applied immediately and the router loads
+  `configs/stage1_factor_memory_parent_child.json` instead of the IACC-resolved
+  prior, preventing counterfactual information from leaking into the ablation;
 - dynamic MAP-Elites scaling: restores the arrival-order-dependent OpenEvolve
   default in an isolated ablation;
 - unconditional short fidelity: calibration-only because stage one already

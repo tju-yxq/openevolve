@@ -16,13 +16,21 @@ from equivariant_nas.candidate import (
     render_candidate,
 )
 from equivariant_nas.credit import factor_credit
-from equivariant_nas.interaction import rescue_requires_counterfactual
+from equivariant_nas.interaction import (
+    rescue_requires_counterfactual,
+    resolved_counterfactual_credits,
+)
 from equivariant_nas.router import (
     EvidenceCalibratedRouter,
     prompt_for_factor,
     prompt_for_reflection,
 )
 from equivariant_nas.semantics import validate_qm9_alpha_reasoning
+from equivariant_nas.search_memory import (
+    compact_layerwise_symmetry,
+    compact_metrics,
+    summarize_lineage,
+)
 from equivariant_nas.spec import EvolutionFactor
 
 
@@ -142,7 +150,10 @@ async def run(args):
     initialize_equivariant_feature_ranges(database)
     ensemble = LLMEnsemble(config.llm.models)
     router = EvidenceCalibratedRouter(seed=args.seed)
+    if args.router_mode == "evidence" and args.router_prior:
+        router.load_prior(args.router_prior)
     factor_rng = random.Random(args.seed + 100003)
+    applied_counterfactual_credits = set()
     os.environ["NAS_MAX_STEPS"] = str(args.max_steps)
     os.environ["NAS_SKIP_SYMMETRY"] = "1" if args.skip_symmetry else "0"
     initial_code = Path(args.initial_program).read_text(encoding="utf-8")
@@ -174,6 +185,28 @@ async def run(args):
         completed_iterations = iteration
         parent, inspirations = database.sample(num_inspirations=2)
         parent_spec = extract_literal_spec_source(parent.code)
+        memory = summarize_lineage(parent, database.get).to_dict()
+        parent_prompt_metrics = compact_metrics(parent.metrics)
+        if (
+            args.router_mode == "evidence"
+            and not args.disable_iacc
+            and args.resolved_counterfactuals
+        ):
+            newly_resolved = resolved_counterfactual_credits(
+                args.resolved_counterfactuals, applied_counterfactual_credits
+            )
+            for resolved in newly_resolved:
+                resolved_factor = EvolutionFactor(resolved["selected_factor"])
+                router.update(
+                    resolved_factor,
+                    valid=True,
+                    mae_gain=resolved["mae_gain"],
+                )
+                applied_counterfactual_credits.add(resolved["key"])
+                append_jsonl(
+                    output / "counterfactual_credit_applied.jsonl",
+                    dict(resolved, iteration_applied=iteration),
+                )
         context = {
             "symmetry_drift": float(parent.metrics.get("max_symmetry_error", 0.0))
             / max(args.symmetry_reference, 1.0e-12),
@@ -188,29 +221,36 @@ async def run(args):
         )
         artifacts = {
             "last_failure": parent.metrics.get("error", ""),
-            "layerwise_symmetry": parent.metrics.get("symmetry_report", {}).get(
-                "layerwise_rotation_equivariance", {}
-            ),
+            "layerwise_symmetry_maxima": compact_layerwise_symmetry(parent.metrics),
         }
         reflection_prompt = prompt_for_reflection(
             factor=factor,
             parent_json=parent_spec.canonical_json(),
-            metrics=parent.metrics,
+            metrics=parent_prompt_metrics,
             artifacts=artifacts,
+            search_memory=memory,
         )
         prompt = prompt_for_factor(
             factor=factor,
             parent_json=parent_spec.canonical_json(),
-            metrics=parent.metrics,
-            inspirations=[extract_literal_spec_source(item.code).canonical_json() for item in inspirations],
+            metrics=parent_prompt_metrics,
+            inspirations=[
+                {
+                    "spec": extract_literal_spec_source(item.code).to_dict(),
+                    "measured_metrics": compact_metrics(item.metrics),
+                }
+                for item in inspirations
+            ],
             artifacts=artifacts,
             reflection={},
+            search_memory=memory,
         )
         record = {
             "iteration": iteration,
             "parent_id": parent.id,
             "selected_factor": factor.value,
             "reflection_prompt": reflection_prompt,
+            "search_memory": memory,
         }
         try:
             if args.skip_reflection:
@@ -242,13 +282,17 @@ async def run(args):
             prompt = prompt_for_factor(
                 factor=factor,
                 parent_json=parent_spec.canonical_json(),
-                metrics=parent.metrics,
+                metrics=parent_prompt_metrics,
                 inspirations=[
-                    extract_literal_spec_source(item.code).canonical_json()
+                    {
+                        "spec": extract_literal_spec_source(item.code).to_dict(),
+                        "measured_metrics": compact_metrics(item.metrics),
+                    }
                     for item in inspirations
                 ],
                 artifacts=artifacts,
                 reflection=reflection,
+                search_memory=memory,
             )
             child_spec, reasoning, response, repair_history = await generate_compilable_patch(
                 ensemble=ensemble,
@@ -283,13 +327,17 @@ async def run(args):
                 repair_prompt = prompt_for_factor(
                     factor=factor,
                     parent_json=parent_spec.canonical_json(),
-                    metrics=parent.metrics,
+                    metrics=parent_prompt_metrics,
                     inspirations=[
-                        extract_literal_spec_source(item.code).canonical_json()
+                        {
+                            "spec": extract_literal_spec_source(item.code).to_dict(),
+                            "measured_metrics": compact_metrics(item.metrics),
+                        }
                         for item in inspirations
                     ],
                     artifacts=repair_artifacts,
                     reflection=repair_reflection,
+                    search_memory=memory,
                 )
                 (
                     repaired_spec,
@@ -456,6 +504,8 @@ def main():
     )
     parser.add_argument("--skip-reflection", action="store_true")
     parser.add_argument("--disable-iacc", action="store_true")
+    parser.add_argument("--router-prior", default="")
+    parser.add_argument("--resolved-counterfactuals", default="")
     args = parser.parse_args()
     asyncio.run(run(args))
 

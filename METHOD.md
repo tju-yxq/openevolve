@@ -104,6 +104,35 @@ difference-in-differences epistasis term. Router credit can then distinguish a
 generally useful operator from an operator that only works in combination with
 a particular action or representation choice.
 
+Resolved counterfactual main effects are ingested back into the factor router
+exactly once. The router never receives the larger, interaction-contaminated
+rescue-chain gain when the sibling shows that the factor's standalone effect is
+smaller.
+
+## Insight 8 — Frozen Evidence Memory (FEM)
+
+Low-budget evolution cannot afford to relearn factor utility from scratch. An
+empty UCB router spends its first proposals touching every factor, so a two- or
+six-candidate experiment barely tests evidence-calibrated routing at all. FEM
+freezes sufficient statistics from the previous stage, includes one neutral
+virtual observation for every factor, records source SHA-256 hashes, and warm-
+starts only the evidence-routed method. For the observed rescue chain,
+OPERATOR receives the IACC standalone gain `0.17709`, not the misleading joint
+gain `0.65971`. This turns prior experiments into auditable search memory while
+keeping the test split absent.
+
+## Insight 9 — Trajectory-Conditioned Reflect–Edit (TCRE)
+
+SPARK's reflection/edit separation is extended with a trusted lineage summary.
+Before RC, deterministic code extracts same-fidelity validation history,
+factor history, lineage depth, recent best improvement, and plateau status. A
+plateau is `unknown` when evidence is absent or insufficient; the LLM cannot
+invent one from zero-step feasibility metrics. RC sees the bounded summary and
+measured risks, while SAR receives a mutation regime: conservative for normal
+progress and meaningfully exploratory *inside the already selected factor*
+only after a measured plateau. Prompt metrics are compacted by trusted code so
+large symmetry tensors do not inflate API cost or obscure the evidence.
+
 ## OpenEvolve quality-diversity substrate
 
 OpenEvolve supplies islands, lineage storage, sampling, and MAP-Elites. The

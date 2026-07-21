@@ -1,0 +1,37 @@
+{
+  "factor_stats": {
+    "ACTION": {
+      "attempts": 2,
+      "total_efficiency_gain": 0.0,
+      "total_mae_gain": -0.5460617794036865,
+      "valid": 2
+    },
+    "MACRO": {
+      "attempts": 2,
+      "total_efficiency_gain": 0.0,
+      "total_mae_gain": 0.0,
+      "valid": 2
+    },
+    "OPERATOR": {
+      "attempts": 2,
+      "total_efficiency_gain": 0.028866,
+      "total_mae_gain": 0.17709366455078124,
+      "valid": 2
+    },
+    "REPRESENTATION": {
+      "attempts": 2,
+      "total_efficiency_gain": -0.501584,
+      "total_mae_gain": 0.0,
+      "valid": 2
+    }
+  },
+  "prior_provenance": {
+    "frozen_before_phase2": true,
+    "name": "stage1-IACC-resolved-factor-memory",
+    "path": "configs/stage1_factor_memory.json",
+    "source_sha256": {
+      "reports/stage1/evidence/interaction/results.json": "a90827e2667234442a336bf607acd0431f9dc5185342d18ed6b2c09514a65322",
+      "reports/stage1/evidence/stable_factorized/evolution.jsonl": "524bd227f8c35d7b5679d9c18e7d34d170ed50bc3dcee06074b65a7a5e95e21d"
+    }
+  }
+}

@@ -43,7 +43,7 @@ def main():
             max_steps=args.max_steps,
             seed=args.seed,
             run_symmetry=True,
-            gpu_budget_hours=5.0,
+            gpu_budget_hours=None,
         )
         record = dict(request)
         record["counterfactual_architecture_id"] = sibling.architecture_id()

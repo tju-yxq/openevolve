@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from equivariant_nas.router import EvidenceCalibratedRouter, prompt_for_factor
 from equivariant_nas.spec import EvolutionFactor
@@ -36,6 +37,41 @@ class RouterTests(unittest.TestCase):
         self.assertIn("not a rank-2 tensor target", prompt["system"])
         self.assertIn("scalar output does not imply l>0", prompt["system"])
         self.assertIn("not the output head", prompt["system"])
+
+    def test_frozen_stage1_prior_makes_low_budget_routing_evidence_aware(self):
+        router = EvidenceCalibratedRouter(seed=1, exploration=0.0)
+        root = Path(__file__).resolve().parents[1]
+        router.load_prior(str(root / "configs" / "stage1_factor_memory.json"))
+        self.assertEqual(router.select(), EvolutionFactor.OPERATOR)
+        state = router.to_dict()
+        self.assertTrue(state["prior_provenance"]["frozen_before_phase2"])
+        self.assertEqual(state["factor_stats"]["ACTION"]["attempts"], 2)
+
+    def test_prompt_contains_trusted_plateau_memory(self):
+        prompt = prompt_for_factor(
+            EvolutionFactor.OPERATOR,
+            "{}",
+            {},
+            [],
+            {},
+            reflection={},
+            search_memory={"plateau_status": "yes"},
+        )
+        self.assertIn('"plateau_status": "yes"', prompt["user"])
+        self.assertIn("inside the selected factor only", prompt["user"])
+
+    def test_no_iacc_ablation_uses_distinct_naive_credit_memory(self):
+        root = Path(__file__).resolve().parents[1]
+        resolved = EvidenceCalibratedRouter(seed=1, exploration=0.0)
+        naive = EvidenceCalibratedRouter(seed=1, exploration=0.0)
+        resolved.load_prior(str(root / "configs" / "stage1_factor_memory.json"))
+        naive.load_prior(
+            str(root / "configs" / "stage1_factor_memory_parent_child.json")
+        )
+        self.assertGreater(
+            naive.stats[EvolutionFactor.OPERATOR].total_mae_gain,
+            resolved.stats[EvolutionFactor.OPERATOR].total_mae_gain,
+        )
 
 
 if __name__ == "__main__":

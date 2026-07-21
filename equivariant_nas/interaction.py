@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import json
+from pathlib import Path
+from typing import Dict, List, Set
 
 
 @dataclass(frozen=True)
@@ -55,3 +58,40 @@ def rescue_requires_counterfactual(
     parent_degraded = float(parent_mae) > float(ancestor_mae)
     child_rescue = float(parent_mae) - float(child_mae) >= float(minimum_rescue_gain)
     return parent_degraded and child_rescue
+
+
+def resolved_counterfactual_credits(path: str, applied: Set[str]) -> List[Dict[str, object]]:
+    """Read newly resolved IACC main effects for router feedback.
+
+    The immediate rescue-chain gain is intentionally not returned.  Credit is
+    the counterfactual main effect without the earlier factor, preventing an
+    interaction-specific rescue from being learned as a generally useful edit.
+    """
+
+    source = Path(path)
+    if not path or not source.exists():
+        return []
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError("resolved counterfactual file must contain a JSON list")
+    output = []
+    for record in payload:
+        if record.get("status") != "resolved":
+            continue
+        key = "{}:{}".format(
+            record.get("child_architecture_id", ""),
+            record.get("counterfactual_architecture_id", ""),
+        )
+        if not key.strip(":") or key in applied:
+            continue
+        contrast = record.get("interaction_contrast", {})
+        output.append(
+            {
+                "key": key,
+                "selected_factor": str(record["selected_factor"]),
+                "mae_gain": float(contrast["factor_b_gain_without_a"]),
+                "epistasis_mae": float(contrast["epistasis_mae"]),
+                "source": str(source),
+            }
+        )
+    return output

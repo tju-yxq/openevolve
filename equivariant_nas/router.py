@@ -42,6 +42,46 @@ class EvidenceCalibratedRouter:
         self.stats: Dict[EvolutionFactor, FactorStats] = {
             factor: FactorStats() for factor in EvolutionFactor
         }
+        self.prior_provenance: Dict[str, object] = {}
+
+    def load_prior(self, path: str) -> None:
+        """Warm-start factor credit from a frozen, auditable evidence file.
+
+        The file contains sufficient statistics, not model predictions.  This
+        matters in low-budget runs: an empty UCB router otherwise spends its
+        first four proposals merely touching every factor once and cannot use
+        evidence gathered in an earlier, explicitly frozen stage.
+        """
+
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        if payload.get("schema_version") != 1:
+            raise ValueError("unsupported router-prior schema")
+        if payload.get("dataset") != "QM9" or int(payload.get("target", -1)) != 1:
+            raise ValueError("router prior is not registered for QM9 target 1")
+        factor_stats = payload.get("factor_stats", {})
+        if set(factor_stats) != {factor.value for factor in EvolutionFactor}:
+            raise ValueError("router prior must cover every evolution factor")
+        loaded = {}
+        for factor in EvolutionFactor:
+            raw = factor_stats[factor.value]
+            stats = FactorStats(
+                attempts=int(raw["attempts"]),
+                valid=int(raw["valid"]),
+                total_mae_gain=float(raw.get("total_mae_gain", 0.0)),
+                total_efficiency_gain=float(
+                    raw.get("total_efficiency_gain", 0.0)
+                ),
+            )
+            if stats.attempts < 0 or stats.valid < 0 or stats.valid > stats.attempts:
+                raise ValueError("invalid router-prior counts for {}".format(factor.value))
+            loaded[factor] = stats
+        self.stats = loaded
+        self.prior_provenance = {
+            "path": str(path),
+            "name": payload.get("name", ""),
+            "frozen_before_phase2": bool(payload.get("frozen_before_phase2")),
+            "source_sha256": payload.get("source_sha256", {}),
+        }
 
     def select(self, context: Optional[Mapping[str, float]] = None) -> EvolutionFactor:
         total = sum(item.attempts for item in self.stats.values()) + 1
@@ -93,7 +133,12 @@ class EvidenceCalibratedRouter:
             stats.total_efficiency_gain += float(efficiency_gain)
 
     def to_dict(self):
-        return {factor.value: asdict(stats) for factor, stats in self.stats.items()}
+        return {
+            "factor_stats": {
+                factor.value: asdict(stats) for factor, stats in self.stats.items()
+            },
+            "prior_provenance": self.prior_provenance,
+        }
 
     def save(self, path: str) -> None:
         Path(path).write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
@@ -106,6 +151,7 @@ def prompt_for_factor(
     inspirations: Iterable[str],
     artifacts: Mapping[str, object],
     reflection: Optional[Mapping[str, object]] = None,
+    search_memory: Optional[Mapping[str, object]] = None,
 ) -> Dict[str, str]:
     system = (
         "You are evolving an E(3)-aware Equiformer architecture for QM9 alpha. "
@@ -138,6 +184,13 @@ is evidence about predictive quality.
 Diagnostic artifacts:
 {artifacts}
 
+Trusted lineage/search-memory summary:
+{search_memory}
+
+Mutation rule: if plateau_status is unknown, do not claim a plateau. If it is
+yes, explore a meaningfully different design inside the selected factor only;
+otherwise prefer one conservative, attributable change.
+
 Factor-local reflection produced by the RC stage:
 {reflection}
 
@@ -158,6 +211,7 @@ Return exactly:
         parent=parent_json,
         metrics=json.dumps(dict(metrics), sort_keys=True),
         artifacts=json.dumps(dict(artifacts), sort_keys=True),
+        search_memory=json.dumps(dict(search_memory or {}), sort_keys=True),
         reflection=json.dumps(dict(reflection or {}), sort_keys=True),
         allowed_values=_allowed_values(factor),
         inspirations=json.dumps(list(inspirations), sort_keys=True),
@@ -192,6 +246,7 @@ def prompt_for_reflection(
     parent_json: str,
     metrics: Mapping[str, object],
     artifacts: Mapping[str, object],
+    search_memory: Optional[Mapping[str, object]] = None,
 ) -> Dict[str, str]:
     """RC stage: diagnose one factor without proposing executable code."""
 
@@ -209,6 +264,7 @@ def prompt_for_reflection(
 Parent ArchitectureSpec: {parent}
 Metrics: {metrics}
 Diagnostics: {artifacts}
+Trusted lineage/search-memory summary: {search_memory}
 Metric definition: higher_order_fraction is the fraction of channel multiplicities
 assigned to l>=2. It is not a count of representation types.
 
@@ -223,5 +279,6 @@ Return exactly:
         parent=parent_json,
         metrics=json.dumps(dict(metrics), sort_keys=True),
         artifacts=json.dumps(dict(artifacts), sort_keys=True),
+        search_memory=json.dumps(dict(search_memory or {}), sort_keys=True),
     )
     return {"system": system, "user": user}

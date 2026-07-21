@@ -134,7 +134,9 @@ export HTTPS_PROXY="$http_proxy"
   --config /home/20262202788/openevolve/configs/local_glm_5_2.yaml \
   --output runs/phase2_seed101_full_micro \
   --max-steps 5000 --seed 101 --valid-target 2 --max-proposals 10 \
-  --router-mode evidence --repair-attempts 1 \
+  --router-mode evidence \
+  --router-prior configs/stage1_factor_memory.json \
+  --repair-attempts 1 \
   --initial-metrics runs/candidates/8639c8a64dad5d25/seed0_steps5000_87020e2c61/result.json
 
 /home/20262202788/conda-envs/openevolve/bin/python \

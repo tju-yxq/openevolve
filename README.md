@@ -28,6 +28,12 @@ it cannot edit the dataset, optimizer, loss, training budget, or evaluator.
 6. **Interaction-Aware Counterfactual Credit (IACC).** A factor that rescues a
    degraded parent receives provisional rather than immediate MAE credit; a
    sibling counterfactual separates its main effect from cross-factor epistasis.
+7. **Frozen Evidence Memory (FEM).** A hash-provenanced factor posterior carries
+   resolved stage evidence into low-budget searches; counterfactual main effects,
+   rather than interaction-contaminated rescue gains, warm-start the router.
+8. **Trajectory-Conditioned Reflect–Edit (TCRE).** SPARK-style RC/SAR receives a
+   deterministic bounded lineage and plateau summary. Zero-step records cannot
+   fabricate convergence claims, and plateau escape remains factor-local.
 
 These are research hypotheses, not claims of final superiority. Stage one must
 validate them within a hard 5 A100-hour prototype budget. The 257,700-step,
@@ -42,6 +48,12 @@ evidence reflection from factor-local editing. The LLM never emits trusted
 training code. MAP-Elites cells use equivariant capacity descriptors (`lmax`,
 higher-order fraction, parameter ratio and depth), and compiler, duplicate and
 evaluator failures share a same-factor repair loop.
+
+The integration boundary is explicit: OpenEvolve is the population, island,
+lineage and MAP-Elites runtime; SPARK contributes the structural reviewer/editor
+workflow and history-conditioned search principle; this project replaces free
+Python edits with a trusted Equiformer architecture compiler and adds FEM, ECFR,
+SAPF/LRPF/SCFTG and IACC for symmetry-aware scientific search.
 
 Phase 2 begins with a six-candidate micro gate (two trained-valid candidates per
 method) capped at 2.8 A100-hours. It is a framework kill gate, not evidence of

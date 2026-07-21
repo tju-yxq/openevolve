@@ -14,9 +14,9 @@
   "parameter_ratio_limit": 1.2,
   "methods": {
     "full": {
-      "description": "OpenEvolve + equivariant MAP-Elites + ECFR + RC/SAR + SPAG + IACC",
+      "description": "OpenEvolve + equivariant MAP-Elites + FEM/ECFR + trajectory-conditioned RC/SAR + SPAG + IACC",
       "driver": "scripts/run_factorized_evolution.py",
-      "extra_args": ["--router-mode", "evidence", "--valid-target", "6", "--max-proposals", "30"]
+      "extra_args": ["--router-mode", "evidence", "--router-prior", "configs/stage1_factor_memory.json", "--valid-target", "6", "--max-proposals", "30"]
     },
     "uniform_router": {
       "description": "Same typed LLM evolution and RC/SAR, but uniform factor routing",
@@ -77,7 +77,7 @@
   },
   "conditional_ablations": {
     "no_rc": ["--skip-reflection"],
-    "no_iacc": ["--disable-iacc"],
+    "no_iacc": ["--disable-iacc", "--router-prior", "configs/stage1_factor_memory_parent_child.json"],
     "uniform_router": ["--router-mode", "uniform"],
     "dynamic_qd_scaling": "restore OpenEvolve default scaling only in an isolated ablation",
     "untrusted_short_fidelity": "calibration-only; never selection-eligible"

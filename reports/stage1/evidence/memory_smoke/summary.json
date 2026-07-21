@@ -1,0 +1,61 @@
+{
+  "best_metrics": {
+    "architecture_id": "8639c8a64dad5d25",
+    "cache_hit": false,
+    "charged_gpu_seconds": 0.0,
+    "combined_score": 0.0,
+    "evaluation_wall_time_sec": 19.48020213469863,
+    "failure_stage": "",
+    "fidelity_steps": 0,
+    "higher_order_fraction": 0.14285714285714285,
+    "lmax": 2,
+    "num_layers": 6,
+    "parameter_count": 3531715,
+    "parameter_ratio": 1.0,
+    "seed": 0,
+    "used_gpu_hours": 0.0,
+    "valid": true
+  },
+  "best_program_id": "ecc6d139-43cf-43e0-a373-0013742b097b",
+  "iterations": 2,
+  "requested_valid_target": 0,
+  "router": {
+    "factor_stats": {
+      "ACTION": {
+        "attempts": 2,
+        "total_efficiency_gain": 0.0,
+        "total_mae_gain": -0.5460617794036865,
+        "valid": 2
+      },
+      "MACRO": {
+        "attempts": 2,
+        "total_efficiency_gain": 0.0,
+        "total_mae_gain": 0.0,
+        "valid": 2
+      },
+      "OPERATOR": {
+        "attempts": 2,
+        "total_efficiency_gain": 0.028866,
+        "total_mae_gain": 0.17709366455078124,
+        "valid": 2
+      },
+      "REPRESENTATION": {
+        "attempts": 2,
+        "total_efficiency_gain": -0.501584,
+        "total_mae_gain": 0.0,
+        "valid": 2
+      }
+    },
+    "prior_provenance": {
+      "frozen_before_phase2": true,
+      "name": "stage1-IACC-resolved-factor-memory",
+      "path": "configs/stage1_factor_memory.json",
+      "source_sha256": {
+        "reports/stage1/evidence/interaction/results.json": "a90827e2667234442a336bf607acd0431f9dc5185342d18ed6b2c09514a65322",
+        "reports/stage1/evidence/stable_factorized/evolution.jsonl": "524bd227f8c35d7b5679d9c18e7d34d170ed50bc3dcee06074b65a7a5e95e21d"
+      }
+    }
+  },
+  "unique_architectures": 3,
+  "valid_children": 2
+}

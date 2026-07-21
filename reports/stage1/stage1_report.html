@@ -196,7 +196,7 @@ baseline 标为约 0.40，因此不能把该 profile 直接当结构失效证据
 0.738，而训练后联合候选为 0.00926”的差异。因此训练前 profile
 只预警；真正决定 archive 资格的是同 fidelity 训练完成后的 checkpoint
 审计。</li>
-<li>最终自动化测试记录：<code>38 passed in 0.26s</code>。</li>
+<li>最终自动化测试记录：<code>39 passed in 0.24s</code>。</li>
 <li>当前累计计费 <strong>4.513 A100-hours</strong>；硬上限 5 小时。</li>
 <li>预算估计使用同 fidelity 历史中位耗时并加 20% 安全裕量。</li>
 </ul>
@@ -627,5 +627,69 @@ LLM 顺序调用”的表面融合。但零 GPU smoke
 仍只证明工程语义和控制逻辑；FEM/ECFR/TCRE 是否提高 5,000-step
 搜索效率，仍必须由预注册的 matched controls 和独立 search seeds
 验证，不能提前声称达到 CCF-A oral 证据标准。</p>
+<h2 id="iswt等变语义约束权重继承">15. ISWT：等变语义约束权重继承</h2>
+<p>为了降低架构搜索的单候选成本，本阶段新增 Irrep-Semantic Weight
+Transfer（ISWT）。它不是按同名同形状盲目复制 checkpoint，而是将
+state-dict
+兼容性与改变因子的语义约束求交：表示阶数变化时重置全部表示相关状态；Gaussian/Bessel、basis
+数量或 radial hidden 改变时重置径向基和径向网络；归一化语义变化时重置
+normalization 参数；optimizer 和 scheduler 永不继承。</p>
+<p>现有 baseline → Bessel/64 checkpoint 的零训练审计：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th style="text-align: right;">结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>子模型 state tensors</td>
+<td style="text-align: right;">413</td>
+</tr>
+<tr>
+<td>安全继承 tensors</td>
+<td style="text-align: right;">342</td>
+</tr>
+<tr>
+<td>tensor coverage</td>
+<td style="text-align: right;">82.81%</td>
+</tr>
+<tr>
+<td>子模型 state elements</td>
+<td style="text-align: right;">3,590,210</td>
+</tr>
+<tr>
+<td>安全继承 elements</td>
+<td style="text-align: right;">3,093,314</td>
+</tr>
+<tr>
+<td>element coverage</td>
+<td style="text-align: right;">86.16%</td>
+</tr>
+<tr>
+<td>blocked radial-semantic tensors</td>
+<td style="text-align: right;">63</td>
+</tr>
+<tr>
+<td>blocked shape-changed tensors</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td>selection eligible</td>
+<td style="text-align: right;">false</td>
+</tr>
+<tr>
+<td>final training allowed</td>
+<td style="text-align: right;">false</td>
+</tr>
+</tbody>
+</table>
+<p>这项覆盖率只证明“有一部分状态在语义上可以安全复用”，不证明继承短跑可以作为搜索代理。<code>configs/inheritance_calibration.json</code>
+预注册至少 8 个跨因子 paired candidates，对 inherited 与 scratch 的
+5,000-step 排名比较 Spearman、Kendall、top-1 recall 和 normalized
+selection regret；所有阈值通过前才可能解锁代理选择权。继承模式禁止 test
+split，且最终 257,700-step × 3 seeds 永远从头训练。</p>
+<p>证据文件：<code>reports/stage1/evidence/state_transfer/baseline_to_bessel64.json</code>。</p>
 </body>
 </html>

@@ -66,6 +66,18 @@ def get_parser():
         help="Resume from checkpoint_last.pth produced by this script.",
     )
     parser.add_argument(
+        "--inherit-checkpoint",
+        type=str,
+        default=None,
+        help="Calibration-only parent model weights; optimizer/scheduler are reset.",
+    )
+    parser.add_argument(
+        "--inherit-parent-spec",
+        type=str,
+        default=None,
+        help="ArchitectureSpec for --inherit-checkpoint semantic transfer policy.",
+    )
+    parser.add_argument(
         "--evaluate-test",
         action="store_true",
         default=False,
@@ -330,6 +342,46 @@ def main(args):
             atomref=None,
             drop_path=args.drop_path,
         ).to(device)
+    if bool(args.inherit_checkpoint) != bool(args.inherit_parent_spec):
+        raise ValueError(
+            "--inherit-checkpoint and --inherit-parent-spec must be provided together"
+        )
+    if args.resume_step and args.inherit_checkpoint:
+        raise ValueError("exact resume and inherited initialization are mutually exclusive")
+    if args.inherit_checkpoint:
+        if args.evaluate_test:
+            raise ValueError(
+                "inherited initialization is calibration-only and cannot evaluate the test split"
+            )
+        if not args.architecture_spec:
+            raise ValueError("inherited initialization requires --architecture-spec")
+        from equivariant_nas.inheritance import apply_transfer
+        from equivariant_nas.spec import ArchitectureSpec
+
+        parent_spec = ArchitectureSpec.from_json(
+            Path(args.inherit_parent_spec).read_text(encoding="utf-8")
+        )
+        checkpoint = torch.load(args.inherit_checkpoint, map_location="cpu")
+        parent_state = checkpoint["model"] if "model" in checkpoint else checkpoint
+        inherited_state, inheritance_report = apply_transfer(
+            parent_spec,
+            architecture_spec,
+            parent_state,
+            model.state_dict(),
+        )
+        model.load_state_dict(inherited_state)
+        report_path = Path(args.output_dir) / "inheritance_report.json"
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(inheritance_report.to_dict(), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        log.info(
+            "Calibration-only inherited initialization: element_coverage={:.6f}; "
+            "optimizer and scheduler reset; selection_eligible=false".format(
+                inheritance_report.element_coverage
+            )
+        )
     log.info(model)
 
     model_ema = None
@@ -531,6 +583,9 @@ def main(args):
         "best_step": best_step,
         "best_val_mae": best_val_err,
         "test_evaluated": bool(args.evaluate_test),
+        "inherited_initialization": bool(args.inherit_checkpoint),
+        "selection_eligible": False if args.inherit_checkpoint else True,
+        "final_training_allowed": False if args.inherit_checkpoint else True,
     }
     if args.evaluate_test:
         final_summary["best_test_mae"] = best_test_err

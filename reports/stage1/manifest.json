@@ -1,14 +1,14 @@
 {
   "files": [
     {
-      "bytes": 3855,
+      "bytes": 4088,
       "path": "README.md",
-      "sha256": "659a44a8d19d16987a90105997e7034b1c8e11f1e405bbba3a9b074a8f877208"
+      "sha256": "9b88e777c2c13f49be16a0930ad50d520eb28ebdc5cd6a72924f6c37ec00a8ed"
     },
     {
-      "bytes": 9548,
+      "bytes": 10533,
       "path": "METHOD.md",
-      "sha256": "497148a5c095f8f85b318c0d4b3397c38d881b62eaa0f624920047f083a93117"
+      "sha256": "1d646fe865d851d5f1e00d17a1900e688cfd966fdc531c2c8b437300522fbf0f"
     },
     {
       "bytes": 5970,
@@ -26,9 +26,9 @@
       "sha256": "20d8113724c42b38ac37301955329399a530aeca64c249b62166ca54f82f5807"
     },
     {
-      "bytes": 3760,
+      "bytes": 4045,
       "path": "configs/phase2_preregistration.json",
-      "sha256": "8eb775326f7d5bcc63dee029cb991094c2470e517a0fd0a7b5d727f6b7eb8cfc"
+      "sha256": "589556549bffd83672caa1ad298c560efe9b9e4082684718071834dd8ca48a69"
     },
     {
       "bytes": 1235,
@@ -39,6 +39,11 @@
       "bytes": 1204,
       "path": "configs/stage1_factor_memory_parent_child.json",
       "sha256": "0ed808e29b48a58e241efd70de724d16dbc5e6e10d7a639fbb8dc8ee3a771064"
+    },
+    {
+      "bytes": 705,
+      "path": "configs/inheritance_calibration.json",
+      "sha256": "1a05b92b6f2d70b612883de8306feaacd580ec6b61b87f8e443cffcdb5da24b1"
     },
     {
       "bytes": 512,
@@ -96,6 +101,11 @@
       "sha256": "a5a4da22be945b84f8df028633d3a25542b2248a826b9e4f98b83250e646bce6"
     },
     {
+      "bytes": 5598,
+      "path": "equivariant_nas/inheritance.py",
+      "sha256": "af54755d367f1b94b445492bfac5643a4cd3f65d72db822a4f9df0d29bc26d7d"
+    },
+    {
       "bytes": 3073,
       "path": "equivariant_nas/interaction.py",
       "sha256": "0ef5f117f026f8f018dd08a961a3af6ea6a78344e245c49359cf5914d4e6642a"
@@ -146,9 +156,14 @@
       "sha256": "c1da2c729380be2ab2c564b5a48249bbdba630d9aa2ebefc8d133729b15fae51"
     },
     {
-      "bytes": 19076,
+      "bytes": 21531,
       "path": "equivariant_nas/training/fixed_step_trainer.py",
-      "sha256": "f91c6174b76dbd0f23b2e1fc2139b06d716f64fbacfc4c456aba2e4d02ecb811"
+      "sha256": "ce3820590f02d98c18bc8598b4a081b689885d99000ce85b4c2a7b58d887849d"
+    },
+    {
+      "bytes": 5598,
+      "path": "equivariant_nas/training/inheritance.py",
+      "sha256": "af54755d367f1b94b445492bfac5643a4cd3f65d72db822a4f9df0d29bc26d7d"
     },
     {
       "bytes": 1526,
@@ -161,6 +176,11 @@
       "sha256": "e696ab6c3dd45c3af038dc0218f93890b2a8325e8901f793da5464fb722250cd"
     },
     {
+      "bytes": 3572,
+      "path": "reporting/build_stage1_manifest.py",
+      "sha256": "9bcc1749c02e65c0f93fdd4ca3c7d4f213c345f96b34d988afcc44941a39833d"
+    },
+    {
       "bytes": 34182,
       "path": "reporting/generate_stage1_report.py",
       "sha256": "e3eb698a1d1465ec8fbc211e88a45a11ac569d84b377ebd69891805e340310c2"
@@ -171,9 +191,9 @@
       "sha256": "888fba2d22389357e1cf78f01080e5cff8ccd44bc45a1fbdab0dd01ab3bd4ef3"
     },
     {
-      "bytes": 3710,
+      "bytes": 5235,
       "path": "reporting/stage1_v2_addendum.md",
-      "sha256": "f89cf5f67f5f79e4b44b6fb725f1b23a0745404fba80934453ab7de0f50ff8f9"
+      "sha256": "b7b80e555ba7b4559f727dc242aa13c92536a79cf5db38bea0e1275745ae3a55"
     },
     {
       "bytes": 3787,
@@ -191,9 +211,14 @@
       "sha256": "a814116fb2b9bfdcd90a15e32c3b72b06cfc7b7b6c7f130dc6ff430e79cec5fb"
     },
     {
-      "bytes": 3472,
+      "bytes": 1725,
+      "path": "scripts/audit_state_transfer.py",
+      "sha256": "4fecad9ce62c4b6aab5d1e3287b149e381c0507d5e8d9618281df37e49455d98"
+    },
+    {
+      "bytes": 3572,
       "path": "scripts/build_stage1_manifest.py",
-      "sha256": "617e96f806ee6b2116e8c24107fab30537b743e931b8ecfbfedaa116f54d6ab7"
+      "sha256": "9bcc1749c02e65c0f93fdd4ca3c7d4f213c345f96b34d988afcc44941a39833d"
     },
     {
       "bytes": 2057,
@@ -336,6 +361,11 @@
       "sha256": "0f9197fa1de630882d6e8bca586cb4e42046a186bd9b234dc5ffeaf1d172dc8f"
     },
     {
+      "bytes": 1800,
+      "path": "tests/test_inheritance.py",
+      "sha256": "29706c4d0649c97829cba3875a9c515a54a4b072caf1a3fda0bda4f8b25d8b02"
+    },
+    {
       "bytes": 1595,
       "path": "tests/test_interaction.py",
       "sha256": "2867a46c459333a9b03c03e835f76dcf638979d47cdd1fced363f3275ae80002"
@@ -441,9 +471,14 @@
       "sha256": "c7387a8e21459304816f90ffe6f0bfb6f9226ff8a0b1817326df9e19b2bfbec4"
     },
     {
-      "bytes": 18352,
+      "bytes": 23155,
+      "path": "reports/stage1/evidence/state_transfer/baseline_to_bessel64.json",
+      "sha256": "f83917cf718687c265ed84994a1e0896b5a750ac6020230d9b79d4f958108f2e"
+    },
+    {
+      "bytes": 19877,
       "path": "reports/stage1/stage1_report.md",
-      "sha256": "6453480229a17e35fa20df6be74846747eb83ee729cf683124f46bf49a3911b8"
+      "sha256": "1acb5b1ca98c98f5e1f40e1bcd7fbd6fcc72335f17b81579dd0063fa52cac01b"
     },
     {
       "bytes": 646638,

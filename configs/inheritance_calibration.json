@@ -1,0 +1,26 @@
+{
+  "protocol_version": 1,
+  "name": "ISWT-calibration-only",
+  "purpose": "calibrate inherited initialization ranking against scratch training",
+  "test_during_calibration": false,
+  "selection_eligible_before_trust_gate": false,
+  "minimum_paired_candidates": 8,
+  "required_metrics": [
+    "spearman_rank_correlation",
+    "kendall_tau",
+    "top_k_recall",
+    "selection_regret"
+  ],
+  "unlock_rule": {
+    "minimum_spearman": 0.8,
+    "minimum_kendall": 0.6,
+    "minimum_top1_recall": 0.75,
+    "maximum_normalized_selection_regret": 0.1
+  },
+  "final_training": {
+    "inheritance_allowed": false,
+    "steps": 257700,
+    "seeds": [0, 1, 2],
+    "test_once_after_architecture_freeze": true
+  }
+}

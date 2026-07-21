@@ -90,5 +90,12 @@
     "final_steps": 257700,
     "final_seeds": [0, 1, 2],
     "test_once_after_architecture_freeze": true
+  },
+  "iswt": {
+    "config": "configs/inheritance_calibration.json",
+    "purpose": "calibration-only acceleration proxy; never a final model initialization",
+    "minimum_paired_candidates": 8,
+    "test_during_calibration": false,
+    "selection_eligible_before_trust_gate": false
   }
 }

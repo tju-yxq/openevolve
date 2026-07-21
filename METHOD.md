@@ -142,6 +142,23 @@ ratio, and depth. SPARK-style RC/SAR editing operates inside a router-selected
 factor, while SPAG and SCFTG define which children and which evidence are
 allowed to enter selection.
 
+## Insight 10 — Irrep-Semantic Weight Transfer (ISWT)
+
+Candidate training can be expensive even when a child changes only one typed
+factor. ISWT uses a parent checkpoint only as a calibration initializer: exact
+state compatibility is intersected with factor semantics. Representation edits
+reset all learned states because the irrep layout changes; Gaussian/Bessel or
+radial-width edits reset radial basis and radial networks; normalization edits
+reset normalization parameters. Optimizer and scheduler state are never
+inherited. A transfer report records every copied and blocked tensor, coverage,
+and reason. It is test-split-free, selection-ineligible, and final training
+always starts from scratch.
+
+ISWT is not assumed to be a speedup. It must first pass a pre-registered paired
+calibration against scratch 5,000-step training on at least eight candidates,
+using rank correlation, top-k recall, and selection regret. If the gate fails,
+the initializer remains diagnostic-only.
+
 ## Algorithm sketch
 
 ```text

@@ -34,6 +34,9 @@ it cannot edit the dataset, optimizer, loss, training budget, or evaluator.
 8. **Trajectory-Conditioned Reflect–Edit (TCRE).** SPARK-style RC/SAR receives a
    deterministic bounded lineage and plateau summary. Zero-step records cannot
    fabricate convergence claims, and plateau escape remains factor-local.
+9. **Irrep-Semantic Weight Transfer (ISWT).** Parent weights are reused only
+   across semantically stable equivariant modules; radial and irrep-layout
+   changes are reset, and the proxy is calibration-only until rank trust passes.
 
 These are research hypotheses, not claims of final superiority. Stage one must
 validate them within a hard 5 A100-hour prototype budget. The 257,700-step,

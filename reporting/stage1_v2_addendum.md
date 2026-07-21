@@ -37,3 +37,26 @@
 ### 14.2 更新后的严谨结论
 
 该补强证明 OpenEvolve、SPARK 的历史条件化 reviewer/editor 思路和类型化 Equiformer 搜索已经形成带持久证据记忆、谱系上下文和反事实信用回写的可执行闭环。它显著强于“两个 LLM 顺序调用”的表面融合。但零 GPU smoke 仍只证明工程语义和控制逻辑；FEM/ECFR/TCRE 是否提高 5,000-step 搜索效率，仍必须由预注册的 matched controls 和独立 search seeds 验证，不能提前声称达到 CCF-A oral 证据标准。
+
+## 15. ISWT：等变语义约束权重继承
+
+为了降低架构搜索的单候选成本，本阶段新增 Irrep-Semantic Weight Transfer（ISWT）。它不是按同名同形状盲目复制 checkpoint，而是将 state-dict 兼容性与改变因子的语义约束求交：表示阶数变化时重置全部表示相关状态；Gaussian/Bessel、basis 数量或 radial hidden 改变时重置径向基和径向网络；归一化语义变化时重置 normalization 参数；optimizer 和 scheduler 永不继承。
+
+现有 baseline → Bessel/64 checkpoint 的零训练审计：
+
+| 项目 | 结果 |
+|---|---:|
+| 子模型 state tensors | 413 |
+| 安全继承 tensors | 342 |
+| tensor coverage | 82.81% |
+| 子模型 state elements | 3,590,210 |
+| 安全继承 elements | 3,093,314 |
+| element coverage | 86.16% |
+| blocked radial-semantic tensors | 63 |
+| blocked shape-changed tensors | 7 |
+| selection eligible | false |
+| final training allowed | false |
+
+这项覆盖率只证明“有一部分状态在语义上可以安全复用”，不证明继承短跑可以作为搜索代理。`configs/inheritance_calibration.json` 预注册至少 8 个跨因子 paired candidates，对 inherited 与 scratch 的 5,000-step 排名比较 Spearman、Kendall、top-1 recall 和 normalized selection regret；所有阈值通过前才可能解锁代理选择权。继承模式禁止 test split，且最终 257,700-step × 3 seeds 永远从头训练。
+
+证据文件：`reports/stage1/evidence/state_transfer/baseline_to_bessel64.json`。

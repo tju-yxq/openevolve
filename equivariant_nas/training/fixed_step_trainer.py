@@ -60,6 +60,12 @@ def get_parser():
         help="Run validation/test and save a checkpoint every N global steps.",
     )
     parser.add_argument(
+        "--checkpoint-interval-steps",
+        type=int,
+        default=859,
+        help="Save resumable checkpoint_last.pth every N global steps.",
+    )
+    parser.add_argument(
         "--resume-step",
         type=str,
         default=None,
@@ -266,7 +272,11 @@ def save_checkpoint(
 def main(args):
     if args.max_steps <= 0:
         raise ValueError("--max-steps must be positive")
-    if args.reference_steps_per_epoch <= 0 or args.eval_interval_steps <= 0:
+    if (
+        args.reference_steps_per_epoch <= 0
+        or args.eval_interval_steps <= 0
+        or args.checkpoint_interval_steps <= 0
+    ):
         raise ValueError("step intervals must be positive")
 
     # ``args.epochs`` is retained only to construct the original 300-epoch
@@ -458,11 +468,15 @@ def main(args):
     job_start_time = time.perf_counter()
 
     while global_step < args.max_steps:
-        next_boundary = min(
+        next_evaluation = (
             ((global_step // args.eval_interval_steps) + 1)
-            * args.eval_interval_steps,
-            args.max_steps,
+            * args.eval_interval_steps
         )
+        next_checkpoint = (
+            ((global_step // args.checkpoint_interval_steps) + 1)
+            * args.checkpoint_interval_steps
+        )
+        next_boundary = min(next_evaluation, next_checkpoint, args.max_steps)
         train_err, global_step, segment_training_sec = train_until_step(
             model=model,
             criterion=criterion,
@@ -485,30 +499,36 @@ def main(args):
         )
         training_time_sec += segment_training_sec
 
-        val_err, _ = evaluate(
-            model,
-            norm_factor,
-            args.target,
-            val_loader,
-            device,
-            amp_autocast=amp_autocast,
-            print_freq=args.print_freq,
-            logger=log,
+        evaluate_now = (
+            global_step % args.eval_interval_steps == 0
+            or global_step == args.max_steps
         )
+        val_err = None
         test_err = None
-        if args.evaluate_test:
-            test_err, _ = evaluate(
+        if evaluate_now:
+            val_err, _ = evaluate(
                 model,
                 norm_factor,
                 args.target,
-                test_loader,
+                val_loader,
                 device,
                 amp_autocast=amp_autocast,
                 print_freq=args.print_freq,
                 logger=log,
             )
+            if args.evaluate_test:
+                test_err, _ = evaluate(
+                    model,
+                    norm_factor,
+                    args.target,
+                    test_loader,
+                    device,
+                    amp_autocast=amp_autocast,
+                    print_freq=args.print_freq,
+                    logger=log,
+                )
 
-        improved = val_err < best_val_err
+        improved = val_err is not None and val_err < best_val_err
         if improved:
             best_step = global_step
             best_train_err = train_err
@@ -516,11 +536,10 @@ def main(args):
             best_test_err = test_err
 
         wall_time_sec = time.perf_counter() - job_start_time
-        record = {
+        progress = {
             "global_step": global_step,
             "reference_epoch": global_step / args.reference_steps_per_epoch,
             "train_mae": train_err,
-            "val_mae": val_err,
             "lr": optimizer.param_groups[0]["lr"],
             "training_time_sec": training_time_sec,
             "wall_time_sec_current_job": wall_time_sec,
@@ -529,13 +548,19 @@ def main(args):
             "best_step": best_step,
             "best_val_mae": best_val_err,
         }
-        if args.evaluate_test:
-            record["test_mae"] = test_err
-            record["best_test_mae"] = best_test_err
-        log.info("Step summary: {}".format(json.dumps(record, sort_keys=True)))
+        if val_err is not None:
+            progress["val_mae"] = val_err
+        if args.evaluate_test and test_err is not None:
+            progress["test_mae"] = test_err
+            progress["best_test_mae"] = best_test_err
+        log.info("Step summary: {}".format(json.dumps(progress, sort_keys=True)))
         if is_main_process:
-            with metrics_path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(record, sort_keys=True) + "\n")
+            (Path(args.output_dir) / "progress.json").write_text(
+                json.dumps(progress, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            if val_err is not None:
+                with metrics_path.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(progress, sort_keys=True) + "\n")
             checkpoint_path = Path(args.output_dir) / "checkpoint_last.pth"
             save_checkpoint(
                 checkpoint_path,
@@ -575,6 +600,7 @@ def main(args):
         "global_step": global_step,
         "max_steps": args.max_steps,
         "reference_steps_per_epoch": args.reference_steps_per_epoch,
+        "checkpoint_interval_steps": args.checkpoint_interval_steps,
         "effective_data_cycles": global_step / (len(train_dataset) // args.batch_size),
         "training_time_sec": training_time_sec,
         "wall_time_sec_current_job": time.perf_counter() - job_start_time,

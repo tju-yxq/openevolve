@@ -83,6 +83,30 @@ class EvidenceCalibratedRouter:
             "source_sha256": payload.get("source_sha256", {}),
         }
 
+    def load_state(self, path: str) -> None:
+        """Restore mutable router statistics from a trusted run checkpoint."""
+
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        factor_stats = payload.get("factor_stats", {})
+        if set(factor_stats) != {factor.value for factor in EvolutionFactor}:
+            raise ValueError("router state must cover every evolution factor")
+        restored = {}
+        for factor in EvolutionFactor:
+            raw = factor_stats[factor.value]
+            stats = FactorStats(
+                attempts=int(raw["attempts"]),
+                valid=int(raw["valid"]),
+                total_mae_gain=float(raw.get("total_mae_gain", 0.0)),
+                total_efficiency_gain=float(
+                    raw.get("total_efficiency_gain", 0.0)
+                ),
+            )
+            if stats.attempts < 0 or stats.valid < 0 or stats.valid > stats.attempts:
+                raise ValueError("invalid router state for {}".format(factor.value))
+            restored[factor] = stats
+        self.stats = restored
+        self.prior_provenance = dict(payload.get("prior_provenance", {}))
+
     def select(self, context: Optional[Mapping[str, float]] = None) -> EvolutionFactor:
         total = sum(item.attempts for item in self.stats.values()) + 1
         scores = {}

@@ -47,6 +47,23 @@ class RouterTests(unittest.TestCase):
         self.assertTrue(state["prior_provenance"]["frozen_before_phase2"])
         self.assertEqual(state["factor_stats"]["ACTION"]["attempts"], 2)
 
+    def test_saved_state_can_be_restored(self):
+        import tempfile
+
+        router = EvidenceCalibratedRouter(seed=9)
+        router.update(EvolutionFactor.OPERATOR, valid=True, mae_gain=0.25)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "router.json"
+            router.save(str(path))
+            restored = EvidenceCalibratedRouter(seed=10)
+            restored.load_state(str(path))
+        state = restored.to_dict()
+        self.assertEqual(state["factor_stats"]["OPERATOR"]["attempts"], 1)
+        self.assertEqual(state["factor_stats"]["OPERATOR"]["valid"], 1)
+        self.assertAlmostEqual(
+            state["factor_stats"]["OPERATOR"]["total_mae_gain"], 0.25
+        )
+
     def test_prompt_contains_trusted_plateau_memory(self):
         prompt = prompt_for_factor(
             EvolutionFactor.OPERATOR,

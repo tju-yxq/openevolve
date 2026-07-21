@@ -41,7 +41,7 @@ def evaluate_candidate_pipeline(
     architecture_id = spec.architecture_id()
     evaluation_protocol = json.dumps(
         {
-            "pipeline_version": 5,
+            "pipeline_version": 6,
             "seed": seed,
             "max_steps": max_steps,
             "run_symmetry": run_symmetry,
@@ -49,6 +49,8 @@ def evaluate_candidate_pipeline(
             "symmetry_warning_threshold": symmetry_warning_threshold,
             "parameter_ratio_limit": parameter_ratio_limit,
             "resume_checkpoint": str(resume_checkpoint or ""),
+            "checkpoint_interval_steps": 859,
+            "evaluation_interval_steps": int(max_steps),
         },
         sort_keys=True,
     )
@@ -59,8 +61,10 @@ def evaluate_candidate_pipeline(
     result_path = run_dir / "result.json"
     if result_path.exists():
         result = json.loads(result_path.read_text(encoding="utf-8"))
-        result["cache_hit"] = True
-        return result
+        resumable_checkpoint = run_dir / "training" / "checkpoint_last.pth"
+        if result.get("valid") or not resumable_checkpoint.exists():
+            result["cache_hit"] = True
+            return result
 
     run_dir.mkdir(parents=True, exist_ok=True)
     result: Dict[str, Any] = {
@@ -70,6 +74,7 @@ def evaluate_candidate_pipeline(
         "fidelity_steps": int(max_steps),
         "seed": int(seed),
         "cache_hit": False,
+        "run_dir": str(run_dir),
     }
     resolved_budget_hours = (
         float(gpu_budget_hours)
@@ -200,6 +205,10 @@ def evaluate_candidate_pipeline(
             spec_path = run_dir / "architecture_spec.json"
             spec_path.write_text(spec.canonical_json(), encoding="utf-8")
             train_dir = run_dir / "training"
+            automatic_resume = train_dir / "checkpoint_last.pth"
+            effective_resume_checkpoint = str(resume_checkpoint or "")
+            if not effective_resume_checkpoint and automatic_resume.exists():
+                effective_resume_checkpoint = str(automatic_resume)
             command = [
                 "/home/20262202788/conda-envs/equiformer/bin/python",
                 "-u",
@@ -227,6 +236,8 @@ def evaluate_candidate_pipeline(
                 "859",
                 "--eval-interval-steps",
                 str(max_steps),
+                "--checkpoint-interval-steps",
+                "859",
                 "--epochs",
                 "300",
                 "--radius",
@@ -250,8 +261,8 @@ def evaluate_candidate_pipeline(
                 "--no-model-ema",
                 "--no-amp",
             ]
-            if resume_checkpoint:
-                command.extend(["--resume-step", str(resume_checkpoint)])
+            if effective_resume_checkpoint:
+                command.extend(["--resume-step", effective_resume_checkpoint])
             environment = os.environ.copy()
             environment["PYTHONPATH"] = project_root
             environment["EQUIFORMER_ROOT"] = equiformer_root
@@ -307,7 +318,7 @@ def evaluate_candidate_pipeline(
                         ),
                     ),
                     "combined_score": -validation_mae,
-                    "resumed_from": str(resume_checkpoint or ""),
+                    "resumed_from": effective_resume_checkpoint,
                 }
             )
             if run_symmetry:
@@ -387,5 +398,9 @@ def evaluate_candidate_pipeline(
         except Exception as budget_exc:
             result["budget_error"] = str(budget_exc)
         result["used_gpu_hours"] = ledger.used_gpu_hours()
+        checkpoint_last = run_dir / "training" / "checkpoint_last.pth"
+        result["checkpoint_last"] = (
+            str(checkpoint_last) if checkpoint_last.exists() else ""
+        )
         result_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
     return result

@@ -8,15 +8,18 @@ import os
 import random
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from equivariant_nas.candidate import (
+    apply_factor_patch,
     extract_literal_spec_source,
     parse_llm_patch,
     render_candidate,
 )
 from equivariant_nas.credit import factor_credit
 from equivariant_nas.interaction import (
+    interaction_contrast,
     rescue_requires_counterfactual,
     resolved_counterfactual_credits,
 )
@@ -37,6 +40,19 @@ from equivariant_nas.spec import EvolutionFactor
 def append_jsonl(path, record):
     with Path(path).open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
+
+
+def write_json(path, payload):
+    target = Path(path)
+    temporary = target.with_suffix(target.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    temporary.replace(target)
+
+
+def utc_now():
+    return datetime.now(timezone.utc).isoformat()
 
 
 def initialize_equivariant_feature_ranges(database):
@@ -147,42 +163,91 @@ async def run(args):
         model.random_seed = args.seed
 
     database = ProgramDatabase(config.database)
-    initialize_equivariant_feature_ranges(database)
+    if not database.feature_stats:
+        initialize_equivariant_feature_ranges(database)
     ensemble = LLMEnsemble(config.llm.models)
     router = EvidenceCalibratedRouter(seed=args.seed)
-    if args.router_mode == "evidence" and args.router_prior:
+    router_state_path = output / "router_state.json"
+    if args.resume and router_state_path.exists():
+        router.load_state(str(router_state_path))
+    elif args.router_mode == "evidence" and args.router_prior:
         router.load_prior(args.router_prior)
     factor_rng = random.Random(args.seed + 100003)
     applied_counterfactual_credits = set()
     os.environ["NAS_MAX_STEPS"] = str(args.max_steps)
     os.environ["NAS_SKIP_SYMMETRY"] = "1" if args.skip_symmetry else "0"
-    initial_code = Path(args.initial_program).read_text(encoding="utf-8")
-    initial_path = output / "candidates" / "iteration_0000.py"
-    initial_path.write_text(initial_code, encoding="utf-8")
-    if args.initial_metrics:
-        initial_metrics = json.loads(Path(args.initial_metrics).read_text(encoding="utf-8"))
+    if database.programs:
+        seen = {
+            program.metrics.get("architecture_id")
+            for program in database.programs.values()
+            if program.metrics.get("architecture_id")
+        }
     else:
-        initial_metrics = evaluator_adapter.evaluate(str(initial_path))
-    initial = Program(
-        id=str(uuid.uuid4()),
-        code=initial_code,
-        language="python",
-        metrics=initial_metrics,
-        iteration_found=0,
-        metadata={"architecture_id": initial_metrics.get("architecture_id")},
-    )
-    database.add(initial, iteration=0)
-    seen = {initial_metrics.get("architecture_id")}
-    append_jsonl(
-        output / "evolution.jsonl",
-        {"iteration": 0, "kind": "initial", "metrics": initial_metrics},
-    )
+        initial_code = Path(args.initial_program).read_text(encoding="utf-8")
+        initial_path = output / "candidates" / "iteration_0000.py"
+        initial_path.write_text(initial_code, encoding="utf-8")
+        if args.initial_metrics:
+            initial_metrics = json.loads(
+                Path(args.initial_metrics).read_text(encoding="utf-8")
+            )
+        else:
+            initial_metrics = evaluator_adapter.evaluate(str(initial_path))
+        initial = Program(
+            id=str(uuid.uuid4()),
+            code=initial_code,
+            language="python",
+            metrics=initial_metrics,
+            iteration_found=0,
+            metadata={"architecture_id": initial_metrics.get("architecture_id")},
+        )
+        database.add(initial, iteration=0)
+        seen = {initial_metrics.get("architecture_id")}
+        append_jsonl(
+            output / "evolution.jsonl",
+            {"iteration": 0, "kind": "initial", "metrics": initial_metrics},
+        )
 
-    proposal_limit = args.max_proposals if args.valid_target > 0 else args.iterations
-    valid_children = 0
-    completed_iterations = 0
-    for iteration in range(1, proposal_limit + 1):
+    valid_children = sum(
+        1
+        for program in database.programs.values()
+        if program.parent_id is not None and program.metrics.get("valid")
+    )
+    completed_iterations = int(database.last_iteration)
+    start_iteration = completed_iterations + 1
+    proposal_count = args.max_proposals if args.valid_target > 0 else args.iterations
+    final_iteration = (
+        2_147_483_647
+        if args.continuous
+        else start_iteration + max(0, proposal_count) - 1
+    )
+    stop_file = Path(args.stop_file) if args.stop_file else output / "STOP"
+    write_json(
+        output / "heartbeat.json",
+        {
+            "status": "running",
+            "updated_at": utc_now(),
+            "last_completed_iteration": completed_iterations,
+            "valid_children": valid_children,
+            "unique_architectures": len(seen),
+            "stop_file": str(stop_file),
+        },
+    )
+    for iteration in range(start_iteration, final_iteration + 1):
+        if stop_file.exists():
+            break
         completed_iterations = iteration
+        write_json(
+            output / "heartbeat.json",
+            {
+                "status": "proposing",
+                "updated_at": utc_now(),
+                "current_iteration": iteration,
+                "last_completed_iteration": iteration - 1,
+                "valid_children": valid_children,
+                "unique_architectures": len(seen),
+                "stop_file": str(stop_file),
+            },
+        )
         parent, inspirations = database.sample(num_inspirations=2)
         parent_spec = extract_literal_spec_source(parent.code)
         memory = summarize_lineage(parent, database.get).to_dict()
@@ -312,7 +377,24 @@ async def run(args):
             child_code = render_candidate(child_spec)
             candidate_path = output / "candidates" / "iteration_{:04d}.py".format(iteration)
             candidate_path.write_text(child_code, encoding="utf-8")
+            write_json(
+                output / "current_candidate.json",
+                {
+                    "status": "evaluating",
+                    "updated_at": utc_now(),
+                    "iteration": iteration,
+                    "parent_id": parent.id,
+                    "selected_factor": factor.value,
+                    "architecture_id": architecture_id,
+                    "candidate_path": str(candidate_path),
+                },
+            )
             metrics = evaluator_adapter.evaluate(str(candidate_path))
+            if not metrics.get("valid") and metrics.get("checkpoint_last"):
+                # A subprocess interruption may leave a resumable candidate.
+                # Retry the exact same architecture once before asking the LLM
+                # to replace it with a different factor-local patch.
+                metrics = evaluator_adapter.evaluate(str(candidate_path))
             for repair_index in range(args.repair_attempts):
                 if metrics.get("valid"):
                     break
@@ -409,15 +491,64 @@ async def run(args):
                 }
                 append_jsonl(output / "counterfactual_requests.jsonl", request)
                 record["counterfactual_request"] = request
-                record["credit_status"] = "provisional_interaction"
+                sibling_spec = apply_factor_patch(
+                    extract_literal_spec_source(ancestor.code),
+                    factor,
+                    request["factor_replacement"],
+                )
+                sibling_path = output / "candidates" / (
+                    "iteration_{:04d}_counterfactual.py".format(iteration)
+                )
+                sibling_path.write_text(render_candidate(sibling_spec), encoding="utf-8")
+                write_json(
+                    output / "current_candidate.json",
+                    {
+                        "status": "evaluating_counterfactual",
+                        "updated_at": utc_now(),
+                        "iteration": iteration,
+                        "parent_id": ancestor.id,
+                        "selected_factor": factor.value,
+                        "architecture_id": sibling_spec.architecture_id(),
+                        "candidate_path": str(sibling_path),
+                        "joint_architecture_id": architecture_id,
+                    },
+                )
+                sibling_metrics = evaluator_adapter.evaluate(str(sibling_path))
+                counterfactual_result = dict(request)
+                counterfactual_result["counterfactual_architecture_id"] = (
+                    sibling_spec.architecture_id()
+                )
+                counterfactual_result["counterfactual_metrics"] = sibling_metrics
+                if (
+                    sibling_metrics.get("valid")
+                    and sibling_metrics.get("validation_alpha_mae") is not None
+                ):
+                    contrast = interaction_contrast(
+                        request["ancestor_mae"],
+                        request["parent_mae"],
+                        sibling_metrics["validation_alpha_mae"],
+                        request["child_mae"],
+                    )
+                    counterfactual_result["interaction_contrast"] = contrast.to_dict()
+                    counterfactual_result["status"] = "resolved"
+                    record["credit_status"] = "resolved_counterfactual"
+                    record["counterfactual_result"] = counterfactual_result
+                    resolved_mae_gain = contrast.factor_b_gain_without_a
+                else:
+                    counterfactual_result["status"] = "counterfactual_failed"
+                    record["credit_status"] = "provisional_interaction"
+                    record["counterfactual_result"] = counterfactual_result
+                    resolved_mae_gain = 0.0
+                append_jsonl(
+                    output / "counterfactual_results.jsonl", counterfactual_result
+                )
             else:
                 record["credit_status"] = "resolved_parent_child"
+                resolved_mae_gain = credit.get("mae_gain", 0.0)
             router.update(
                 factor,
                 valid=bool(metrics.get("valid")),
-                mae_gain=(
-                    0.0 if counterfactual_required else credit.get("mae_gain", 0.0)
-                ),
+                mae_gain=resolved_mae_gain,
                 efficiency_gain=credit.get("parameter_reduction", 0.0)
                 / 1_000_000.0,
             )
@@ -450,6 +581,37 @@ async def run(args):
         append_jsonl(output / "evolution.jsonl", record)
         router.save(str(output / "router_state.json"))
         database.save(str(output / "database"), iteration=iteration)
+        current_candidate_path = output / "current_candidate.json"
+        if current_candidate_path.exists():
+            current_candidate_path.unlink()
+        summary = {
+            "iterations": completed_iterations,
+            "requested_valid_target": args.valid_target,
+            "valid_children": valid_children,
+            "unique_architectures": len(seen),
+            "best_program_id": database.best_program_id,
+            "best_metrics": (
+                database.get(database.best_program_id).metrics
+                if database.best_program_id
+                else None
+            ),
+            "router": router.to_dict(),
+            "continuous": bool(args.continuous),
+            "updated_at": utc_now(),
+        }
+        write_json(output / "summary.json", summary)
+        write_json(
+            output / "heartbeat.json",
+            {
+                "status": "running",
+                "updated_at": utc_now(),
+                "last_completed_iteration": iteration,
+                "valid_children": valid_children,
+                "unique_architectures": len(seen),
+                "best_program_id": database.best_program_id,
+                "stop_file": str(stop_file),
+            },
+        )
         print(
             json.dumps(
                 {
@@ -463,7 +625,11 @@ async def run(args):
             ),
             flush=True,
         )
-        if args.valid_target > 0 and valid_children >= args.valid_target:
+        if (
+            not args.continuous
+            and args.valid_target > 0
+            and valid_children >= args.valid_target
+        ):
             break
 
     best = database.get(database.best_program_id) if database.best_program_id else None
@@ -478,6 +644,18 @@ async def run(args):
     }
     (output / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    write_json(
+        output / "heartbeat.json",
+        {
+            "status": "stopped" if stop_file.exists() else "completed",
+            "updated_at": utc_now(),
+            "last_completed_iteration": completed_iterations,
+            "valid_children": valid_children,
+            "unique_architectures": len(seen),
+            "best_program_id": database.best_program_id,
+            "stop_file": str(stop_file),
+        },
     )
     print(json.dumps(summary, sort_keys=True))
 
@@ -506,6 +684,9 @@ def main():
     parser.add_argument("--disable-iacc", action="store_true")
     parser.add_argument("--router-prior", default="")
     parser.add_argument("--resolved-counterfactuals", default="")
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--continuous", action="store_true")
+    parser.add_argument("--stop-file", default="")
     args = parser.parse_args()
     asyncio.run(run(args))
 

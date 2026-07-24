@@ -1,0 +1,21 @@
+{
+  "artifact_version": 1,
+  "dataset": "QM9",
+  "local_index_semantics": "Indices into the processed QM9 train split.",
+  "npz_file": "qm9_train_quarter_seed201.npz",
+  "npz_sha256": "d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+  "source_split": "/home/20262202788/equiformer/datasets/qm9/splits.npz",
+  "source_split_sha256": "22a2054b314bad0216940dc128930fe03309c56ed37836e9d6e4b70ab42be30f",
+  "source_test_size": 10831,
+  "source_train_size": 110000,
+  "source_validation_size": 10000,
+  "subset_fraction": 0.25,
+  "subset_sampling": "numpy.default_rng(seed).choice without replacement",
+  "subset_seed": 201,
+  "subset_size": 27500,
+  "test_overlap": 0,
+  "train_global_indices_sha256": "7bcf6e0bc85ff75ba6d2883c8a03e6e19c6355b68650438172067982af54aa7e",
+  "train_local_indices_sha256": "7109720e72ed8e92b466551215f174f26dd34c8034249241d88437abac17ade1",
+  "unique_local_indices": 27500,
+  "validation_overlap": 0
+}

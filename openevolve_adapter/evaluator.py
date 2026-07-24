@@ -31,6 +31,25 @@ def evaluate(program_path):
         "--max-steps",
         max_steps,
     ]
+    command.extend(
+        [
+            "--batch-size",
+            os.environ.get("NAS_BATCH_SIZE", "64"),
+            "--eval-interval-epochs",
+            os.environ.get("NAS_EVAL_INTERVAL_EPOCHS", "0"),
+            "--data-epoch-origin-step",
+            os.environ.get("NAS_DATA_EPOCH_ORIGIN_STEP", "0"),
+            "--lr-schedule-origin-step",
+            os.environ.get("NAS_LR_SCHEDULE_ORIGIN_STEP", "0"),
+        ]
+    )
+    subset_file = os.environ.get("NAS_TRAIN_SUBSET_FILE", "")
+    if subset_file:
+        command.extend(["--train-subset-file", subset_file])
+    if os.environ.get("NAS_ALLOW_DATA_TRANSITION", "0") == "1":
+        command.append("--allow-data-transition")
+    if os.environ.get("NAS_RESUME_MODEL_ONLY", "0") == "1":
+        command.append("--resume-model-only")
     if os.environ.get("NAS_SKIP_SYMMETRY", "0") == "1":
         command.append("--skip-symmetry")
     environment = os.environ.copy()

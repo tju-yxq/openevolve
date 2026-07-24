@@ -1,0 +1,41 @@
+{
+  "protocol_version": 1,
+  "dataset": "QM9",
+  "target": 1,
+  "target_name": "alpha",
+  "batch_size": 32,
+  "fixed_quarter_subset": "data_splits/qm9_train_quarter_seed201.npz",
+  "fixed_quarter_subset_seed": 201,
+  "fixed_quarter_subset_size": 27500,
+  "validation_interval_data_epochs": 10,
+  "checkpoint_interval_steps": 859,
+  "test_during_search": false,
+  "stages": [
+    {
+      "name": "quarter_8k",
+      "candidate_count": 8,
+      "max_optimizer_steps": 8000,
+      "training_data": "fixed_quarter",
+      "data_epoch_origin_step": 0
+    },
+    {
+      "name": "quarter_80k",
+      "candidate_count": 4,
+      "max_optimizer_steps": 80000,
+      "training_data": "fixed_quarter",
+      "data_epoch_origin_step": 0,
+      "resume_from": "quarter_8k"
+    },
+    {
+      "name": "full_250k",
+      "candidate_count": 2,
+      "max_optimizer_steps": 250000,
+      "training_data": "full_train",
+      "data_epoch_origin_step": 80000,
+      "resume_from": "quarter_80k",
+      "allow_data_transition": true
+    }
+  ],
+  "final_selection_split": "validation",
+  "test_policy": "Evaluate only after the final architecture and checkpoint are frozen for reporting."
+}

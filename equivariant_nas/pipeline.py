@@ -33,15 +33,29 @@ def evaluate_candidate_pipeline(
     run_symmetry: bool = True,
     gpu_budget_hours: Optional[float] = None,
     resume_checkpoint: str = "",
+    batch_size: int = 64,
+    train_subset_file: str = "",
+    eval_interval_epochs: int = 0,
+    data_epoch_origin_step: int = 0,
+    allow_data_transition: bool = False,
+    resume_model_only: bool = False,
+    lr_schedule_origin_step: int = 0,
 ) -> Dict[str, Any]:
     """Evaluate one architecture with hard gates before optional training."""
 
     project = Path(project_root)
+    subset_fingerprint = ""
+    if train_subset_file:
+        subset_path = Path(train_subset_file).resolve()
+        if not subset_path.is_file():
+            raise FileNotFoundError(subset_path)
+        subset_fingerprint = hashlib.sha256(subset_path.read_bytes()).hexdigest()
+        train_subset_file = str(subset_path)
     spec = extract_literal_spec(program_path)
     architecture_id = spec.architecture_id()
     evaluation_protocol = json.dumps(
         {
-            "pipeline_version": 6,
+            "pipeline_version": 7,
             "seed": seed,
             "max_steps": max_steps,
             "run_symmetry": run_symmetry,
@@ -50,6 +64,14 @@ def evaluate_candidate_pipeline(
             "parameter_ratio_limit": parameter_ratio_limit,
             "checkpoint_interval_steps": 859,
             "evaluation_interval_steps": int(max_steps),
+            "evaluation_interval_epochs": int(eval_interval_epochs),
+            "batch_size": int(batch_size),
+            "train_subset_file": str(train_subset_file),
+            "train_subset_sha256": subset_fingerprint,
+            "data_epoch_origin_step": int(data_epoch_origin_step),
+            "allow_data_transition": bool(allow_data_transition),
+            "resume_model_only": bool(resume_model_only),
+            "lr_schedule_origin_step": int(lr_schedule_origin_step),
         },
         sort_keys=True,
     )
@@ -134,6 +156,14 @@ def evaluate_candidate_pipeline(
             # Static symmetry/gradient gates use training molecules only. The
             # validation split remains reserved for endpoint model selection.
             dataset = QM9(data_path, "train", feature_type="one_hot")
+            if train_subset_file:
+                from torch.utils.data import Subset
+
+                with np.load(train_subset_file) as subset_payload:
+                    subset_indices = np.asarray(
+                        subset_payload["train_local_indices"], dtype=np.int64
+                    )
+                dataset = Subset(dataset, subset_indices.tolist())
             batch = next(iter(DataLoader(dataset, batch_size=2))).to("cuda")
             model = model.to("cuda")
             report = symmetry_report(model, batch, rotations=2, translations=2)
@@ -228,13 +258,19 @@ def evaluate_candidate_pipeline(
                 "--feature-type",
                 "one_hot",
                 "--batch-size",
-                "64",
+                str(batch_size),
                 "--max-steps",
                 str(max_steps),
                 "--reference-steps-per-epoch",
                 "859",
                 "--eval-interval-steps",
                 str(max_steps),
+                "--eval-interval-epochs",
+                str(eval_interval_epochs),
+                "--data-epoch-origin-step",
+                str(data_epoch_origin_step),
+                "--lr-schedule-origin-step",
+                str(lr_schedule_origin_step),
                 "--checkpoint-interval-steps",
                 "859",
                 "--epochs",
@@ -260,8 +296,14 @@ def evaluate_candidate_pipeline(
                 "--no-model-ema",
                 "--no-amp",
             ]
+            if train_subset_file:
+                command.extend(["--train-subset-file", str(train_subset_file)])
             if effective_resume_checkpoint:
                 command.extend(["--resume-step", effective_resume_checkpoint])
+            if allow_data_transition:
+                command.append("--allow-data-transition")
+            if resume_model_only:
+                command.append("--resume-model-only")
             environment = os.environ.copy()
             environment["PYTHONPATH"] = project_root
             environment["EQUIFORMER_ROOT"] = equiformer_root
@@ -318,6 +360,14 @@ def evaluate_candidate_pipeline(
                     ),
                     "combined_score": -validation_mae,
                     "resumed_from": effective_resume_checkpoint,
+                    "batch_size": int(summary.get("batch_size", batch_size)),
+                    "training_dataset_id": summary.get("training_dataset_id"),
+                    "training_dataset_size": summary.get("training_dataset_size"),
+                    "steps_per_data_epoch": summary.get("steps_per_data_epoch"),
+                    "completed_data_epochs": summary.get("completed_data_epochs"),
+                    "eval_interval_epochs": summary.get("eval_interval_epochs"),
+                    "data_epoch_origin_step": summary.get("data_epoch_origin_step"),
+                    "train_subset": summary.get("train_subset"),
                     "test_evaluated": bool(summary.get("test_evaluated", False)),
                 }
             )

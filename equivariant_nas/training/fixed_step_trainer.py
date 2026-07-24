@@ -7,6 +7,7 @@ step axis (859 optimizer steps per original epoch).
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -18,6 +19,7 @@ import numpy as np
 import torch
 from timm.scheduler import create_scheduler
 from timm.utils import ModelEmaV2, NativeScaler, dispatch_clip_grad
+from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
 
 EQUIFORMER_ROOT = os.environ.get(
@@ -31,6 +33,12 @@ import utils
 from engine import AverageMeter, evaluate
 from logger import FileLogger
 from optim_factory import create_optimizer
+
+from equivariant_nas.training.data_protocol import (
+    is_epoch_validation_step,
+    next_epoch_validation_step,
+    steps_per_data_epoch,
+)
 
 
 ModelEma = ModelEmaV2
@@ -57,7 +65,43 @@ def get_parser():
         "--eval-interval-steps",
         type=int,
         default=859,
-        help="Run validation/test and save a checkpoint every N global steps.",
+        help="Legacy step-based validation interval; ignored when --eval-interval-epochs > 0.",
+    )
+    parser.add_argument(
+        "--eval-interval-epochs",
+        type=int,
+        default=0,
+        help="Validate after every N completed epochs of the current training dataset.",
+    )
+    parser.add_argument(
+        "--train-subset-file",
+        type=str,
+        default="",
+        help="NPZ containing fixed train_local_indices; empty means the full train split.",
+    )
+    parser.add_argument(
+        "--data-epoch-origin-step",
+        type=int,
+        default=0,
+        help="Global step at which the current dataset phase began; resets data-epoch counting.",
+    )
+    parser.add_argument(
+        "--allow-data-transition",
+        action="store_true",
+        default=False,
+        help="Allow --resume-step to continue after an intentional training-dataset change.",
+    )
+    parser.add_argument(
+        "--resume-model-only",
+        action="store_true",
+        default=False,
+        help="Load model/global step but reset optimizer and LR scheduler for transition warm-up.",
+    )
+    parser.add_argument(
+        "--lr-schedule-origin-step",
+        type=int,
+        default=0,
+        help="Global step treated as LR-schedule epoch zero (used when re-warming after transition).",
     )
     parser.add_argument(
         "--checkpoint-interval-steps",
@@ -104,18 +148,59 @@ def get_parser():
     return parser
 
 
-def cycling_batches(dataset, args, start_global_step=0):
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def fixed_training_subset(dataset, subset_file):
+    if not subset_file:
+        return dataset, "qm9_train_full", None
+    path = Path(subset_file).resolve()
+    with np.load(path) as payload:
+        indices = np.asarray(payload["train_local_indices"], dtype=np.int64)
+    if indices.ndim != 1 or len(indices) == 0:
+        raise ValueError("fixed training subset indices must be a non-empty vector")
+    if len(np.unique(indices)) != len(indices):
+        raise ValueError("fixed training subset contains duplicate indices")
+    if int(indices.min()) < 0 or int(indices.max()) >= len(dataset):
+        raise ValueError("fixed training subset contains out-of-range indices")
+    fingerprint = sha256_file(path)
+    metadata = {
+        "path": str(path),
+        "sha256": fingerprint,
+        "size": int(len(indices)),
+        "source_train_size": int(len(dataset)),
+    }
+    return Subset(dataset, indices.tolist()), "qm9_train_subset:" + fingerprint, metadata
+
+
+def target_mean_std(dataset, target):
+    if isinstance(dataset, Subset):
+        indices = torch.as_tensor(dataset.indices, dtype=torch.long)
+        values = dataset.dataset.data.y[indices, target].float()
+        return float(values.mean()), float(values.std())
+    return dataset.mean(target), dataset.std(target)
+
+
+def cycling_batches(dataset, args, start_global_step=0, data_epoch_origin_step=0):
     """Yield deterministic shuffled batches with exact resume semantics.
 
     Each data cycle uses a seed derived only from ``args.seed`` and the cycle
     number. Therefore ``global_step`` uniquely determines both the permutation
     and the next batch; no opaque DataLoader iterator state is required.
     """
-    steps_per_cycle = len(dataset) // args.batch_size
+    steps_per_cycle = steps_per_data_epoch(len(dataset), args.batch_size)
     if steps_per_cycle <= 0:
         raise ValueError("training dataset is smaller than one batch")
-    data_cycle = start_global_step // steps_per_cycle
-    start_batch = start_global_step % steps_per_cycle
+    relative_step = start_global_step - data_epoch_origin_step
+    if relative_step < 0:
+        raise ValueError("data epoch origin cannot be greater than the resume step")
+    data_cycle = relative_step // steps_per_cycle
+    start_batch = relative_step % steps_per_cycle
     while True:
         generator = torch.Generator()
         generator.manual_seed(int(args.seed) + int(data_cycle))
@@ -145,6 +230,7 @@ def train_until_step(
     optimizer,
     lr_scheduler,
     reference_steps_per_epoch,
+    lr_schedule_origin_step,
     device,
     global_step,
     target_global_step,
@@ -168,8 +254,11 @@ def train_until_step(
     while global_step < target_global_step:
         # Match the original batch-128 recipe: scheduler.step(epoch) was called
         # once before each block of 859 optimizer updates.
-        if global_step % reference_steps_per_epoch == 0:
-            reference_epoch = global_step // reference_steps_per_epoch
+        schedule_step = global_step - lr_schedule_origin_step
+        if schedule_step < 0:
+            raise ValueError("LR schedule origin cannot be greater than global step")
+        if schedule_step % reference_steps_per_epoch == 0:
+            reference_epoch = schedule_step // reference_steps_per_epoch
             lr_scheduler.step(reference_epoch)
 
         data, data_cycle, batch_index = next(data_stream)
@@ -272,19 +361,26 @@ def save_checkpoint(
 def main(args):
     if args.max_steps <= 0:
         raise ValueError("--max-steps must be positive")
-    if (
-        args.reference_steps_per_epoch <= 0
-        or args.eval_interval_steps <= 0
-        or args.checkpoint_interval_steps <= 0
-    ):
-        raise ValueError("step intervals must be positive")
+    if args.resume_model_only and not args.resume_step:
+        raise ValueError("--resume-model-only requires --resume-step")
+    if args.reference_steps_per_epoch <= 0 or args.checkpoint_interval_steps <= 0:
+        raise ValueError("reference/checkpoint step intervals must be positive")
+    if args.eval_interval_epochs <= 0 and args.eval_interval_steps <= 0:
+        raise ValueError("one validation interval must be positive")
+    if args.data_epoch_origin_step < 0 or args.lr_schedule_origin_step < 0:
+        raise ValueError("step origins must be non-negative")
 
     # ``args.epochs`` is retained only to construct the original 300-epoch
     # timm cosine scheduler. It is not used as a stopping condition.
+    schedule_span_steps = args.max_steps - args.lr_schedule_origin_step
+    if schedule_span_steps <= 0:
+        raise ValueError("LR schedule origin must be smaller than --max-steps")
     required_reference_epochs = (
-        args.max_steps + args.reference_steps_per_epoch - 1
+        schedule_span_steps + args.reference_steps_per_epoch - 1
     ) // args.reference_steps_per_epoch
-    if args.epochs < required_reference_epochs:
+    if args.resume_model_only and args.lr_schedule_origin_step > 0:
+        args.epochs = required_reference_epochs
+    elif args.epochs < required_reference_epochs:
         args.epochs = required_reference_epochs
 
     utils.init_distributed_mode(args)
@@ -303,22 +399,33 @@ def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    train_dataset = base.QM9(args.data_path, "train", feature_type=args.feature_type)
+    full_train_dataset = base.QM9(
+        args.data_path, "train", feature_type=args.feature_type
+    )
+    train_dataset, training_dataset_id, subset_metadata = fixed_training_subset(
+        full_train_dataset, args.train_subset_file
+    )
+    args.training_dataset_id = training_dataset_id
+    data_steps_per_epoch = steps_per_data_epoch(len(train_dataset), args.batch_size)
     val_dataset = base.QM9(args.data_path, "valid", feature_type=args.feature_type)
     test_dataset = (
         base.QM9(args.data_path, "test", feature_type=args.feature_type)
         if args.evaluate_test
         else None
     )
+    observed_mean, observed_std = target_mean_std(train_dataset, args.target)
+    log.info("Training set mean: {}, std:{}".format(observed_mean, observed_std))
     log.info(
-        "Training set mean: {}, std:{}".format(
-            train_dataset.mean(args.target), train_dataset.std(args.target)
+        "Training dataset id: {}; size={}; steps_per_data_epoch={}; subset={}".format(
+            training_dataset_id,
+            len(train_dataset),
+            data_steps_per_epoch,
+            json.dumps(subset_metadata, sort_keys=True),
         )
     )
     task_mean, task_std = 0, 1
     if args.standardize:
-        task_mean = train_dataset.mean(args.target)
-        task_std = train_dataset.std(args.target)
+        task_mean, task_std = observed_mean, observed_std
     norm_factor = [task_mean, task_std]
 
     torch.manual_seed(args.seed)
@@ -442,36 +549,76 @@ def main(args):
 
     if args.resume_step:
         checkpoint = torch.load(args.resume_step, map_location="cpu")
+        checkpoint_args = checkpoint.get("args", {})
+        previous_dataset_id = checkpoint_args.get("training_dataset_id", "")
+        dataset_changed = bool(previous_dataset_id) and previous_dataset_id != training_dataset_id
+        if dataset_changed and not args.allow_data_transition:
+            raise ValueError(
+                "resume checkpoint dataset differs from current dataset; "
+                "pass --allow-data-transition for the intentional quarter-to-full transition"
+            )
         model_without_ddp = model.module if args.distributed else model
         model_without_ddp.load_state_dict(checkpoint["model"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
         global_step = checkpoint["global_step"]
         training_time_sec = checkpoint.get("training_time_sec", 0.0)
         best_step = checkpoint.get("best_step", 0)
         best_train_err = checkpoint.get("best_train_err", float("inf"))
         best_val_err = checkpoint.get("best_val_err", float("inf"))
         best_test_err = checkpoint.get("best_test_err")
-        torch.set_rng_state(checkpoint["torch_rng_state"])
-        if torch.cuda.is_available() and checkpoint.get("cuda_rng_state_all") is not None:
-            torch.cuda.set_rng_state_all(checkpoint["cuda_rng_state_all"])
-        np.random.set_state(checkpoint["numpy_rng_state"])
-        if loss_scaler is not None and checkpoint.get("loss_scaler") is not None:
-            loss_scaler.load_state_dict(checkpoint["loss_scaler"])
-        if model_ema is not None and checkpoint.get("model_ema") is not None:
-            model_ema.module.load_state_dict(checkpoint["model_ema"])
-        log.info("Resumed from {} at global_step={}".format(args.resume_step, global_step))
+        if args.resume_model_only:
+            if not dataset_changed:
+                log.info("Model-only resume requested without a dataset transition")
+            log.info(
+                "Loaded model/global step from {} and reset optimizer/scheduler for warm-up".format(
+                    args.resume_step
+                )
+            )
+        else:
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            torch.set_rng_state(checkpoint["torch_rng_state"])
+            if torch.cuda.is_available() and checkpoint.get("cuda_rng_state_all") is not None:
+                torch.cuda.set_rng_state_all(checkpoint["cuda_rng_state_all"])
+            np.random.set_state(checkpoint["numpy_rng_state"])
+            if loss_scaler is not None and checkpoint.get("loss_scaler") is not None:
+                loss_scaler.load_state_dict(checkpoint["loss_scaler"])
+            if model_ema is not None and checkpoint.get("model_ema") is not None:
+                model_ema.module.load_state_dict(checkpoint["model_ema"])
+            log.info("Resumed from {} at global_step={}".format(args.resume_step, global_step))
+        if dataset_changed:
+            log.info(
+                "Intentional data transition: {} -> {} at global_step={}".format(
+                    previous_dataset_id, training_dataset_id, global_step
+                )
+            )
 
+    if args.data_epoch_origin_step > global_step:
+        raise ValueError("data epoch origin cannot be greater than the current global step")
+    if args.lr_schedule_origin_step > global_step:
+        raise ValueError("LR schedule origin cannot be greater than the current global step")
     job_start_global_step = global_step
-    data_stream = cycling_batches(train_dataset, args, start_global_step=global_step)
+    data_stream = cycling_batches(
+        train_dataset,
+        args,
+        start_global_step=global_step,
+        data_epoch_origin_step=args.data_epoch_origin_step,
+    )
     metrics_path = Path(args.output_dir) / "metrics.jsonl"
     job_start_time = time.perf_counter()
 
     while global_step < args.max_steps:
-        next_evaluation = (
-            ((global_step // args.eval_interval_steps) + 1)
-            * args.eval_interval_steps
-        )
+        if args.eval_interval_epochs > 0:
+            next_evaluation = next_epoch_validation_step(
+                global_step,
+                args.data_epoch_origin_step,
+                data_steps_per_epoch,
+                args.eval_interval_epochs,
+            )
+        else:
+            next_evaluation = (
+                ((global_step // args.eval_interval_steps) + 1)
+                * args.eval_interval_steps
+            )
         next_checkpoint = (
             ((global_step // args.checkpoint_interval_steps) + 1)
             * args.checkpoint_interval_steps
@@ -486,6 +633,7 @@ def main(args):
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
             reference_steps_per_epoch=args.reference_steps_per_epoch,
+            lr_schedule_origin_step=args.lr_schedule_origin_step,
             device=device,
             global_step=global_step,
             target_global_step=next_boundary,
@@ -499,10 +647,21 @@ def main(args):
         )
         training_time_sec += segment_training_sec
 
-        evaluate_now = (
-            global_step % args.eval_interval_steps == 0
-            or global_step == args.max_steps
-        )
+        if args.eval_interval_epochs > 0:
+            evaluate_now = (
+                is_epoch_validation_step(
+                    global_step,
+                    args.data_epoch_origin_step,
+                    data_steps_per_epoch,
+                    args.eval_interval_epochs,
+                )
+                or global_step == args.max_steps
+            )
+        else:
+            evaluate_now = (
+                global_step % args.eval_interval_steps == 0
+                or global_step == args.max_steps
+            )
         val_err = None
         test_err = None
         if evaluate_now:
@@ -539,6 +698,9 @@ def main(args):
         progress = {
             "global_step": global_step,
             "reference_epoch": global_step / args.reference_steps_per_epoch,
+            "data_epoch": (global_step - args.data_epoch_origin_step) / data_steps_per_epoch,
+            "steps_per_data_epoch": data_steps_per_epoch,
+            "training_dataset_id": training_dataset_id,
             "train_mae": train_err,
             "lr": optimizer.param_groups[0]["lr"],
             "training_time_sec": training_time_sec,
@@ -601,7 +763,14 @@ def main(args):
         "max_steps": args.max_steps,
         "reference_steps_per_epoch": args.reference_steps_per_epoch,
         "checkpoint_interval_steps": args.checkpoint_interval_steps,
-        "effective_data_cycles": global_step / (len(train_dataset) // args.batch_size),
+        "eval_interval_epochs": args.eval_interval_epochs,
+        "training_dataset_id": training_dataset_id,
+        "training_dataset_size": len(train_dataset),
+        "train_subset": subset_metadata,
+        "steps_per_data_epoch": data_steps_per_epoch,
+        "data_epoch_origin_step": args.data_epoch_origin_step,
+        "completed_data_epochs": (global_step - args.data_epoch_origin_step) / data_steps_per_epoch,
+        "effective_data_cycles": (global_step - args.data_epoch_origin_step) / data_steps_per_epoch,
         "training_time_sec": training_time_sec,
         "wall_time_sec_current_job": time.perf_counter() - job_start_time,
         "start_global_step": job_start_global_step,

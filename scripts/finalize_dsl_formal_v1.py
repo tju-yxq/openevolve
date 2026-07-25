@@ -75,6 +75,48 @@ def link_or_copy_atomic(source, target):
     temporary.replace(target)
 
 
+def copy_training_evidence(run_dir, target):
+    """Archive one fidelity run without relying on its original absolute path later."""
+    if not run_dir:
+        return False
+    run_dir = Path(str(run_dir))
+    target = Path(target)
+    if not run_dir.is_dir():
+        return False
+    for name in (
+        "architecture.dsl.json",
+        "protocol.json",
+        "runtime_manifest.json",
+        "pretrain_symmetry_report.json",
+        "posttrain_symmetry_report.json",
+        "result.json",
+    ):
+        source = run_dir / name
+        if source.is_file():
+            copy_atomic(source, target / name)
+    training = run_dir / "training"
+    for name in ("progress.json", "metrics.jsonl", "training_summary.json", "checkpoint_last.pth"):
+        source = training / name
+        if source.is_file():
+            link_or_copy_atomic(source, target / "training" / name)
+    return True
+
+
+def validation_trajectory(run_dir, endpoint_step=None, endpoint_mae=None):
+    """Return deduplicated validation observations from a trainer run."""
+    points = {}
+    path = Path(str(run_dir)) / "training" / "metrics.jsonl" if run_dir else None
+    if path is not None and path.is_file():
+        for row in read_jsonl(path):
+            step = row.get("global_step", row.get("step"))
+            value = row.get("val_mae", row.get("validation_alpha_mae"))
+            if step is not None and value is not None:
+                points[int(step)] = float(value)
+    if endpoint_step is not None and endpoint_mae is not None:
+        points[int(endpoint_step)] = float(endpoint_mae)
+    return sorted(points.items())
+
+
 def selection_payload(state, state_path):
     if state.get("stage") not in ("completed_validation_selection", "final_completed"):
         raise RuntimeError("validation selection is not frozen")
@@ -241,7 +283,7 @@ def collect_run_materials(root, search_dir, state):
     return candidates, promotions
 
 
-def materialize_candidate_evidence(root, search_dir):
+def materialize_candidate_evidence(root, search_dir, state=None):
     parent_program = search_dir.parent / "initial_program.dsl.json"
     records = [item for item in read_jsonl(search_dir / "evolution.jsonl") if int(item.get("iteration", 0)) > 0]
     for record in records:
@@ -290,6 +332,29 @@ def materialize_candidate_evidence(root, search_dir):
         if not (material / "result.json").exists():
             write_json(material / "result.json", metrics)
 
+    if state is None:
+        return
+    architecture_materials = root / "candidate_materials" / "by_architecture"
+    for stage, key, metrics_key in (
+        (8000, "candidates_8000", "metrics_8000"),
+        (80000, "candidates_80000", "metrics_80000"),
+        (250000, "candidates_250000", "metrics_250000"),
+    ):
+        for item in state.get(key, []):
+            architecture_id = str(item.get("architecture_id", "unknown"))
+            metrics = item.get(metrics_key) or {}
+            target = architecture_materials / architecture_id / "steps_{}".format(stage)
+            copy_training_evidence(metrics.get("run_dir", ""), target)
+            write_json(target / "state_record.json", item)
+    parent = state.get("parent_baseline") or {}
+    parent_target = root / "candidate_materials" / "parent_baseline"
+    for stage in (8000, 80000, 250000):
+        metrics = parent.get("metrics_{}".format(stage)) or {}
+        if metrics:
+            target = parent_target / "steps_{}".format(stage)
+            copy_training_evidence(metrics.get("run_dir", ""), target)
+            write_json(target / "state_record.json", {"metrics_{}".format(stage): metrics})
+
 
 def make_plots(root, state):
     import matplotlib
@@ -305,27 +370,47 @@ def make_plots(root, state):
     }
     metric_keys = {8000: "metrics_8000", 80000: "metrics_80000", 250000: "metrics_250000"}
     by_architecture = {}
+    trajectories = {}
     for stage, items in stage_maps.items():
         for item in items:
             metrics = item.get(metric_keys[stage]) or {}
-            by_architecture.setdefault(item.get("architecture_id"), {"factor": item.get("factor_id", "")})[stage] = metrics.get("validation_alpha_mae")
+            architecture_id = item.get("architecture_id")
+            by_architecture.setdefault(architecture_id, {"factor": item.get("factor_id", "")})[stage] = metrics.get("validation_alpha_mae")
+            trajectory = validation_trajectory(
+                metrics.get("run_dir", ""),
+                metrics.get("endpoint_step", stage),
+                metrics.get("validation_alpha_mae"),
+            )
+            trajectories.setdefault(architecture_id, {}).update(dict(trajectory))
     parent = state.get("parent_baseline") or {}
     parent_values = {"factor": "Parent"}
     for stage in (8000, 80000, 250000):
         value = (parent.get("metrics_{}".format(stage)) or {}).get("validation_alpha_mae")
         if value is not None:
             parent_values[stage] = value
+        metrics = parent.get("metrics_{}".format(stage)) or {}
+        trajectory = validation_trajectory(
+            metrics.get("run_dir", ""),
+            metrics.get("endpoint_step", stage),
+            metrics.get("validation_alpha_mae"),
+        )
+        trajectories.setdefault("parent_baseline", {}).update(dict(trajectory))
     if len(parent_values) > 1:
         by_architecture["parent_baseline"] = parent_values
     plt.figure(figsize=(8, 5))
     for architecture_id, values in sorted(by_architecture.items()):
-        xs = [stage for stage in (8000, 80000, 250000) if values.get(stage) is not None]
-        ys = [values[stage] for stage in xs]
+        points = sorted((trajectories.get(architecture_id) or {}).items())
+        if points:
+            xs = [point[0] for point in points]
+            ys = [point[1] for point in points]
+        else:
+            xs = [stage for stage in (8000, 80000, 250000) if values.get(stage) is not None]
+            ys = [values[stage] for stage in xs]
         plt.plot(xs, ys, marker="o", label="{} {}".format(values.get("factor", ""), architecture_id[:8]))
     plt.xscale("log")
     plt.xlabel("Optimizer step")
     plt.ylabel("Validation MAE")
-    plt.title("Formal V1 validation MAE by fidelity")
+    plt.title("Formal V1 validation MAE trajectory")
     plt.grid(alpha=0.3)
     plt.legend(fontsize=7)
     plt.tight_layout()
@@ -354,6 +439,25 @@ def write_reports(root, state, freeze, test_summary, candidates):
     parent_validation_mae = float(freeze["parent_validation_mae"])
     validation_delta = float(freeze["validation_mae_delta_vs_parent"])
     test_mae = float(test_summary["endpoint_test_mae"])
+    promotion_rows = []
+    for stage, key, metrics_key in (
+        (8000, "candidates_8000", "metrics_8000"),
+        (80000, "candidates_80000", "metrics_80000"),
+        (250000, "candidates_250000", "metrics_250000"),
+    ):
+        for rank, item in enumerate(state.get(key, []), 1):
+            metrics = item.get(metrics_key) or {}
+            promotion_rows.append(
+                "|{}|{}|`{}`|`{}`|{:.8f}|{}|".format(
+                    stage,
+                    rank,
+                    item.get("architecture_id", ""),
+                    item.get("factor_id", ""),
+                    float(metrics.get("validation_alpha_mae", float("nan"))),
+                    str(metrics.get("test_evaluated", "")).lower(),
+                )
+            )
+    promotion_table = "\n".join(promotion_rows)
     report = """# 等变DSL正式V1实验报告
 
 ## 最终结果
@@ -375,9 +479,23 @@ def write_reports(root, state, freeze, test_summary, candidates):
 
 ## 图表
 
-![不同保真度Validation MAE](assets/mae_vs_step.png)
+![完整Validation MAE轨迹](assets/mae_vs_step.png)
 
 ![因子比较](assets/factor_comparison.png)
+
+## 晋级记录
+
+|阶段终点|阶段内排名|候选ID|因子|Validation MAE|Test参与|
+|---:|---:|---|---|---:|---|
+{promotion_table}
+
+## 可回溯材料
+
+- `selection_freeze.json`：冻结的Validation赢家、程序和Checkpoint哈希；
+- `promotion_history.jsonl`：8k、80k和250k的Validation晋级历史；
+- `candidate_materials/by_architecture`：每个晋级候选在各保真度的Runtime Manifest、Validation轨迹、Checkpoint和结果；
+- `candidate_materials/parent_baseline`：父代同协议训练证据；
+- `final_test/training/training_summary.json`：唯一一次Evaluation-only Test证据。
 """.format(
         architecture=freeze["architecture_id"],
         factor=winner.get("factor_id", ""),
@@ -387,13 +505,29 @@ def write_reports(root, state, freeze, test_summary, candidates):
         candidate_beats_parent=str(bool(freeze["candidate_beats_parent"])).lower(),
         test=test_mae,
         candidate_count=len(candidates),
+        promotion_table=promotion_table,
     )
     (root / "final_report.md").write_text(report, encoding="utf-8")
-    body = "".join(
-        "<h2>{}</h2><p>{}</p>".format(html.escape(section.splitlines()[0]), html.escape("\n".join(section.splitlines()[1:])))
-        for section in report.split("## ")[1:]
-    )
-    page = """<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>等变DSL正式V1实验报告</title></head><body><h1>等变DSL正式V1实验报告</h1>{}<p><img src="assets/mae_vs_step.png" alt="MAE曲线"></p><p><img src="assets/factor_comparison.png" alt="因子比较"></p></body></html>""".format(body)
+    try:
+        import markdown
+        body = markdown.markdown(report, extensions=["tables", "fenced_code"])
+    except ImportError:
+        body = "<pre>{}</pre>".format(html.escape(report))
+    page = """<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>等变DSL正式V1实验报告</title>
+<style>
+body{{max-width:1080px;margin:36px auto;padding:0 24px;color:#000;background:#fff;font-family:Arial,"Microsoft YaHei",sans-serif;line-height:1.7}}
+table{{border-collapse:collapse;width:100%;margin:16px 0}}th,td{{border:1px solid #bbb;padding:7px 9px;text-align:left}}
+img{{max-width:100%;height:auto}}code{{color:#000;background:#f3f3f3;padding:1px 4px}}
+</style>
+</head>
+<body>{}</body>
+</html>
+""".format(body)
     (root / "final_report.html").write_text(page, encoding="utf-8")
 
 
@@ -417,7 +551,7 @@ def main():
     freeze = ensure_freeze(root, state, state_path)
     test_summary = run_final_test(args, root, freeze)
     candidates, _promotions = collect_run_materials(root, search_dir, state)
-    materialize_candidate_evidence(root, search_dir)
+    materialize_candidate_evidence(root, search_dir, state)
     make_plots(root, state)
     write_reports(root, state, freeze, test_summary, candidates)
     state["stage"] = "final_completed"

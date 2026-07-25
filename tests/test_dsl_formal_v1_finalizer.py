@@ -125,3 +125,86 @@ def test_materialize_candidate_evidence_archives_complete_training_bundle(tmp_pa
     assert expected <= actual
     assert json.loads((material / "factor_router.json").read_text(encoding="utf-8"))["factor_id"] == "F2.2"
     assert (material / "training" / "checkpoint_last.pth").read_bytes() == b"checkpoint"
+
+
+def test_full_fidelity_evidence_and_validation_trajectory_are_archived(tmp_path):
+    module = _module()
+    root = tmp_path / "formal_v1"
+    search_dir = tmp_path / "search"
+    run_dir = tmp_path / "candidate_80k"
+    training = run_dir / "training"
+    search_dir.mkdir(parents=True)
+    training.mkdir(parents=True)
+    (search_dir / "evolution.jsonl").write_text("", encoding="utf-8")
+    (training / "metrics.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps({"global_step": 17180, "val_mae": 0.4}),
+                json.dumps({"global_step": 25770, "val_mae": 0.3}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (training / "progress.json").write_text('{"global_step": 80000}', encoding="utf-8")
+    (training / "checkpoint_last.pth").write_bytes(b"80k checkpoint")
+    (run_dir / "result.json").write_text('{"validation_alpha_mae": 0.2}', encoding="utf-8")
+    state = {
+        "candidates_80000": [
+            {
+                "architecture_id": "arch",
+                "factor_id": "F4.4",
+                "metrics_80000": {
+                    "run_dir": str(run_dir),
+                    "endpoint_step": 80000,
+                    "validation_alpha_mae": 0.2,
+                    "test_evaluated": False,
+                },
+            }
+        ]
+    }
+
+    module.materialize_candidate_evidence(root, search_dir, state)
+
+    target = root / "candidate_materials" / "by_architecture" / "arch" / "steps_80000"
+    assert (target / "training" / "metrics.jsonl").is_file()
+    assert (target / "training" / "checkpoint_last.pth").read_bytes() == b"80k checkpoint"
+    assert module.validation_trajectory(run_dir, 80000, 0.2) == [
+        (17180, 0.4),
+        (25770, 0.3),
+        (80000, 0.2),
+    ]
+
+
+def test_final_report_html_renders_markdown_table_and_black_text(tmp_path):
+    module = _module()
+    state = {
+        "winner_by_validation": {"factor_id": "F4.4"},
+        "candidates_8000": [
+            {
+                "architecture_id": "arch",
+                "factor_id": "F4.4",
+                "metrics_8000": {"validation_alpha_mae": 0.5, "test_evaluated": False},
+            }
+        ],
+    }
+    freeze = {
+        "architecture_id": "arch",
+        "validation_mae": 0.1,
+        "parent_validation_mae": 0.12,
+        "validation_mae_delta_vs_parent": -0.02,
+        "candidate_beats_parent": True,
+    }
+    module.write_reports(
+        tmp_path,
+        state,
+        freeze,
+        {"endpoint_test_mae": 0.11},
+        [{"architecture_id": "arch"}],
+    )
+    html = (tmp_path / "final_report.html").read_text(encoding="utf-8")
+    markdown = (tmp_path / "final_report.md").read_text(encoding="utf-8")
+    assert "<table>" in html
+    assert "color:#000" in html
+    assert "完整Validation MAE轨迹" in markdown
+    assert "candidate_materials/by_architecture" in markdown

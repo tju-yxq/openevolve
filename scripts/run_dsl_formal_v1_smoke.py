@@ -231,6 +231,8 @@ def run(args):
         "dsl_task_contract": args.task_contract,
         "run_symmetry": True,
     }
+    if args.symmetry_threshold is not None:
+        common["symmetry_threshold"] = args.symmetry_threshold
     for candidate in candidates:
         key = candidate["key"]
         _write_json(
@@ -296,6 +298,12 @@ def get_parser():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=201)
     parser.add_argument("--eval-interval-epochs", type=int, default=10)
+    parser.add_argument(
+        "--symmetry-threshold",
+        type=float,
+        default=None,
+        help="Optional diagnostic relative threshold; omit for the frozen formal-V1 default.",
+    )
     return parser
 
 

@@ -9,6 +9,7 @@
   "quarter_subset_file": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
   "task_contract": "/home/20262202788/equivariant-nas/configs/qm9_alpha_formal_v1_task.json",
   "llm_config": "/home/20262202788/openevolve/configs/local_glm_5_2.yaml",
+  "acceptance_evidence": "/home/20262202788/equivariant-nas/.formal_v1_acceptance/acceptance_evidence.json",
   "seed": 201,
   "batch_size": 32,
   "forced_factor_sequence": [

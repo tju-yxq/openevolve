@@ -39,6 +39,45 @@ def command_ok(command):
     return completed.returncode == 0, completed.stdout.strip() or completed.stderr.strip()
 
 
+def validate_acceptance_evidence(project, evidence_path):
+    evidence_path = Path(evidence_path).resolve()
+    checks = []
+
+    def add(name, passed, details=""):
+        checks.append({"name": name, "passed": bool(passed), "details": details})
+
+    if not evidence_path.is_file():
+        add("acceptance_evidence_exists", False, str(evidence_path))
+        return checks, {}
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    add("acceptance_evidence_exists", True, str(evidence_path))
+    add("acceptance_evidence_ready", evidence.get("ready") is True, evidence.get("checks", []))
+    add("acceptance_test_isolation", evidence.get("test_evaluated") is False, evidence.get("test_evaluated"))
+    ok, commit = command_ok(["git", "-C", str(project), "rev-parse", "HEAD"])
+    add(
+        "acceptance_commit",
+        ok and evidence.get("project_commit") == commit,
+        {"expected": evidence.get("project_commit"), "actual": commit},
+    )
+    for relative, expected in (evidence.get("critical_files") or {}).items():
+        path = project / relative
+        actual = sha256(path) if path.is_file() else "missing"
+        add(
+            "acceptance_critical_file:{}".format(relative),
+            actual == expected,
+            {"expected": expected, "actual": actual},
+        )
+    for raw_path, expected in (evidence.get("artifacts") or {}).items():
+        path = Path(raw_path)
+        actual = sha256(path) if path.is_file() else "missing"
+        add(
+            "acceptance_artifact:{}".format(path.name),
+            actual == expected,
+            {"path": str(path), "expected": expected, "actual": actual},
+        )
+    return checks, evidence
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -69,6 +108,9 @@ def main():
     if shutil.which("nvidia-smi"):
         ok, gpu = command_ok(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"])
         check("gpu_query", ok and "A100" in gpu, gpu)
+
+    acceptance_checks, acceptance = validate_acceptance_evidence(project, config["acceptance_evidence"])
+    checks.extend(acceptance_checks)
 
     profile = equiformer_v1_capability_profile()
     validate_unique_factor_ownership(profile.enabled_factors)
@@ -140,6 +182,16 @@ def main():
         "factor_compile_results": factor_results,
         "initial_program": str(initial_program),
         "protocol": protocol,
+        "acceptance_evidence": {
+            "path": config["acceptance_evidence"],
+            "sha256": sha256(config["acceptance_evidence"])
+            if Path(config["acceptance_evidence"]).is_file()
+            else "",
+            "project_commit": acceptance.get("project_commit", ""),
+            "test_summary": acceptance.get("test_summary", {}),
+            "calibration": acceptance.get("calibration", {}),
+            "smoke_factors": acceptance.get("smoke_factors", []),
+        },
     }
     ready_path = run_root / "READY_TO_LAUNCH.json"
     ready_path.write_text(json.dumps(ready, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")

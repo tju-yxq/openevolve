@@ -1,0 +1,50 @@
+{
+  "project_root": "/home/20262202788/equivariant-nas",
+  "pytest_log": "/home/20262202788/equivariant-nas/.formal_v1_acceptance/pytest.log",
+  "minimum_pytest_passed": 158,
+  "maximum_pytest_skipped": 1,
+  "symmetry_protocol": "/home/20262202788/equivariant-nas/configs/dsl_v1_symmetry_protocol.json",
+  "calibration_summaries": [
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed202/summary.json",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed203/summary.json",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed204/summary.json",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed205/summary.json"
+  ],
+  "smoke_training_summaries": [
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_missing_factors_seed201/summary.json"
+  ],
+  "minimum_smoke_steps": 300,
+  "required_smoke_factors": ["parent", "F2.2", "F4.4", "F5.3", "F6.3"],
+  "recovery_start_step": 859,
+  "recovery_end_step": 1000,
+  "recovery": {
+    "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_recovery_seed206/summary.json",
+    "progress": "/home/20262202788/equivariant-nas/runs/dsl_candidates/2f9873ebb2de9086/seed206_steps1000_c8d93c6125/training/progress.json",
+    "pre_hashes": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_recovery_seed206/pre_resume_hashes.txt",
+    "post_hashes": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_recovery_seed206/post_resume_hashes.txt"
+  },
+  "supervisor_log": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_supervisor_validation_20260726a/supervisor.log",
+  "supervisor_ready": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_supervisor_validation_20260726a/READY_TO_LAUNCH.json",
+  "critical_files": [
+    "scripts/collect_dsl_formal_v1_acceptance.py",
+    "scripts/preflight_dsl_formal_v1.py",
+    "scripts/launch_dsl_formal_v1.sh",
+    "scripts/supervise_dsl_formal_v1.sh",
+    "scripts/run_dsl_evolution.py",
+    "scripts/run_dsl_multifidelity_cycles.py",
+    "scripts/finalize_dsl_formal_v1.py",
+    "equivariant_nas/dsl/factors.py",
+    "equivariant_nas/dsl/capabilities.py",
+    "equivariant_nas/dsl/regions.py",
+    "equivariant_nas/dsl/llm_protocol.py",
+    "equivariant_nas/dsl/search.py",
+    "equivariant_nas/dsl/runtime_manifest.py",
+    "equivariant_nas/dsl/pipeline.py",
+    "equivariant_nas/training/fixed_step_trainer.py",
+    "configs/dsl_v1_symmetry_protocol.json",
+    "configs/qm9_alpha_formal_v1_task.json",
+    "configs/dsl_formal_v1_qm9_alpha_seed201.json"
+  ]
+}

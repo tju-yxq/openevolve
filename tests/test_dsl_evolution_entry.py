@@ -26,6 +26,7 @@ def test_dsl_evolution_entry_requires_program_task_evaluator_and_config():
     assert args.task_contract == "task.json"
     assert args.iterations == 3
     assert args.max_steps == 0
+    assert args.eval_interval_epochs == 10
 
 
 def test_compiler_manifest_prevents_silent_resume_under_new_semantics(tmp_path):
@@ -63,10 +64,16 @@ def test_evaluator_forwards_the_preregistered_seed(monkeypatch):
         return SimpleNamespace(returncode=0, stdout='{"valid": true}', stderr="")
 
     monkeypatch.setenv("NAS_SEED", "201")
+    monkeypatch.setenv("NAS_TRAIN_SUBSET_FILE", "/tmp/quarter.npz")
+    monkeypatch.setenv("NAS_EVAL_INTERVAL_EPOCHS", "10")
     monkeypatch.setattr(evaluator.subprocess, "run", fake_run)
     assert evaluator.evaluate("candidate.dsl.json")["valid"] is True
     seed_index = captured["command"].index("--seed")
     assert captured["command"][seed_index + 1] == "201"
+    subset_index = captured["command"].index("--train-subset-file")
+    assert captured["command"][subset_index + 1] == "/tmp/quarter.npz"
+    interval_index = captured["command"].index("--eval-interval-epochs")
+    assert captured["command"][interval_index + 1] == "10"
 
 
 def test_formal_factor_coverage_routes_to_a_factor_with_remaining_quota(tmp_path):

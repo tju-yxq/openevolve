@@ -36,6 +36,8 @@ fi
   --valid-per-factor-target 2 \
   --max-steps 8000 \
   --batch-size 32 \
+  --train-subset-file "$PROJECT/data_splits/qm9_train_quarter_seed201.npz" \
+  --eval-interval-epochs 10 \
   --seed 201 \
   --repair-attempts 1 \
   --forced-factor-sequence F2.2,F4.4,F5.3,F6.3,F2.2,F4.4,F5.3,F6.3

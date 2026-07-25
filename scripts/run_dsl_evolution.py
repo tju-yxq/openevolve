@@ -141,6 +141,9 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
             requested_protocol = payload.get("formal_v1_search_protocol") or {}
             if "valid_per_factor_target" not in existing_protocol:
                 existing_protocol["valid_per_factor_target"] = requested_protocol.get("valid_per_factor_target", 0)
+            for key in ("train_subset_sha256", "eval_interval_data_epochs"):
+                if key not in existing_protocol:
+                    existing_protocol[key] = requested_protocol.get(key)
             if upgraded == payload and not _valid_candidate_ids(Path(output) / "evolution.jsonl"):
                 _write_json(path, payload)
                 return path
@@ -372,6 +375,10 @@ async def run(args):
             "maximum_generation_attempts": int(args.iterations),
             "valid_candidate_target": int(args.valid_candidate_target),
             "valid_per_factor_target": int(args.valid_per_factor_target),
+            "train_subset_sha256": hashlib.sha256(Path(args.train_subset_file).read_bytes()).hexdigest()
+            if args.train_subset_file
+            else "",
+            "eval_interval_data_epochs": int(args.eval_interval_epochs),
             "test_during_search": False,
         },
     }
@@ -391,6 +398,8 @@ async def run(args):
     os.environ["NAS_BATCH_SIZE"] = str(args.batch_size)
     os.environ["NAS_SEED"] = str(args.seed)
     os.environ["NAS_SKIP_SYMMETRY"] = "1" if args.skip_symmetry else "0"
+    os.environ["NAS_TRAIN_SUBSET_FILE"] = str(Path(args.train_subset_file).resolve()) if args.train_subset_file else ""
+    os.environ["NAS_EVAL_INTERVAL_EPOCHS"] = str(args.eval_interval_epochs)
     if args.equiformer_v2_root:
         os.environ["EQUIFORMER_V2_ROOT"] = args.equiformer_v2_root
 
@@ -700,6 +709,8 @@ def get_parser():
     parser.add_argument("--inspirations", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=0)
     parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--train-subset-file", default="")
+    parser.add_argument("--eval-interval-epochs", type=int, default=10)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--repair-attempts", type=int, default=2)
     parser.add_argument("--model-label", default="openevolve-ensemble")

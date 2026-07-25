@@ -19,7 +19,8 @@ export EQUIFORMER_PYTHON="$EQUIFORMER_PY"
   --config /home/20262202788/openevolve/configs/local_glm_5_2.yaml \
   --output "$RUN_ROOT/search" \
   --openevolve-root /home/20262202788/openevolve \
-  --iterations 8 \
+  --iterations 32 \
+  --valid-candidate-target 8 \
   --max-steps 8000 \
   --batch-size 32 \
   --seed 201 \

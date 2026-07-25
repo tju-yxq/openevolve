@@ -51,6 +51,26 @@ def _append_jsonl(path, payload):
         handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def _valid_candidate_ids(evolution_path):
+    path = Path(evolution_path)
+    if not path.exists():
+        return set()
+    identifiers = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if int(record.get("iteration", 0)) <= 0:
+            continue
+        metrics = record.get("metrics") or {}
+        if not metrics.get("valid") or metrics.get("test_evaluated") is not False:
+            continue
+        architecture_id = str(metrics.get("architecture_id", record.get("architecture_id", "")))
+        if architecture_id:
+            identifiers.add(architecture_id)
+    return identifiers
+
+
 def _load_verified_initial_metrics(path, *, architecture_id, seed, max_steps):
     metrics = json.loads(Path(path).read_text(encoding="utf-8"))
     required_identity = ("program_id", "executable_id", "protocol_id", "runtime_manifest_sha256")
@@ -299,6 +319,8 @@ async def run(args):
             "max_steps": int(args.max_steps),
             "batch_size": int(args.batch_size),
             "seed": int(args.seed),
+            "maximum_generation_attempts": int(args.iterations),
+            "valid_candidate_target": int(args.valid_candidate_target),
             "test_during_search": False,
         },
     }
@@ -368,8 +390,12 @@ async def run(args):
     start = int(database.last_iteration) + 1
     stop_file = Path(args.stop_file).resolve() if args.stop_file else output / "STOP"
     completed = start - 1
-    for iteration in range(start, start + args.iterations):
+    attempt_stop = args.iterations + 1 if args.valid_candidate_target else start + args.iterations
+    for iteration in range(start, attempt_stop):
         if stop_file.exists():
+            break
+        valid_ids = _valid_candidate_ids(output / "evolution.jsonl")
+        if args.valid_candidate_target and len(valid_ids) >= args.valid_candidate_target:
             break
         completed = iteration
         _write_json(output / "heartbeat.json", {
@@ -377,6 +403,8 @@ async def run(args):
             "updated_at": _now(),
             "iteration": iteration,
             "last_completed_iteration": iteration - 1,
+            "valid_candidate_count": len(valid_ids),
+            "valid_candidate_target": int(args.valid_candidate_target),
             "stop_file": str(stop_file),
         })
         island_index = (iteration - 1) % len(database.islands)
@@ -484,11 +512,14 @@ async def run(args):
         if current_path.exists():
             current_path.unlink()
         best = database.get_best_program()
+        valid_ids = _valid_candidate_ids(output / "evolution.jsonl")
         summary = {
             "last_completed_iteration": iteration,
             "program_count": len(database.programs),
             "best_program_id": best.id if best else None,
             "best_metrics": best.metrics if best else None,
+            "valid_candidate_count": len(valid_ids),
+            "valid_candidate_target": int(args.valid_candidate_target),
             "task_contract_hash": task.content_hash(),
             "language_registry_hash": language.registry_hash(),
             "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
@@ -499,6 +530,7 @@ async def run(args):
         _write_json(output / "heartbeat.json", dict(summary, status="running", stop_file=str(stop_file)))
 
     best = database.get_best_program()
+    valid_ids = _valid_candidate_ids(output / "evolution.jsonl")
     database.save(str(output / "database"), iteration=completed)
     language_snapshot = None
     if language_preregistration is not None:
@@ -511,16 +543,25 @@ async def run(args):
             language_preregistration,
             args.language_holdout_modulus,
         )
+    target_reached = not args.valid_candidate_target or len(valid_ids) >= args.valid_candidate_target
     final = {
         "last_completed_iteration": completed,
         "program_count": len(database.programs),
         "best_program_id": best.id if best else None,
         "best_metrics": best.metrics if best else None,
+        "valid_candidate_count": len(valid_ids),
+        "valid_candidate_target": int(args.valid_candidate_target),
         "task_contract_hash": task.content_hash(),
         "language_registry_hash": language.registry_hash(),
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
         "rewrite_registry_hash": strict_rewrite_registry_hash(),
-        "status": "stopped" if stop_file.exists() else "completed",
+        "status": (
+            "stopped"
+            if stop_file.exists()
+            else "completed"
+            if target_reached
+            else "generation_attempts_exhausted"
+        ),
         "updated_at": _now(),
         "language_cycle_snapshot": str(output / "language_cycle_snapshot.json") if language_snapshot is not None else "",
     }
@@ -538,7 +579,18 @@ def get_parser():
     parser.add_argument("--output", required=True)
     parser.add_argument("--openevolve-root", default="/home/20262202788/openevolve")
     parser.add_argument("--equiformer-v2-root", default="")
-    parser.add_argument("--iterations", type=int, default=5)
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=5,
+        help="Generation attempt limit; with --valid-candidate-target this is an absolute resumable run limit.",
+    )
+    parser.add_argument(
+        "--valid-candidate-target",
+        type=int,
+        default=0,
+        help="Stop early after this many unique valid non-parent candidates; zero preserves fixed-attempt behavior.",
+    )
     parser.add_argument("--inspirations", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=0)
     parser.add_argument("--batch-size", type=int, default=64)

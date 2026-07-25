@@ -200,7 +200,7 @@ def _report(output: Path, summary):
 
 ## 验证范围
 
-本报告验证父代和四个正式V1开放因子的确定性替代候选是否能够完成真实官方后端构建、Runtime Manifest绑定、16个QM9分子的旋转/平移/置换等变审计、数值健康检查、梯度门禁以及可选短训练。它不是正式8→4→2搜索结果，也不用于证明某个因子已经优于父代。
+本报告验证本次选中的正式V1候选是否能够完成真实官方后端构建、Runtime Manifest绑定、16个QM9分子的旋转/平移/置换等变审计、数值健康检查、梯度门禁以及可选短训练。它不是正式8→4→2搜索结果，也不用于证明某个因子已经优于父代。
 """.format(
         status=summary["status"],
         commit=summary["project_commit"],
@@ -294,7 +294,7 @@ def run(args):
         },
     )
     _report(output, summary)
-    print(json.dumps({"status": "completed", "summary": str(output / "summary.json")}, ensure_ascii=False))
+    print(json.dumps({"status": summary["status"], "summary": str(output / "summary.json")}, ensure_ascii=False))
 
 
 def get_parser():

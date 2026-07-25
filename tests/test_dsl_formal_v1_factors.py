@@ -187,6 +187,9 @@ def test_formal_capability_excludes_a100_rejected_options():
     normalization = profile.factor("F5.3")
     assert all(item["basis_type"] != "bessel" for item in radial.alternative_options)
     assert all(item["norm_layer"] != "instance" for item in normalization.alternative_options)
+    assert all(item["norm_layer"] != "graph" for item in normalization.alternative_options)
+    assert {tuple(item["radial_hidden"]) for item in radial.alternative_options} >= {(64, 64), (96, 96)}
+    assert {item["norm_layer"] for item in normalization.alternative_options} >= {"layer", "fast_layer"}
     assert radial.rejected_options and normalization.rejected_options
 
 

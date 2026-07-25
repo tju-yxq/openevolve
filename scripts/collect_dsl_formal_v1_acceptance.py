@@ -147,6 +147,48 @@ def main():
     check("smoke_factor_coverage", set(sources["required_smoke_factors"]) <= covered, sorted(covered))
     check("smoke_all_rows_valid", bool(smoke_rows) and all(row["valid"] for row in smoke_rows), smoke_rows)
 
+    option_admission = sources.get("option_admission") or {}
+    option_summaries = {}
+
+    def option_result(spec):
+        path = str(spec["summary"])
+        if path not in option_summaries:
+            option_summaries[path] = read_json(path)
+            bind(path)
+        return (option_summaries[path].get("results") or {}).get(str(spec["key"])) or {}
+
+    admitted_options = []
+    for spec in option_admission.get("accepted", []):
+        result = option_result(spec)
+        checkpoint = Path(str(result.get("checkpoint_last", "")))
+        valid = (
+            result.get("valid") is True
+            and result.get("test_evaluated") is False
+            and int(result.get("endpoint_step", 0)) >= int(sources["minimum_smoke_steps"])
+            and checkpoint.is_file()
+            and float(result.get("max_symmetry_error", float("inf")))
+            <= float(protocol["relative_error_threshold"])
+            and float(result.get("max_absolute_symmetry_error", float("inf")))
+            <= float(protocol["absolute_error_threshold"])
+        )
+        details = dict(spec, valid=valid, checkpoint=str(checkpoint))
+        admitted_options.append(details)
+        check("option_admission:accepted:{}".format(spec["key"]), valid, details)
+
+    rejected_options = []
+    for spec in option_admission.get("rejected", []):
+        result = option_result(spec)
+        error = str(result.get("error", ""))
+        valid = (
+            result.get("valid") is False
+            and result.get("test_evaluated") is False
+            and str(spec.get("error_contains", "")) in error
+            and not result.get("checkpoint_last")
+        )
+        details = dict(spec, valid=valid, error=error)
+        rejected_options.append(details)
+        check("option_admission:rejected:{}".format(spec["key"]), valid, details)
+
     recovery = sources["recovery"]
     recovery_summary = read_json(recovery["summary"])
     recovery_progress = read_json(recovery["progress"])
@@ -195,6 +237,10 @@ def main():
             "maximum_absolute_error": max(observed_absolute) if observed_absolute else None,
         },
         "smoke_factors": sorted(covered),
+        "option_admission": {
+            "accepted": admitted_options,
+            "rejected": rejected_options,
+        },
         "test_evaluated": False,
         "checks": checks,
     }

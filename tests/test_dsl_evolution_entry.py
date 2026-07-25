@@ -7,6 +7,7 @@ from openevolve_adapter import evaluator
 from scripts.run_dsl_evolution import (
     _ensure_compiler_manifest,
     _is_exact_constructor_capability_label_fix,
+    _is_certified_option_expansion,
     _is_formal_root_parent_policy_fix,
     _lineage_root,
     _next_forced_factor,
@@ -135,6 +136,24 @@ def test_root_parent_policy_manifest_migration_is_narrow():
     changed = json.loads(json.dumps(new))
     changed["formal_v1_search_protocol"]["valid_per_factor_target"] = 3
     assert not _is_formal_root_parent_policy_fix(old, changed)
+
+
+def test_certified_option_expansion_only_accepts_monotonic_f2_and_f5_growth():
+    old = _manifest_with_capabilities("exact_constructor")
+    for region in old["region_registry"]:
+        region["allowed_parameter_values"] = {"p": [0]}
+        region["allowed_parameter_combinations"] = [{"p": 0}]
+    new = json.loads(json.dumps(old))
+    for region in new["region_registry"]:
+        if region["factor_id"] in {"F2.2", "F5.3"}:
+            region["allowed_parameter_values"]["p"].append(1)
+            region["allowed_parameter_combinations"].append({"p": 1})
+    assert _is_certified_option_expansion(old, new)
+    removed = json.loads(json.dumps(new))
+    next(item for item in removed["region_registry"] if item["factor_id"] == "F2.2")[
+        "allowed_parameter_combinations"
+    ] = [{"p": 1}]
+    assert not _is_certified_option_expansion(old, removed)
 
 
 def test_evaluator_forwards_the_preregistered_seed(monkeypatch):

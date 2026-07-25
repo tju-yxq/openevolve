@@ -254,6 +254,37 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
                 )
                 _write_json(path, payload)
                 return path
+            if _is_certified_option_expansion(existing, payload):
+                valid_records = _valid_candidate_records(Path(output) / "evolution.jsonl")
+                old_bytes = path.read_bytes()
+                old_hash = hashlib.sha256(old_bytes).hexdigest()
+                new_bytes = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+                new_hash = hashlib.sha256(new_bytes).hexdigest()
+                archive = Path(output) / "compiler_manifest_migrations"
+                archive.mkdir(exist_ok=True)
+                previous = archive / "compiler_manifest_{}.previous.json".format(old_hash[:12])
+                if not previous.exists():
+                    previous.write_bytes(old_bytes)
+                _append_jsonl(
+                    archive / "migrations.jsonl",
+                    {
+                        "kind": "certified_formal_option_expansion",
+                        "old_sha256": old_hash,
+                        "new_sha256": new_hash,
+                        "valid_candidates_preserved": [
+                            (record.get("metrics") or {}).get("architecture_id", "")
+                            for record in valid_records
+                        ],
+                        "reason": (
+                            "Additional root-isolated F2.2 and F5.3 constructor options passed the frozen "
+                            "300-step A100 admission protocol and are required to make the preregistered "
+                            "two-unique-candidates-per-factor cohort reachable"
+                        ),
+                        "migrated_at": _now(),
+                    },
+                )
+                _write_json(path, payload)
+                return path
             raise RuntimeError(
                 "compiler manifest mismatch; resume requires the exact task, language, rewrite registry, compiler, and backend semantics"
             )
@@ -321,6 +352,46 @@ def _is_formal_root_parent_policy_fix(existing, requested):
     old["formal_v1_search_protocol"] = old_protocol
     new["formal_v1_search_protocol"] = new_protocol
     return old == new
+
+
+def _canonical_items(values):
+    return {json.dumps(value, ensure_ascii=False, sort_keys=True) for value in values}
+
+
+def _is_certified_option_expansion(existing, requested):
+    old = json.loads(json.dumps(existing))
+    new = json.loads(json.dumps(requested))
+    old_regions = old.pop("region_registry", None)
+    new_regions = new.pop("region_registry", None)
+    if old != new or not isinstance(old_regions, list) or not isinstance(new_regions, list):
+        return False
+    old_by_factor = {str(item.get("factor_id", "")): item for item in old_regions}
+    new_by_factor = {str(item.get("factor_id", "")): item for item in new_regions}
+    if set(old_by_factor) != set(new_by_factor):
+        return False
+    changed = set()
+    for factor_id in old_by_factor:
+        old_region = dict(old_by_factor[factor_id])
+        new_region = dict(new_by_factor[factor_id])
+        old_values = old_region.pop("allowed_parameter_values", {})
+        new_values = new_region.pop("allowed_parameter_values", {})
+        old_combinations = old_region.pop("allowed_parameter_combinations", [])
+        new_combinations = new_region.pop("allowed_parameter_combinations", [])
+        if old_region != new_region:
+            return False
+        if factor_id not in {"F2.2", "F5.3"}:
+            if old_values != new_values or old_combinations != new_combinations:
+                return False
+            continue
+        if set(old_values) != set(new_values):
+            return False
+        if any(not _canonical_items(values) <= _canonical_items(new_values[path]) for path, values in old_values.items()):
+            return False
+        if not _canonical_items(old_combinations) <= _canonical_items(new_combinations):
+            return False
+        if old_values != new_values or old_combinations != new_combinations:
+            changed.add(factor_id)
+    return changed == {"F2.2", "F5.3"}
 
 
 def _is_exact_constructor_capability_label_fix(existing, requested):

@@ -18,6 +18,29 @@
   ],
   "minimum_smoke_steps": 300,
   "required_smoke_factors": ["parent", "F2.2", "F4.4", "F5.3", "F6.3"],
+  "option_admission": {
+    "accepted": [
+      {
+        "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_option_admission_seed207/summary.json",
+        "key": "F2_gaussian64_hidden64"
+      },
+      {
+        "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_option_admission_seed208/summary.json",
+        "key": "F2_gaussian128_hidden96"
+      },
+      {
+        "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_option_admission_seed208/summary.json",
+        "key": "F5_fast_layer"
+      }
+    ],
+    "rejected": [
+      {
+        "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_option_admission_seed208/summary.json",
+        "key": "F5_graph",
+        "error_contains": "symmetry errors"
+      }
+    ]
+  },
   "recovery_start_step": 859,
   "recovery_end_step": 1000,
   "recovery": {

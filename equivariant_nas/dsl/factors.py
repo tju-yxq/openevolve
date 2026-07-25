@@ -76,6 +76,8 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
             {"basis_type": "gaussian", "num_basis": 128, "radial_hidden": [64, 64]},
             (
                 {"basis_type": "gaussian", "num_basis": 96, "radial_hidden": [96, 96]},
+                {"basis_type": "gaussian", "num_basis": 64, "radial_hidden": [64, 64]},
+                {"basis_type": "gaussian", "num_basis": 128, "radial_hidden": [96, 96]},
             ),
             (
                 {
@@ -106,12 +108,21 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
             {"norm_layer": "layer", "rescale_degree": False},
             (
                 {"norm_layer": "layer", "rescale_degree": True},
+                {"norm_layer": "fast_layer", "rescale_degree": False},
             ),
             (
                 {
                     "norm_layer": "instance",
                     "rescale_degree": False,
                     "rejection_reason": "A100 formal-v1 symmetry gate failed at seed 201",
+                },
+                {
+                    "norm_layer": "graph",
+                    "rescale_degree": False,
+                    "rejection_reason": (
+                        "A100 formal-v1 pre-training symmetry gate failed at seed 208: "
+                        "relative=0.0610734, absolute=0.138140"
+                    ),
                 },
             ),
         ),

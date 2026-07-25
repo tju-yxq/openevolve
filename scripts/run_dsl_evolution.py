@@ -3,6 +3,7 @@
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -18,6 +19,8 @@ from equivariant_nas.dsl import (
     EvidenceItem,
     EvidenceStore,
     LanguageVersion,
+    LanguageEvolutionPreregistration,
+    MotifDiscoveryPolicy,
     core_registry,
     reference_motif_registry,
     select_active_vocabulary,
@@ -62,6 +65,94 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
         )
     _write_json(path, payload)
     return path
+
+
+def _ensure_language_preregistration(output, preregistration, *, database_has_programs):
+    path = Path(output) / "language_boundary_preregistration.json"
+    payload = dict(preregistration.to_dict(), preregistration_hash=preregistration.content_hash())
+    if path.exists():
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if existing != payload:
+            raise RuntimeError("language-boundary preregistration mismatch; a running cycle cannot change its language policy")
+        return path
+    if database_has_programs:
+        raise RuntimeError("existing OpenEvolve cycle has no language-boundary preregistration")
+    _write_json(path, payload)
+    return path
+
+
+def _lineage_root(program, programs):
+    current = program
+    seen = set()
+    while getattr(current, "parent_id", None) and current.parent_id in programs and current.id not in seen:
+        seen.add(current.id)
+        current = programs[current.parent_id]
+    metadata = dict(getattr(program, "metadata", {}) or {})
+    island = metadata.get("island_id", metadata.get("island"))
+    return "island:{}".format(island) if island is not None else "root:{}".format(current.id)
+
+
+def _write_language_cycle_snapshot(database, output, compiler, task, language, preregistration, holdout_modulus):
+    target = Path(output) / "language_cycle_candidates"
+    target.mkdir(exist_ok=True)
+    records = {}
+    programs = database.programs
+    for candidate in programs.values():
+        metrics = dict(candidate.metrics or {})
+        if not metrics.get("valid") or metrics.get("test_evaluated"):
+            continue
+        try:
+            source = loads_program(candidate.code)
+            artifact = compiler.analyze(source, task)
+        except Exception as exc:
+            _append_jsonl(Path(output) / "language_cycle_snapshot_errors.jsonl", {
+                "program_id": candidate.id,
+                "error_type": type(exc).__name__,
+                "error": str(exc)[:4000],
+            })
+            continue
+        reported = str(metrics.get("architecture_id", ""))
+        if reported and reported != artifact.architecture_id:
+            _append_jsonl(Path(output) / "language_cycle_snapshot_errors.jsonl", {
+                "program_id": candidate.id,
+                "reported_architecture_id": reported,
+                "compiled_architecture_id": artifact.architecture_id,
+                "error": "semantic identity mismatch",
+            })
+            continue
+        if artifact.architecture_id in records:
+            continue
+        assignment = int(hashlib.sha256(
+            "{}:{}".format(preregistration.boundary_id, artifact.architecture_id).encode("utf-8")
+        ).hexdigest(), 16) % holdout_modulus
+        partition = "heldout_replay" if assignment == 0 else "support"
+        path = target / "{}.dsl.json".format(artifact.architecture_id)
+        path.write_text(dumps_program(source), encoding="utf-8")
+        records[artifact.architecture_id] = {
+            "architecture_id": artifact.architecture_id,
+            "program_id": candidate.id,
+            "program_path": str(path),
+            "lineage_id": _lineage_root(candidate, programs),
+            "task_id": task.task_id,
+            "visible_splits": ["train", "validation"],
+            "test_evaluated": False,
+            "discovery_partition": partition,
+            "language_registry_hash": language.registry_hash(),
+            "rewrite_registry_hash": artifact.rewrite_registry_hash,
+        }
+    snapshot = {
+        "boundary_preregistration": dict(
+            preregistration.to_dict(),
+            preregistration_hash=preregistration.content_hash(),
+        ),
+        "closed_at": _now(),
+        "selection_rule": preregistration.selection_rule,
+        "partition_rule": preregistration.partition_rule,
+        "candidate_count": len(records),
+        "candidates": [records[key] for key in sorted(records)],
+    }
+    _write_json(Path(output) / "language_cycle_snapshot.json", snapshot)
+    return snapshot
 
 
 def _measured_evidence(program, inspirations):
@@ -143,7 +234,7 @@ async def run(args):
     )
     vocabulary = select_active_vocabulary(language, task.group, primitives, motifs)
     store = EvidenceStore(str(output / "evidence.sqlite"))
-    store.register_language(language)
+    store.register_language(language, motifs)
 
     config = load_config(args.config)
     config.database.db_path = str(output / "database")
@@ -152,12 +243,35 @@ async def run(args):
     for model in config.llm.models:
         model.random_seed = args.seed
     database = ProgramDatabase(config.database)
+    language_preregistration = None
+    if args.language_cycle_index:
+        if args.language_holdout_modulus < 2:
+            raise ValueError("language holdout modulus must be at least two")
+        policy = MotifDiscoveryPolicy()
+        boundary_id = args.language_boundary_id or "dsl-cycle-{}".format(args.language_cycle_index)
+        preregistration_path = output / "language_boundary_preregistration.json"
+        preregistered_at = (
+            str(json.loads(preregistration_path.read_text(encoding="utf-8"))["preregistered_at"])
+            if preregistration_path.exists()
+            else _now()
+        )
+        language_preregistration = LanguageEvolutionPreregistration(
+            boundary_id,
+            language.version,
+            args.language_cycle_index,
+            "all valid compiled test-hidden programs present in the OpenEvolve database at cycle close",
+            "sha256(boundary_id:architecture_id) mod {} equals zero is heldout_replay; all others are support".format(args.language_holdout_modulus),
+            policy.content_hash(),
+            preregistered_at,
+        )
+        _ensure_language_preregistration(output, language_preregistration, database_has_programs=bool(database.programs))
     compiler_manifest = {
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
         "backend_semantics_version": BACKEND_SEMANTICS_VERSION,
         "rewrite_registry_hash": strict_rewrite_registry_hash(),
         "language_registry_hash": language.registry_hash(),
         "task_contract_hash": task.content_hash(),
+        "language_preregistration_hash": language_preregistration.content_hash() if language_preregistration else "",
     }
     _ensure_compiler_manifest(output, compiler_manifest, database_has_programs=bool(database.programs))
     ensemble = LLMEnsemble(config.llm.models)
@@ -230,6 +344,8 @@ async def run(args):
             "last_completed_iteration": iteration - 1,
             "stop_file": str(stop_file),
         })
+        island_index = (iteration - 1) % len(database.islands)
+        database.set_current_island(island_index)
         parent, inspirations = database.sample(num_inspirations=args.inspirations)
         parent_program = loads_program(parent.code)
         scope = tuple(node.id for node in parent_program.nodes) + tuple(
@@ -240,6 +356,7 @@ async def run(args):
             "parent_program_id": parent.id,
             "parent_architecture_id": parent.metrics.get("architecture_id"),
             "inspiration_ids": [item.id for item in inspirations],
+            "target_island": island_index,
         }
         try:
             generated = await engine.generate(
@@ -291,7 +408,7 @@ async def run(args):
                         "planner_repair_count": generated.planner_repair_count,
                     },
                 )
-                database.add(child, iteration=iteration)
+                database.add(child, iteration=iteration, target_island=island_index)
         except Exception as exc:
             record.update({"error_type": type(exc).__name__, "error": str(exc)[:4000]})
         _append_jsonl(output / "evolution.jsonl", record)
@@ -316,6 +433,17 @@ async def run(args):
 
     best = database.get_best_program()
     database.save(str(output / "database"), iteration=completed)
+    language_snapshot = None
+    if language_preregistration is not None:
+        language_snapshot = _write_language_cycle_snapshot(
+            database,
+            output,
+            compiler,
+            task,
+            language,
+            language_preregistration,
+            args.language_holdout_modulus,
+        )
     final = {
         "last_completed_iteration": completed,
         "program_count": len(database.programs),
@@ -327,6 +455,7 @@ async def run(args):
         "rewrite_registry_hash": strict_rewrite_registry_hash(),
         "status": "stopped" if stop_file.exists() else "completed",
         "updated_at": _now(),
+        "language_cycle_snapshot": str(output / "language_cycle_snapshot.json") if language_snapshot is not None else "",
     }
     _write_json(output / "summary.json", final)
     _write_json(output / "heartbeat.json", dict(final, stop_file=str(stop_file)))
@@ -352,6 +481,9 @@ def get_parser():
     parser.add_argument("--initial-metrics", default="")
     parser.add_argument("--skip-symmetry", action="store_true")
     parser.add_argument("--stop-file", default="")
+    parser.add_argument("--language-cycle-index", type=int, default=0)
+    parser.add_argument("--language-boundary-id", default="")
+    parser.add_argument("--language-holdout-modulus", type=int, default=5)
     return parser
 
 

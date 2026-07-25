@@ -41,6 +41,18 @@ def test_evidence_gated_motif_publishes_a_new_language_version():
         True,
         ("proof:1",),
         {},
+        source_architecture_ids=("architecture:a", "architecture:b"),
+        replay_artifact_ids=("replay:a", "replay:b"),
+        heldout_replay_artifact_ids=("replay:heldout",),
+        replay_passed=True,
+        test_hidden=True,
+        language_registry_hash="language-registry",
+        rewrite_registry_hash="rewrite-registry",
+        discovery_policy_hash="discovery-policy",
+        boundary_id="cycle-1-close",
+        proposal_id="proposal:1",
+        regression_artifact_ids=("pytest:regression",),
+        generation_experiment_ids=("matched-generation:1",),
     )
     child = publish_motif_version(parent, new_motif(), evidence, registry, new_version="1.1.0", frozen_at="new")
     assert child.parent_version == "1.0.0"

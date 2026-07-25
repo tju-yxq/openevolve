@@ -16,6 +16,7 @@ from .completion import CompletionDistance, HoleSink, TypedHole
 from .diagnostics import DSLValidationError, Diagnostic
 from .inference import InferenceResult
 from .language import LanguageVersion, VocabularyDecision
+from .motifs import MotifRegistry
 from .patch import TypedPatch
 from .registry import PrimitiveRegistry
 from .rewrites import RewriteStep
@@ -103,10 +104,60 @@ CREATE TABLE IF NOT EXISTS rewrite_runs (
     trace_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS motif_occurrences (
+    occurrence_id TEXT PRIMARY KEY,
+    architecture_id TEXT NOT NULL REFERENCES candidate_programs(architecture_id),
+    lineage_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    language_registry_hash TEXT NOT NULL,
+    rewrite_registry_hash TEXT NOT NULL,
+    subgraph_hash TEXT NOT NULL,
+    node_ids_json TEXT NOT NULL,
+    boundary_json TEXT NOT NULL,
+    record_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS motif_proposals (
+    proposal_id TEXT PRIMARY KEY,
+    motif_hash TEXT NOT NULL,
+    parent_language_version TEXT NOT NULL,
+    language_registry_hash TEXT NOT NULL,
+    rewrite_registry_hash TEXT NOT NULL,
+    canonical_form_hash TEXT NOT NULL,
+    source_architecture_ids_json TEXT NOT NULL,
+    proposal_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS language_replay_runs (
+    replay_id TEXT PRIMARY KEY,
+    proposal_id TEXT NOT NULL REFERENCES motif_proposals(proposal_id),
+    architecture_id TEXT NOT NULL REFERENCES candidate_programs(architecture_id),
+    occurrence_id TEXT NOT NULL REFERENCES motif_occurrences(occurrence_id),
+    before_semantic_id TEXT NOT NULL,
+    after_semantic_id TEXT NOT NULL,
+    passed INTEGER NOT NULL,
+    details_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS motif_admission_runs (
+    admission_run_id TEXT PRIMARY KEY,
+    proposal_id TEXT NOT NULL REFERENCES motif_proposals(proposal_id),
+    boundary_id TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    accepted INTEGER NOT NULL,
+    reasons_json TEXT NOT NULL,
+    evidence_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_eval_architecture ON evaluations(architecture_id, split, fidelity_steps);
 CREATE INDEX IF NOT EXISTS idx_prompt_architecture ON prompt_runs(architecture_id, role);
 CREATE INDEX IF NOT EXISTS idx_completion_architecture ON completion_runs(architecture_id, status);
 CREATE INDEX IF NOT EXISTS idx_rewrite_architecture ON rewrite_runs(architecture_id, compiler_version);
+CREATE INDEX IF NOT EXISTS idx_motif_occurrence_architecture ON motif_occurrences(architecture_id, subgraph_hash);
+CREATE INDEX IF NOT EXISTS idx_motif_proposal_status ON motif_proposals(parent_language_version, status);
+CREATE INDEX IF NOT EXISTS idx_language_replay_proposal ON language_replay_runs(proposal_id, passed);
+CREATE INDEX IF NOT EXISTS idx_motif_admission_proposal ON motif_admission_runs(proposal_id, accepted);
 """
 
 
@@ -151,7 +202,29 @@ class EvidenceStore:
             )
         return task_hash
 
-    def register_language(self, language: LanguageVersion) -> None:
+    def register_language(self, language: LanguageVersion, motifs: Optional[MotifRegistry] = None) -> None:
+        if language.motif_names and motifs is None:
+            raise DSLValidationError([
+                Diagnostic("E_STORE_009", "language snapshots with motifs require the complete motif registry")
+            ])
+        if motifs is not None:
+            missing = set(language.motif_names) - set(motifs.names())
+            if missing:
+                raise DSLValidationError([
+                    Diagnostic("E_STORE_010", "motif registry cannot materialize the language snapshot", details={"missing": sorted(missing)})
+                ])
+            drifted = {
+                name: {
+                    "expected": language.motif_hashes[name],
+                    "actual": motifs.resolve(name).content_hash(),
+                }
+                for name in language.motif_names
+                if name in language.motif_hashes and language.motif_hashes[name] != motifs.resolve(name).content_hash()
+            }
+            if drifted:
+                raise DSLValidationError([
+                    Diagnostic("E_STORE_011", "motif definitions differ from the frozen language hashes", details={"motifs": drifted})
+                ])
         record = {
             "version": language.version,
             "parent_version": language.parent_version,
@@ -161,12 +234,51 @@ class EvidenceStore:
             "metadata": dict(language.metadata),
             "primitive_hashes": dict(language.primitive_hashes),
             "motif_hashes": dict(language.motif_hashes),
+            "motif_definitions": {
+                name: motifs.resolve(name).to_dict()
+                for name in language.motif_names
+            } if motifs is not None else {},
         }
         with self._connect() as connection:
             connection.execute(
                 "INSERT OR IGNORE INTO language_versions VALUES (?, ?, ?, ?, ?)",
                 (language.version, language.parent_version, language.registry_hash(), _json(record), _now()),
             )
+
+    def get_language_snapshot(self, version: str) -> Optional[Tuple[LanguageVersion, MotifRegistry]]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT registry_hash, record_json FROM language_versions WHERE version=?",
+                (version,),
+            ).fetchone()
+        if row is None:
+            return None
+        record = json.loads(row[1])
+        language = LanguageVersion(
+            str(record["version"]),
+            str(record["parent_version"]),
+            tuple(str(item) for item in record.get("primitive_names", ())),
+            tuple(str(item) for item in record.get("motif_names", ())),
+            str(record["frozen_at"]),
+            dict(record.get("metadata", {})),
+            dict(record.get("primitive_hashes", {})),
+            dict(record.get("motif_hashes", {})),
+        )
+        if language.registry_hash() != row[0]:
+            raise DSLValidationError([
+                Diagnostic("E_STORE_007", "stored language record does not match its registry hash", actual=version)
+            ])
+        motifs = MotifRegistry.from_dict(record.get("motif_definitions", {}))
+        missing = set(language.motif_names) - set(motifs.names())
+        if missing:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_STORE_008",
+                    "stored language snapshot lacks complete motif definitions",
+                    details={"missing": sorted(missing)},
+                )
+            ])
+        return language, motifs
 
     def add_candidate(
         self,
@@ -323,6 +435,135 @@ class EvidenceStore:
                 ),
             )
         return completion_id
+
+    def add_motif_occurrence(self, occurrence) -> str:
+        payload = occurrence.to_dict()
+        boundary = {
+            "inputs": payload["boundary_inputs"],
+            "outputs": payload["boundary_outputs"],
+        }
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO motif_occurrences
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    occurrence.occurrence_id,
+                    occurrence.architecture_id,
+                    occurrence.lineage_id,
+                    occurrence.task_id,
+                    occurrence.language_registry_hash,
+                    occurrence.rewrite_registry_hash,
+                    occurrence.topology_hash,
+                    _json(list(occurrence.node_ids)),
+                    _json(boundary),
+                    _json(payload),
+                    _now(),
+                ),
+            )
+        return occurrence.occurrence_id
+
+    def add_motif_proposal(
+        self,
+        proposal,
+        *,
+        parent_language_version: str,
+        language_registry_hash: str,
+        rewrite_registry_hash: str,
+        status: str = "proposed",
+    ) -> str:
+        allowed = {"proposed", "rejected", "admissible", "published"}
+        if status not in allowed:
+            raise DSLValidationError([
+                Diagnostic("E_STORE_006", "unknown motif proposal status", actual=status, details={"allowed": sorted(allowed)})
+            ])
+        payload = proposal.to_dict()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO motif_proposals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(proposal_id) DO UPDATE SET status=excluded.status
+                """,
+                (
+                    proposal.proposal_id,
+                    proposal.motif.content_hash(),
+                    parent_language_version,
+                    language_registry_hash,
+                    rewrite_registry_hash,
+                    proposal.canonical_form_hash,
+                    _json(list(proposal.source_architecture_ids)),
+                    _json(payload),
+                    status,
+                    _now(),
+                ),
+            )
+        return proposal.proposal_id
+
+    def add_language_replay(self, result) -> str:
+        payload = result.to_dict()
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO language_replay_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    result.replay_id,
+                    result.proposal_id,
+                    result.architecture_id,
+                    result.occurrence_id,
+                    result.before_semantic_id,
+                    result.after_semantic_id,
+                    int(result.passed),
+                    _json(payload),
+                    _now(),
+                ),
+            )
+        return result.replay_id
+
+    def add_motif_admission(self, proposal_id: str, boundary_id: str, decision, evidence) -> str:
+        payload = {
+            "proposal_id": proposal_id,
+            "boundary_id": boundary_id,
+            "decision": decision.to_dict(),
+            "evidence": evidence.to_dict(),
+        }
+        admission_run_id = _content_id("motif-admission", payload)
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO motif_admission_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    admission_run_id,
+                    proposal_id,
+                    boundary_id,
+                    decision.policy_version,
+                    int(decision.accepted),
+                    _json(list(decision.reasons)),
+                    _json(evidence.to_dict()),
+                    _now(),
+                ),
+            )
+        return admission_run_id
+
+    def get_motif_proposal(self, proposal_id: str) -> Optional[Dict[str, Any]]:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT proposal_json, status, parent_language_version, language_registry_hash,
+                       rewrite_registry_hash, created_at
+                FROM motif_proposals WHERE proposal_id=?
+                """,
+                (proposal_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "proposal_id": proposal_id,
+            "proposal": json.loads(row[0]),
+            "status": row[1],
+            "parent_language_version": row[2],
+            "language_registry_hash": row[3],
+            "rewrite_registry_hash": row[4],
+            "created_at": row[5],
+        }
 
     def get_completion_run(self, completion_id: str) -> Optional[Dict[str, Any]]:
         with self._connect() as connection:

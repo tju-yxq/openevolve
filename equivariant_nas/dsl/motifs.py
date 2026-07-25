@@ -69,6 +69,47 @@ class MotifDefinition:
         text = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "input_ports": list(self.input_ports),
+            "output_bindings": dict(self.output_bindings),
+            "template_nodes": [item.to_dict() for item in self.template_nodes],
+            "required_attrs": list(self.required_attrs),
+            "group_families": list(self.group_families),
+            "provenance": dict(self.provenance),
+            "certification": self.certification,
+            "semantic_constraints": list(self.semantic_constraints),
+            "edit_guidance": list(self.edit_guidance),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "MotifDefinition":
+        allowed = {
+            "name", "version", "input_ports", "output_bindings", "template_nodes",
+            "required_attrs", "group_families", "provenance", "certification",
+            "semantic_constraints", "edit_guidance",
+        }
+        unknown = set(data) - allowed
+        if unknown:
+            raise DSLValidationError([
+                Diagnostic("E_MOTIF_011", "unknown motif definition fields", details={"fields": sorted(unknown)})
+            ])
+        return cls(
+            str(data["name"]),
+            int(data["version"]),
+            tuple(str(item) for item in data.get("input_ports", ())),
+            {str(key): str(value) for key, value in data.get("output_bindings", {}).items()},
+            tuple(Node.from_dict(item) for item in data.get("template_nodes", ())),
+            tuple(str(item) for item in data.get("required_attrs", ())),
+            tuple(str(item) for item in data.get("group_families", ())),
+            dict(data.get("provenance", {})),
+            str(data.get("certification", "constructive")),
+            tuple(str(item) for item in data.get("semantic_constraints", ())),
+            tuple(str(item) for item in data.get("edit_guidance", ())),
+        )
+
 
 class MotifRegistry:
     def __init__(self) -> None:
@@ -88,6 +129,21 @@ class MotifRegistry:
 
     def names(self) -> Tuple[str, ...]:
         return tuple(sorted(self._items))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {name: self.resolve(name).to_dict() for name in self.names()}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "MotifRegistry":
+        registry = cls()
+        for name, payload in sorted(data.items()):
+            motif = MotifDefinition.from_dict(payload)
+            if motif.qualified_name != name:
+                raise DSLValidationError([
+                    Diagnostic("E_MOTIF_012", "motif snapshot key differs from its definition", expected=name, actual=motif.qualified_name)
+                ])
+            registry.register(motif)
+        return registry
 
 
 def expand_motifs(program: ArchitectureProgram, registry: MotifRegistry) -> ArchitectureProgram:

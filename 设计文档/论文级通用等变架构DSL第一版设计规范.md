@@ -1245,6 +1245,131 @@ EvoEquiLang不是Equiformer超参数表，也不是让LLM自由生成Python的�
 
 当前严格规则库只准入两条可直接辩护的规则：无属性、单输入单输出`core.identity@1`消除，以及相同类型二元`core.residual_add@1`的操作数规范化。每个`RewriteStep`记录规则ID、版本、等价等级、证明依据、前后程序指纹、受影响节点和局部替换细节；规则重复执行到固定点，规则描述内容再形成rewrite registry哈希。
 
-Compiler先展开motif，再执行严格重写，随后运行TypeChecker和后端lowering。architecture ID从`evoequilang-2`开始同时绑定canonical AST、任务契约、核心registry、rewrite registry、compiler和backend语义版本。OpenEvolve运行目录新增不可变`compiler_manifest.json`；已有数据库缺少manifest或任一哈希不一致时拒绝恢复，防止把旧谱系静默重解释为新语言。
+Compiler先展开motif，再执行严格重写，随后运行TypeChecker和后端lowering。architecture ID从`evoequilang-2`开始同时绑定canonical AST、任务契约、核心registry、rewrite registry、compiler和backend语义版本。`evoequilang-3`进一步把单输出节点的`node`与`node:out`统一为同一值引用，修复motif展开前后仅因引用拼写不同而产生不同ID的问题。OpenEvolve运行目录保存不可变`compiler_manifest.json`；已有数据库缺少manifest或任一哈希不一致时拒绝恢复，防止把旧谱系静默重解释为新语言。
 
 当前proof trace已经写入独立`rewrite_runs`证据表，并具有identity固定点、残差交换、concat非交换负例和真实e3nn数值回归。它仍不是完整e-graph系统：尚未实现等价类饱和、条件重写、类型化pattern matching、成本提取、证明组合压缩和资源受限饱和调度。
+
+## 二十六、从实现反推的motif语言进化规范
+
+### 26.1 双时间尺度不是一句原则
+
+候选搜索和语言更新必须是两个不可交错的状态机。一个OpenEvolve cycle开始前，系统冻结父语言版本、原语与motif内容哈希、编译器和rewrite registry，并预注册以下内容：
+
+- boundary ID和cycle编号；
+- 候选纳入规则；
+- support与held-out replay的确定性划分规则；
+- 有类型子图发现策略的完整内容哈希；
+- 每个boundary最多发布一个motif；
+- test始终不可见。
+
+cycle运行期间只产生候选，不能修改词汇。cycle关闭后，预注册规则才物化为确定的候选ID集合，并形成`LanguageEvolutionBoundary`。运行时策略、候选集合、父语言或test可见性有任一不一致，语言更新必须失败。这样可以避免观察validation结果后再改变motif发现范围、held-out划分或准入阈值。
+
+### 26.2 候选证据的最小单位
+
+进入语言学习的每个`CandidateLineageEvidence`必须绑定：
+
+- 已成功编译的`CompilationArtifact`及语义架构ID；
+- 独立谱系ID和任务ID；
+- 可见数据split；
+- 冻结语言registry哈希和rewrite registry哈希；
+- `support`或`heldout_replay`分区；
+- `test_evaluated=false`。
+
+谱系ID不能简单使用候选ID。OpenEvolve接入优先采用island ID；没有island元数据时回溯到根祖先。来自同一根祖先的多个后代只算一个谱系，不能通过复制相近候选伪造“独立谱系支持”。
+
+### 26.3 有类型连通子图枚举
+
+发现器只处理编译后、严格重写后且位于程序输出祖先闭包中的图。对每个support程序，在预注册的节点数上下界内枚举无向底图连通的节点集合，并计算：
+
+1. 从子图外部进入内部的边界输入；
+2. 被外部消费者或程序输出使用的边界输出；
+3. 每个边界值的完整`EquivariantType`；
+4. 每个内部输出的推导类型；
+5. 忽略源码节点名、但保留操作、端口和有序引用关系的规范拓扑；
+6. 语言与rewrite registry身份。
+
+节点数上限当前为7，因为第一版规范化通过有界排列获得与源码ID无关的最小表示。实际默认上限为4，避免阶乘规范化和连通子图数量失控。超过预注册的每程序子图预算时必须停止并报错，不能静默截断后继续声称完整发现。
+
+### 26.4 反统一的安全边界
+
+两个子图只有在操作拓扑、内部推导类型和完整边界类型一致时才进入同一cluster。自动反统一不能直接把group、irrep、parity、frame、carrier、measure或证明token替换成变量。第一版只允许原语注册表通过`motif_parameter_attrs`显式声明的非结构属性成为变量，例如：
+
+- 标量或norm activation名称；
+- cutoff envelope参数；
+- 完整等变路径级dropout概率；
+- S²后端网格分辨率。
+
+`out_irreps`、`lmax`、`frame_id`和载体变换不属于普通属性泛化。未来若要支持群多态、表示多态或frame多态motif，必须增加带kind的类型变量、约束求解与单独证明规则，不能借用普通JSON占位符绕过类型系统。
+
+对每个对齐节点，属性集合必须相同；固定属性必须逐值相等；发生差异的属性必须被对应原语明确列为可参数化。反统一后生成的每个变量具有稳定名称和逐occurrence绑定，motif仍必须完全展开为可信原语。
+
+### 26.5 描述长度不是性能替代指标
+
+当前描述长度收益定义为：
+
+$$
+G_{\mathrm{MDL}}=L(\text{all repeated expanded nodes})-L(\text{motif definition})-\sum_iL(\text{motif call}_i).
+$$
+
+编码采用稳定JSON字符长度，用于比较同一发现策略中的重复结构压缩，不代表Kolmogorov复杂度，也不能替代validation MAE。若$G_{\mathrm{MDL}}\leq0$，motif只有在预注册的matched generation实验中提高有效候选率，且保存实验artifact ID时，才可能通过这一项准入门。
+
+### 26.6 fold-expand语义重放
+
+对每个motif提案，系统先在support occurrence上执行折叠：删除原子子图，插入motif调用，重接所有外部消费者和程序输出。随后重新展开motif、执行严格重写、完成类型检查，并比较折叠前后的semantic architecture ID。
+
+同一流程还必须作用于未参加反统一的`heldout_replay`程序。发现器在held-out程序中寻找相同有类型拓扑，依据模板中的变量位置重新提取属性绑定，而不是复用support绑定。以下任一情况都使重放失败：
+
+- 找不到兼容的held-out occurrence；
+- 固定属性不一致；
+- 展开后类型或证明义务失败；
+- fold-expand前后语义ID不同；
+- 使用了test可见程序。
+
+`node`与`node:out`是同一单输出值。编译器语义版本`evoequilang-3`正式规范化这两种写法，否则motif展开器产生的显式端口引用会导致伪语义差异。
+
+### 26.7 准入是证据合取而不是LLM投票
+
+一个新motif必须同时满足：
+
+1. certification为`constructive`或`core-certified`；
+2. 至少两个独立support谱系，或有明确held-out任务迁移证据；
+3. 具有正描述长度收益，或有带artifact的matched generation有效率提升；
+4. 完整语言回归通过且保存回归artifact ID；
+5. 与已有motif完成内容哈希新颖性检查；
+6. 具有构造证明artifact；
+7. 所有support重放通过；
+8. 至少一个held-out程序重放通过；
+9. test-hidden、父语言、rewrite registry、发现策略和boundary身份完整；
+10. proposal、source architecture和所有replay均有内容寻址ID。
+
+LLM可以为提案生成名称、解释和使用建议，但不能决定等价性、证明状态、新颖性或是否发布。一个boundary即使有多个admissible motif，也只按预注册排序发布一个，其他提案保留为`admissible`，避免同一cycle内词汇相互影响而破坏因果归因。
+
+### 26.8 可恢复语言快照与数据库
+
+仅保存motif名称和内容哈希不足以恢复下一代语言。`MotifDefinition`和`MotifRegistry`必须完整序列化，语言快照同时保存展开节点、端口、变量、群范围、认证方式、语义约束、编辑说明和来源。恢复时重新计算registry哈希，缺少任一motif定义或哈希不一致都拒绝运行。
+
+语言进化新增四类追加证据：
+
+| 表 | 作用 |
+| --- | --- |
+| `motif_occurrences` | 保存候选、谱系、任务、节点集合、边界类型和规范子图 |
+| `motif_proposals` | 保存motif定义、来源架构、描述长度、策略哈希和状态 |
+| `language_replay_runs` | 保存每个support或held-out程序重放前后语义ID与诊断 |
+| `motif_admission_runs` | 保存policy、boundary、全部证据、接受结果和拒绝原因 |
+
+被拒绝的正式proposal同样写入数据库，不能只保存最终发布词汇。无法形成合法反统一提案的cluster保存在discovery report及拒绝原因中。
+
+### 26.9 OpenEvolve接入
+
+`scripts/run_dsl_evolution.py`在cycle开始前写入不可变`language_boundary_preregistration.json`，并把其哈希写入`compiler_manifest.json`。每轮proposal按iteration显式轮转OpenEvolve island，合法子代写入目标island；语言证据优先把island ID作为独立谱系ID，没有island元数据时才回溯根祖先。cycle结束时只选择已编译、`valid=true`且`test_evaluated=false`的Program，重新编译核对architecture ID，按预注册哈希规则划分support和held-out replay，写出`language_cycle_snapshot.json`及逐候选DSL文件。
+
+`scripts/run_dsl_language_evolution.py`提供两个慢时间尺度入口：
+
+- `discover`：只发现、重放和记录proposal，不改变语言；
+- `admit`：额外读取回归与matched generation实验artifact，执行准入并最多发布一个minor语言版本。
+
+两个入口都从SQLite恢复完整父语言motif registry，并重新编译snapshot中的所有程序。因此OpenEvolve负责种群与谱系，DSL语言边界负责候选含义和语言更新，二者不会共享一个可被自由代码修改的正确性判定面。
+
+### 26.10 当前实现边界
+
+上述机制已经具有本地单元和入口集成测试，但尚未经过真实多cycle OpenEvolve运行、真实matched generation对照或跨任务motif迁移。当前自动反统一也只允许固定边界类型和显式安全属性，不等于已经实现群多态或表示多态语言学习。论文在完成真实实验前只能声称“语言进化机制可执行且证据可恢复”，不能声称它提高了搜索效率或能够自动发现V2级新算子。

@@ -7,9 +7,9 @@
 
 ## 一、结论
 
-当前系统已经形成一条可执行的三维等变架构生成主链：任务契约→带群表示类型的架构AST→motif展开→静态类型推导与证明义务→typed patch→Planner、Synthesizer、Repairer→OpenEvolve程序数据库→DSL原生编译评估→SQLite证据库。真实GLM-5.2运行已经从Equiformer V1父代生成不同语义ID的合法子代，并完成零训练步编译评估。系统还具备第一版`TypedHole`与多维completion distance，能够从现有typed values确定性搜索合法原语路径，将路径物化为带声明类型、机器条件、输出重连和失活路径裁剪的typed patch，并把部分编译错误转换成scope受限的Repairer可信补全建议。
+当前系统已经形成一条可执行的三维等变架构生成主链：任务契约→带群表示类型的架构AST→motif展开→静态类型推导与证明义务→typed patch→Planner、Synthesizer、Repairer→OpenEvolve程序数据库→DSL原生编译评估→SQLite证据库。真实GLM-5.2运行已经从Equiformer V1父代生成不同语义ID的合法子代，并完成零训练步编译评估。系统还具备第一版`TypedHole`与多维completion distance，以及第一版可执行的语言慢时间尺度闭环：从test-hidden候选枚举有类型连通子图，在support谱系上保守反统一，在held-out程序上执行fold-expand语义重放，经描述长度、独立谱系、回归、新颖性和证明证据合取后，最多发布一个新motif版本。
 
-这不等于完整研究目标已经完成。当前completion只覆盖由目标类型引导的一元和二元核心原语最短路；虽然已经支持输入端口和程序输出两类sink的确定性物化及SQLite记录，但尚未形成带分支回溯、跨候选状态共享、motif级动作和资源联合剪枝的完整部分程序搜索器。严格语义重写也只有第一批identity消除与残差交换规则及proof trace，尚无e-graph、通用等价证明和最低代价提取。其他主要缺口是二维SO(2)/O(2)数值后端、V1精确节点级后端、完整V2 block表达能力、语言自身双时间尺度进化以及论文级多任务实验。现阶段可以称为“论文级设计下的可运行三维核心原型”，不能称为“一般有效性已经验证”。
+这不等于完整研究目标已经完成。当前completion只覆盖由目标类型引导的一元和二元核心原语最短路，尚未形成带分支回溯、跨候选状态共享、motif级动作和资源联合剪枝的完整部分程序搜索器。严格语义重写也只有第一批identity消除与残差交换规则及proof trace，尚无e-graph、通用等价证明和最低代价提取。语言进化虽已有算法、恢复入口和证据表，但尚未经过真实多cycle、matched generation、跨任务迁移和回滚实验。其他主要缺口是二维SO(2)/O(2)数值后端、V1精确节点级后端、完整V2 block表达能力以及论文级多任务实验。现阶段可以称为“论文级设计下的可运行三维核心系统”，不能称为“一般有效性已经验证”。
 
 ## 二、当前端到端工作流
 
@@ -31,6 +31,10 @@ flowchart TD
     EQ["旋转、平移、置换和梯度门控"]
     TR["固定step训练与validation评价"]
     DB["OpenEvolve程序库与SQLite证据库"]
+    LB["预注册并关闭语言cycle"]
+    MD["support子图发现与安全反统一"]
+    HR["held-out fold-expand语义重放"]
+    AD["证据合取准入：每cycle最多一个motif"]
 
     T --> PL
     L --> PL
@@ -52,6 +56,11 @@ flowchart TD
     EQ --> TR
     TR --> DB
     DB --> P
+    DB --> LB
+    LB --> MD
+    MD --> HR
+    HR --> AD
+    AD --> L
 ```
 
 工作流中有三个不可混淆的表示。源码AST保留`block5`、`scalar_readout`等稳定编辑位置；规范AST消除名称差异并生成语义ID；后端IR决定如何调用e3nn、Equiformer V1或Equiformer V2实现。LLM只能编辑源码AST，不能把规范化产生的`n000x`标签当作源码位置。
@@ -66,6 +75,8 @@ flowchart TD
 | 架构AST | `ast.py` | 稳定JSON往返与Schema测试 | 已实现 |
 | 核心原语注册表 | `registry.py` | 31个原语均有类型规则和机器可读语义契约 | 已实现三维主干 |
 | motif系统 | `motifs.py`、`reference_motifs.py` | V1初始消息、V1残差消息、V2 SO(2)残差路径可展开 | 已实现参考motif |
+| learned motif发现 | `motif_discovery.py` | 有界连通子图、ID无关规范化、安全属性反统一、MDL和held-out重放测试 | 已实现第一版算法 |
+| 语言慢时间尺度 | `language_evolution.py` | 预注册、cycle关闭、候选集合锁定、准入和单motif发布测试 | 已实现机制闭环 |
 | 静态类型推导 | `inference.py` | 正例与负例类型测试 | 已实现 |
 | 证明义务 | `obligations.py` | 张量积路径、宇称、聚合、frame平衡、输出契约 | 已实现核心集合 |
 | typed patch | `patch.py` | 精确线协议、scope、父代ID、事务提交测试 | 已实现7类原子编辑 |
@@ -75,16 +86,16 @@ flowchart TD
 | 严格语义重写 | `rewrites.py`、`canonicalize.py` | identity消除、残差交换、concat非交换负例、固定点和proof trace测试 | 已实现第一批保守规则 |
 | canonical ID | `canonicalize.py` | 重命名、字典顺序和交换输入稳定性测试 | 已实现基础规范化 |
 | 任务绑定ID | `task.py`、`compiler.py` | 同一图绑定不同任务契约得到不同ID | 已实现 |
-| 语言内容快照 | `language.py` | 原语和motif内容哈希、运行时漂移拒绝测试 | 已实现 |
+| 语言内容快照 | `language.py`、`motifs.py` | 原语和motif内容哈希、完整motif registry序列化、恢复哈希与漂移拒绝测试 | 已实现 |
 | LLM三阶段协议 | `llm_protocol.py`、`search.py` | Planner修复、补丁修复、scope锁和失败响应审计 | 已实现主流程 |
 | 科学语义守卫 | `semantics.py`、`task.py` | QM9 alpha张量目标误述负例测试 | 已实现QM9 alpha规则 |
-| SQLite证据库 | `evidence_store.py` | 候选、任务、语言、prompt、patch、completion、编译和评价记录测试 | 已实现核心表 |
+| SQLite证据库 | `evidence_store.py` | 候选、任务、语言、prompt、patch、completion、重写、motif occurrence/proposal/replay/admission记录测试 | 已实现核心证据链 |
 | e3nn图后端 | `backends/e3nn_backend.py` | 参数构建、前向与数值等变测试 | 已实现受支持原语子集 |
 | Equiformer V2路径 | `backends/equiformer_v2_backend.py` | 官方SO(2)卷积、S²激活和完整融合图测试 | 已实现封闭融合模式 |
 | QM9适配 | `backends/qm9_model.py` | 图输入、节点输出和标量读出接口测试 | 已实现接口层 |
 | DSL评估pipeline | `pipeline.py` | 编译、资源、对称性、梯度、训练分发和test拒绝测试 | 已实现 |
 | 固定step训练入口 | `training/fixed_step_trainer.py` | 任务契约、DSL程序、checkpoint和一step服务器烟测 | 已实现入口与恢复 |
-| OpenEvolve入口 | `scripts/run_dsl_evolution.py` | 真实LLM生成两个程序、可恢复数据库和证据记录 | 已实现单代主流程 |
+| OpenEvolve入口 | `scripts/run_dsl_evolution.py`、`scripts/run_dsl_language_evolution.py` | 单代真实LLM主流程；语言boundary预注册、cycle snapshot和discover/admit入口集成测试 | 已实现接口，语言多cycle尚未实跑 |
 
 “已实现”表示该能力在当前支持范围内有执行路径和测试，不表示性能、完备性或跨领域泛化已经得到论文实验验证。
 
@@ -180,6 +191,18 @@ flowchart TD
 
 在这些门控下，`smoke_v9`再次成功。子代架构ID为`8a455f8b39135fe4`，通过六次Repair把block2、block4和block5的标量池化结果拼接，经图级`irrep_linear`映射为`1x0`，并保持程序输出仍指向活跃的`graph_pool`节点。19条postcondition、图liveness、类型推导和输出契约全部通过，`program_count=2`且`test_evaluated=false`。该运行的语言registry哈希为`f18682682b782b0fd9dff450f8ac5316ea0ff6f647bc24fa65f5631d88505da5`，已经绑定原语与motif内容，不再只绑定名称。
 
+### 5.5 learned motif语言闭环
+
+`motif_discovery.py`现在将编译后的候选分为`support`和`heldout_replay`。只有support子图参加反统一；held-out候选不决定模板和固定属性，只用于检查未见程序能否重新绑定允许变化的属性，并在折叠、展开、严格重写和类型检查后保持同一semantic architecture ID。
+
+当前自动反统一故意不泛化group、irrep、parity、frame、carrier、measure和证明token。原语必须通过`motif_parameter_attrs`显式声明可变化属性；第一批只包括activation、完整路径dropout、cutoff envelope和S²网格分辨率等不会绕开等变类型系统的属性。表示多态和群多态需要未来独立的kinded type variable机制，不能由普通字符串占位符代替。
+
+准入使用`motif-admission-v2`策略，要求构造认证、独立谱系或跨任务证据、MDL或matched generation收益、完整回归artifact、新颖性、证明artifact、所有语义重放、至少一个held-out replay、test-hidden标记以及语言、rewrite、proposal和boundary身份。OpenEvolve cycle开始前冻结选择规则、划分规则和发现policy哈希；cycle关闭后才能物化候选集合。候选生成循环显式轮转OpenEvolve island并把合法子代写入目标island，避免配置了岛模型却实际只使用island 0。一个boundary最多发布一个motif。
+
+SQLite新增`motif_occurrences`、`motif_proposals`、`language_replay_runs`和`motif_admission_runs`。完整`MotifDefinition`也随语言版本保存，使后续cycle能仅凭数据库恢复词汇，而不是依赖上一次Python进程内存。入口集成测试已经从模拟OpenEvolve cycle snapshot恢复父语言、重新编译三个候选、发现参数化motif并完成support与held-out重放。该测试证明机制和恢复语义，不证明真实搜索收益。
+
+motif展开会把单输出引用写成`node:out`，而源码常写成`node`。旧canonical JSON错误地保留了这种表面差异。编译器语义已升级为`evoequilang-3`，两种引用现在规范成同一值，fold-expand重放才具有可信的身份依据。
+
 ## 六、验证状态
 
 ### 6.1 本地
@@ -191,7 +214,7 @@ $env:PYTHONPATH=(Get-Location).Path
 pytest -q
 ```
 
-结果：`115 passed,6 skipped`。跳过项来自本地缺少e3nn、timm或官方Equiformer V2运行依赖，不是测试失败。
+结果：`124 passed,6 skipped`。跳过项来自本地缺少e3nn、timm或官方Equiformer V2运行依赖，不是测试失败。新增测试覆盖安全属性反统一、未授权属性拒绝、重叠occurrence不重复计算MDL、test隔离、support/held-out语义重放、预注册boundary、完整语言快照、OpenEvolve island谱系、SQLite证据和cycle snapshot入口。
 
 ### 6.2 A100服务器
 
@@ -204,7 +227,7 @@ PYTHONPATH=. \
   tests/test_dsl*.py tests/test_semantics.py
 ```
 
-结果：`83 passed`。覆盖官方V2 SO(2)路径、S²激活、完整DSL融合图、非线性数值等变、completion distance与物化、图liveness、可执行patch条件、诊断驱动Repairer建议、严格重写数值等价、LLM协议、证据库、pipeline和训练入口。测试产生8条旧版NumPy别名弃用警告，没有失败。
+结果：`92 passed`。覆盖官方V2 SO(2)路径、S²激活、完整DSL融合图、非线性数值等变、completion distance与物化、图liveness、可执行patch条件、诊断驱动Repairer建议、严格重写数值等价、motif发现、held-out重放、语言boundary与完整快照、OpenEvolve island谱系、LLM协议、证据库、pipeline和训练入口。测试产生8条旧版NumPy别名弃用警告，没有失败。
 
 ## 七、部分实现而非完成的能力
 
@@ -217,7 +240,7 @@ PYTHONPATH=. \
 | 数值认证 | 旋转、平移、置换和梯度测试 | O(3)反射、二维群和更多随机属性覆盖 |
 | LLM生成 | 单代真实闭环、编译修复和证据记录 | 多代稳定性、并行候选、失败聚类和生成有效率统计 |
 | 部分程序合成 | `TypedHole`、目标引导超图搜索、多维距离、输入/输出sink物化、失活路径裁剪、completion证据表及部分诊断到Repairer建议 | 分支回溯、跨候选状态共享、motif级动作、资源联合剪枝、motif内部诊断映射及建议采用率实证 |
-| 语言进化 | motif准入数据结构和测试 | 自动反统一、描述长度收益、回放集和双时间尺度调度 |
+| 语言进化 | 有类型连通子图、保守反统一、MDL、support/held-out重放、预注册boundary、单motif发布、完整registry恢复和证据表 | 真实多cycle运行、表示/群多态motif、matched generation收益、跨任务迁移、版本回滚和词汇淘汰实证 |
 | 训练 | 固定step、checkpoint和validation入口 | 对新结构的长训练稳定性与多保真晋级实证 |
 
 ## 八、尚未实现的论文关键能力
@@ -227,8 +250,8 @@ PYTHONPATH=. \
 1. 把当前可物化TypedHole最短路扩展为可分支回溯、跨候选共享状态并支持motif级动作的完整部分程序搜索器。
 2. 把当前分量距离提升为对剩余编辑预算严格可证明的下界，并与资源上界联合剪枝。
 3. 在现有proof trace与两条严格规则上增加更多已证明重写、e-graph等价类和最低代价提取。
-4. 从成功谱系执行anti-unification并提出新motif的完整算法。
-5. 语言版本在慢时间尺度上的自动提案、准入、回滚和跨任务回放。
+4. 在真实成功谱系上运行已实现的anti-unification闭环，并用matched generation实验检验learned motif是否提高有效率或搜索质量。
+5. 扩展表示/群多态motif、跨任务回放、版本回滚和词汇淘汰；当前只有固定完整边界类型下的安全属性反统一。
 6. 二维SO(2)/O(2)数值后端与至少一个图像或平面物理任务。
 7. O(3)反射数值验证和宇称敏感任务。
 8. Equiformer V1与V2的精确表达性往返，不仅是表示流近似和封闭路径融合。
@@ -253,13 +276,14 @@ PYTHONPATH=. \
 1. 把当前保守诊断映射扩展到motif内部和更多错误类别，并实现跨候选部分状态共享、分支回溯和资源联合剪枝。
 2. 扩展严格语义重写为e-graph等价类和代价提取，同时维持“未经证明不合并”的准入门。
 3. 扩展V1/V2后端能力矩阵并建立逐节点unsupported诊断。
-4. 实现motif反统一、准入证据和语言慢时间尺度进化。
-5. 增加SO(2)/O(2)数值后端和二维任务，验证群抽象不是三维硬编码。
-6. 在完成上述机制后运行小预算多代实验，测量合法率、修复次数、重复率、completion distance剪枝收益和单位GPU小时最优validation MAE。
-7. 机制稳定后再执行完整多保真训练、跨任务实验和最终test审计。
+4. 在真实OpenEvolve多cycle上运行语言进化入口，先做零GPU恢复烟测，再做matched generation和learned motif消融。
+5. 增加表示/群多态motif约束、跨任务回放和语言版本回滚。
+6. 增加SO(2)/O(2)数值后端和二维任务，验证群抽象不是三维硬编码。
+7. 在完成上述机制后运行小预算多代实验，测量合法率、修复次数、重复率、completion distance剪枝收益和单位GPU小时最优validation MAE。
+8. 机制稳定后再执行完整多保真训练、跨任务实验和最终test审计。
 
 ## 十一、审计结论
 
 当前代码已经不再是“四因子配置搜索”的改名版本，也不是让LLM自由修改Python的包装器。它具备显式群表示类型、可展开motif、结构化补丁、确定性编译诊断、真实后端和证据闭环。`smoke_v7`证明这条主链能够在真实LLM上工作。
 
-但一般有效、可投稿论文级系统的核心研究量仍集中在完整部分程序合成、严格重写、语言进化、二维泛化和公平对照实验。后续实现应以这些缺口为主，不能把更多固定motif枚举误当成语言创新。
+但一般有效、可投稿论文级系统的核心研究量仍集中在完整部分程序合成、e-graph严格重写、语言进化的真实效果、二维泛化和公平对照实验。后续实现应以这些缺口为主，不能把“语言进化代码已运行”误写成“learned motif已经提高搜索效率”。

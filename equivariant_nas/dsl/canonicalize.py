@@ -13,7 +13,7 @@ from .registry import PrimitiveRegistry
 from .rewrites import apply_strict_rewrites, strict_rewrite_registry_hash
 
 
-COMPILER_SEMANTICS_VERSION = "evoequilang-2"
+COMPILER_SEMANTICS_VERSION = "evoequilang-3"
 BACKEND_SEMANTICS_VERSION = "backend-neutral-v1"
 
 
@@ -77,6 +77,9 @@ def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegis
         root, separator, output_port = reference.partition(":")
         if root not in rename:
             return reference
+        outputs = by_id[root].outputs
+        if len(outputs) == 1 and (not separator or output_port == outputs[0]):
+            return rename[root]
         return "{}:{}".format(rename[root], output_port) if separator else rename[root]
 
     canonical_nodes = tuple(

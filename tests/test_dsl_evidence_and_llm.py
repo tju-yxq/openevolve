@@ -74,7 +74,7 @@ def test_planner_prompt_rejects_test_evidence():
 def test_evidence_store_is_append_only_and_hides_test_from_generation(tmp_path):
     program, task, primitives, language, vocabulary = setup_objects()
     store = EvidenceStore(str(tmp_path / "evidence.sqlite"))
-    store.register_language(language)
+    store.register_language(language, reference_motif_registry())
     candidate_id = store.add_candidate(program, task, primitives)
     store.add_evaluation(candidate_id, split="validation", fidelity_steps=8000, seed=1, metrics={"mae": 0.2}, resources={})
     store.add_evaluation(candidate_id, split="test", fidelity_steps=250000, seed=1, metrics={"mae": 0.1}, resources={}, final_audit=True)
@@ -94,6 +94,14 @@ def test_evidence_store_is_append_only_and_hides_test_from_generation(tmp_path):
             token_usage={},
         )
     assert error.value.diagnostics[0].code == "E_STORE_003"
+
+
+def test_language_snapshot_rejects_missing_motif_definitions(tmp_path):
+    _, _, _, language, _ = setup_objects()
+    store = EvidenceStore(str(tmp_path / "incomplete-language.sqlite"))
+    with pytest.raises(DSLValidationError) as error:
+        store.register_language(language)
+    assert error.value.diagnostics[0].code == "E_STORE_009"
 
 
 def test_unflagged_test_evaluation_is_rejected(tmp_path):

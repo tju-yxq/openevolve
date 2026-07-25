@@ -111,6 +111,7 @@ def describe_active_vocabulary(
                 "description": definition.description,
                 "required_attrs": list(definition.required_attrs),
                 "optional_attrs": dict(definition.optional_attrs),
+                "motif_parameter_attrs": list(definition.motif_parameter_attrs),
                 "semantic_constraints": list(definition.semantic_constraints),
                 "edit_guidance": list(definition.edit_guidance),
             })

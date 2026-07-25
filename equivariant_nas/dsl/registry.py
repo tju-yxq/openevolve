@@ -29,6 +29,7 @@ class PrimitiveDefinition:
     description: str = ""
     required_attrs: Tuple[str, ...] = ()
     optional_attrs: Mapping[str, str] = field(default_factory=dict)
+    motif_parameter_attrs: Tuple[str, ...] = ()
     semantic_constraints: Tuple[str, ...] = ()
     edit_guidance: Tuple[str, ...] = ()
 
@@ -49,6 +50,7 @@ class PrimitiveDefinition:
             "description": self.description,
             "required_attrs": self.required_attrs,
             "optional_attrs": dict(self.optional_attrs),
+            "motif_parameter_attrs": self.motif_parameter_attrs,
             "semantic_constraints": self.semantic_constraints,
             "edit_guidance": self.edit_guidance,
         }
@@ -400,6 +402,7 @@ _PRIMITIVE_CONTRACTS = {
     "core.scalar_activation": {
         "description": "Ordinary pointwise nonlinearity restricted to invariant scalar irreps.",
         "optional_attrs": {"activation": "backend activation name"},
+        "motif_parameter_attrs": ("activation",),
         "semantic_constraints": ("All input irreps must be l=0 invariant scalars; output type is unchanged.",),
     },
     "core.invariant_weight": {
@@ -459,6 +462,7 @@ _PRIMITIVE_CONTRACTS = {
     "core.cutoff_envelope": {
         "description": "Type-preserving invariant cutoff envelope.",
         "optional_attrs": {"cutoff": "positive radial cutoff", "order": "envelope polynomial order"},
+        "motif_parameter_attrs": ("cutoff", "order"),
         "semantic_constraints": ("Output type equals input type.",),
     },
     "core.spherical_harmonics": {
@@ -469,6 +473,7 @@ _PRIMITIVE_CONTRACTS = {
     "core.norm_activation": {
         "description": "Equivariant nonlinearity that acts through irrep norms.",
         "optional_attrs": {"activation": "scalar activation applied to norms"},
+        "motif_parameter_attrs": ("activation",),
         "semantic_constraints": ("Preserves every input irrep block and its output type.",),
     },
     "core.gate": {
@@ -488,11 +493,13 @@ _PRIMITIVE_CONTRACTS = {
     "core.stochastic_depth": {
         "description": "Drop complete equivariant residual paths stochastically.",
         "optional_attrs": {"p": "drop probability in [0,1)"},
+        "motif_parameter_attrs": ("p",),
         "semantic_constraints": ("p must satisfy 0 <= p < 1 and output type equals input type.",),
     },
     "core.invariant_dropout": {
         "description": "Drop complete multiplicity channels without splitting irrep coordinates.",
         "optional_attrs": {"p": "drop probability in [0,1)"},
+        "motif_parameter_attrs": ("p",),
         "semantic_constraints": ("p must satisfy 0 <= p < 1 and output type equals input type.",),
     },
     "core.segment_softmax": {
@@ -511,11 +518,13 @@ _PRIMITIVE_CONTRACTS = {
     "core.s2_activation": {
         "description": "S2-grid equivariant activation for 3D spherical representations.",
         "optional_attrs": {"grid_resolution": "backend quadrature resolution"},
+        "motif_parameter_attrs": ("grid_resolution",),
         "semantic_constraints": ("Preserves the declared equivariant type and is restricted to SO(3)/O(3).",),
     },
     "core.separable_s2_activation": {
         "description": "Equiformer V2 separable S2 activation with an explicit scalar side path.",
         "optional_attrs": {"grid_resolution": "backend quadrature resolution"},
+        "motif_parameter_attrs": ("grid_resolution",),
         "semantic_constraints": (
             "scalars and x share group, carrier, and frame.",
             "the scalar side path contains only l=0 and matches x's l=0 multiplicity.",

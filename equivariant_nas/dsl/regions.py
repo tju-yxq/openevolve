@@ -30,6 +30,7 @@ class RegionDefinition:
     factor_id: str = ""
     parameter_paths: Tuple[str, ...] = ()
     allowed_parameter_values: Mapping[str, Tuple[Any, ...]] = field(default_factory=dict)
+    allowed_parameter_combinations: Tuple[Mapping[str, Any], ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -44,6 +45,7 @@ class RegionDefinition:
             "factor_id": self.factor_id,
             "parameter_paths": list(self.parameter_paths),
             "allowed_parameter_values": {key: list(values) for key, values in sorted(self.allowed_parameter_values.items())},
+            "allowed_parameter_combinations": [dict(item) for item in self.allowed_parameter_combinations],
         }
 
 
@@ -85,6 +87,13 @@ def v1_region_registry(program: ArchitectureProgram) -> Tuple[RegionDefinition, 
                 )
                 for path in factor.parameter_paths
             },
+            allowed_parameter_combinations=tuple(
+                {
+                    path: option[path.rsplit(".", 1)[1]]
+                    for path in factor.parameter_paths
+                }
+                for option in (factor.identity_option,) + factor.alternative_options
+            ),
         )
         for factor in profile.enabled_factors
         if factor.parameter_paths
@@ -220,6 +229,23 @@ def validate_region_transition(
                     "constructor factor value is outside the capability-admitted options",
                     actual=repr(child.parameters.get(path)),
                     details={"parameter": path, "allowed": list(allowed_values)},
+                )
+            ])
+    if region.allowed_parameter_combinations:
+        current_combination = {
+            path: child.parameters.get(path)
+            for path in region.parameter_paths
+        }
+        if current_combination not in region.allowed_parameter_combinations:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_REGION_011",
+                    "constructor factor parameters do not match one preregistered option",
+                    actual=_json(current_combination),
+                    details={
+                        "factor_id": region.factor_id,
+                        "allowed_combinations": [dict(item) for item in region.allowed_parameter_combinations],
+                    },
                 )
             ])
     parent_hash = frozen_complement_hash(parent, region, original_node_ids=parent_ids)

@@ -43,9 +43,8 @@ def test_formal_v1_factor_ownership_is_unique():
 @pytest.mark.parametrize(
     "factor_id,region_id,path,value,expected",
     (
-        ("F2.2", "v1_radial_encoding", "constructor.operator.basis_type", "bessel", ("operator", "basis_type", "bessel")),
         ("F4.4", "v1_attention_heads", "constructor.operator.num_heads", 8, ("operator", "num_heads", 8)),
-        ("F5.3", "v1_normalization", "constructor.action.norm_layer", "instance", ("action", "norm_layer", "instance")),
+        ("F5.3", "v1_normalization", "constructor.action.rescale_degree", True, ("action", "rescale_degree", True)),
     ),
 )
 def test_constructor_factor_patch_has_exact_official_lowering(factor_id, region_id, path, value, expected):
@@ -71,6 +70,43 @@ def test_constructor_factor_patch_has_exact_official_lowering(factor_id, region_
     assert region_id in plan.supported_regions
 
 
+def test_radial_factor_requires_and_lowers_the_complete_preregistered_option():
+    parent = _parent()
+    compiler = Compiler(core_registry(), reference_motif_registry())
+    parent_id = compiler.analyze(parent).architecture_id
+    paths = (
+        "constructor.operator.basis_type",
+        "constructor.operator.num_basis",
+        "constructor.operator.radial_hidden",
+    )
+    values = ("gaussian", 96, [96, 96])
+    patch = TypedPatch(
+        "1.0",
+        parent_id,
+        parent.language_version,
+        {"factor_id": "F2.2", "claim": "certified radial alternative"},
+        paths,
+        tuple(PatchEdit("change_parameters", path, {"value": value}) for path, value in zip(paths, values)),
+    )
+    child = apply_typed_patch(
+        parent,
+        patch,
+        compiler.primitives,
+        expected_parent_id=parent_id,
+        validate_child_with_core_registry=False,
+    )
+    radial = next(item for item in v1_region_registry(parent) if item.factor_id == "F2.2")
+    audit = validate_region_transition(parent, child, radial)
+    spec = effective_v1_spec(child)
+    assert spec.operator.basis_type == "gaussian"
+    assert spec.operator.num_basis == 96
+    assert spec.operator.radial_hidden == (96, 96)
+    assert audit["changed_parameters"] == [
+        "constructor.operator.num_basis",
+        "constructor.operator.radial_hidden",
+    ]
+
+
 def test_factor_patch_cannot_change_an_unowned_constructor_parameter():
     parent = _parent()
     compiler = Compiler(core_registry(), reference_motif_registry())
@@ -85,6 +121,39 @@ def test_factor_patch_cannot_change_an_unowned_constructor_parameter():
     radial = next(item for item in v1_region_registry(parent) if item.factor_id == "F2.2")
     with pytest.raises(Exception):
         validate_region_transition(parent, child, radial)
+
+
+def test_constructor_factor_rejects_cross_product_of_individually_allowed_values():
+    parent = _parent()
+    compiler = Compiler(core_registry(), reference_motif_registry())
+    parent_id = compiler.analyze(parent).architecture_id
+    patch = TypedPatch(
+        "1.0",
+        parent_id,
+        parent.language_version,
+        {"factor_id": "F2.2", "claim": "invalid cross-product option"},
+        ("constructor.operator.num_basis",),
+        (PatchEdit("change_parameters", "constructor.operator.num_basis", {"value": 96}),),
+    )
+    child = apply_typed_patch(
+        parent,
+        patch,
+        compiler.primitives,
+        expected_parent_id=parent_id,
+        validate_child_with_core_registry=False,
+    )
+    radial = next(item for item in v1_region_registry(parent) if item.factor_id == "F2.2")
+    with pytest.raises(Exception, match="preregistered option"):
+        validate_region_transition(parent, child, radial)
+
+
+def test_formal_capability_excludes_a100_rejected_options():
+    profile = equiformer_v1_capability_profile()
+    radial = profile.factor("F2.2")
+    normalization = profile.factor("F5.3")
+    assert all(item["basis_type"] != "bessel" for item in radial.alternative_options)
+    assert all(item["norm_layer"] != "instance" for item in normalization.alternative_options)
+    assert radial.rejected_options and normalization.rejected_options
 
 
 def test_uncertified_generic_graph_is_not_formally_trainable():

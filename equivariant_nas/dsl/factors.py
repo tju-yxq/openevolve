@@ -18,6 +18,7 @@ class LeafFactorDefinition:
     required_backend_capability: str = "analysis_only"
     identity_option: Mapping[str, Any] = None
     alternative_options: Tuple[Mapping[str, Any], ...] = ()
+    rejected_options: Tuple[Mapping[str, Any], ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -29,6 +30,7 @@ class LeafFactorDefinition:
             "required_backend_capability": self.required_backend_capability,
             "identity_option": dict(self.identity_option or {}),
             "alternative_options": [dict(item) for item in self.alternative_options],
+            "rejected_options": [dict(item) for item in self.rejected_options],
         }
 
 
@@ -73,8 +75,15 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
             "exact_v1_constructor",
             {"basis_type": "gaussian", "num_basis": 128, "radial_hidden": [64, 64]},
             (
-                {"basis_type": "bessel", "num_basis": 64, "radial_hidden": [64, 64]},
                 {"basis_type": "gaussian", "num_basis": 96, "radial_hidden": [96, 96]},
+            ),
+            (
+                {
+                    "basis_type": "bessel",
+                    "num_basis": 64,
+                    "radial_hidden": [64, 64],
+                    "rejection_reason": "A100 formal-v1 symmetry gate failed at seed 201",
+                },
             ),
         ),
         LeafFactorDefinition(
@@ -96,8 +105,14 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
             "exact_v1_constructor",
             {"norm_layer": "layer", "rescale_degree": False},
             (
-                {"norm_layer": "instance", "rescale_degree": False},
                 {"norm_layer": "layer", "rescale_degree": True},
+            ),
+            (
+                {
+                    "norm_layer": "instance",
+                    "rescale_degree": False,
+                    "rejection_reason": "A100 formal-v1 symmetry gate failed at seed 201",
+                },
             ),
         ),
         LeafFactorDefinition(

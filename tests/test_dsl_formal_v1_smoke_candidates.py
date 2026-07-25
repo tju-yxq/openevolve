@@ -13,7 +13,7 @@ def _module():
 def test_formal_v1_smoke_materializes_parent_and_four_certified_factor_candidates(tmp_path):
     candidates = _module().materialize_candidates(tmp_path)
     assert [item["factor_id"] for item in candidates] == [
-        "", "F2.2", "F2.2", "F4.4", "F4.4", "F5.3", "F5.3", "F6.3"
+        "", "F2.2", "F4.4", "F4.4", "F5.3", "F6.3"
     ]
     assert [item["lowering_plan"]["mode"] for item in candidates] == [
         "exact_reference",
@@ -21,9 +21,7 @@ def test_formal_v1_smoke_materializes_parent_and_four_certified_factor_candidate
         "exact_constructor",
         "exact_constructor",
         "exact_constructor",
-        "exact_constructor",
-        "exact_constructor",
         "exact_hybrid",
     ]
-    assert len({item["program_id"] for item in candidates}) == 8
+    assert len({item["program_id"] for item in candidates}) == 6
     assert all(Path(item["program_path"]).is_file() for item in candidates)

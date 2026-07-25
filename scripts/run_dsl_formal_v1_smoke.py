@@ -218,6 +218,13 @@ def run(args):
     state_path = output / "state.json"
     state = _load_json(state_path, {}) or {}
     candidates = materialize_candidates(output)
+    requested_keys = {item.strip() for item in args.candidate_keys.split(",") if item.strip()}
+    if requested_keys:
+        known_keys = {item["key"] for item in candidates}
+        unknown_keys = sorted(requested_keys - known_keys)
+        if unknown_keys:
+            raise ValueError("未知Smoke候选：{}".format(",".join(unknown_keys)))
+        candidates = [item for item in candidates if item["key"] in requested_keys]
     results = dict(state.get("results", {}))
     common = {
         "project_root": args.project_root,
@@ -303,6 +310,11 @@ def get_parser():
         type=float,
         default=None,
         help="Optional diagnostic relative threshold; omit for the frozen formal-V1 default.",
+    )
+    parser.add_argument(
+        "--candidate-keys",
+        default="",
+        help="Optional comma-separated subset of parent,factor_F2_2,factor_F4_4,factor_F5_3,factor_F6_3.",
     )
     return parser
 

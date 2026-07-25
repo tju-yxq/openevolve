@@ -140,10 +140,28 @@ def get_parser():
         help="JSON ArchitectureSpec. If omitted, use the legacy model registry.",
     )
     parser.add_argument(
+        "--dsl-program",
+        type=str,
+        default=None,
+        help="EvoEquiLang JSON program. Mutually exclusive with --architecture-spec.",
+    )
+    parser.add_argument(
+        "--dsl-task-contract",
+        type=str,
+        default="",
+        help="Immutable task-contract JSON used to derive the same semantic ID across search and training.",
+    )
+    parser.add_argument(
         "--equiformer-root",
         type=str,
         default=EQUIFORMER_ROOT,
         help="Path to the trusted Equiformer source tree.",
+    )
+    parser.add_argument(
+        "--equiformer-v2-root",
+        type=str,
+        default=os.environ.get("EQUIFORMER_V2_ROOT", ""),
+        help="Optional pinned Equiformer V2 source used by DSL V2 graph fusions.",
     )
     return parser
 
@@ -369,6 +387,8 @@ def main(args):
         raise ValueError("one validation interval must be positive")
     if args.data_epoch_origin_step < 0 or args.lr_schedule_origin_step < 0:
         raise ValueError("step origins must be non-negative")
+    if args.architecture_spec and args.dsl_program:
+        raise ValueError("--architecture-spec and --dsl-program are mutually exclusive")
 
     # ``args.epochs`` is retained only to construct the original 300-epoch
     # timm cosine scheduler. It is not used as a stopping condition.
@@ -432,7 +452,24 @@ def main(args):
     np.random.seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if args.architecture_spec:
+    if args.dsl_program:
+        from equivariant_nas.dsl import Compiler, core_registry, reference_motif_registry
+        from equivariant_nas.dsl.backends import build_qm9_dsl_model
+        from equivariant_nas.dsl.serialization import load_program, load_task_contract
+
+        dsl_program = load_program(args.dsl_program)
+        dsl_task = load_task_contract(args.dsl_task_contract) if args.dsl_task_contract else None
+        dsl_compiler = Compiler(core_registry(), reference_motif_registry())
+        model = build_qm9_dsl_model(
+            dsl_program,
+            dsl_compiler,
+            radius=args.radius,
+            equiformer_v2_root=args.equiformer_v2_root or None,
+            task=dsl_task,
+        ).to(device)
+        log.info("DSL architecture ID: {}".format(model.dsl_architecture_id))
+        log.info("DSL language version: {}".format(model.dsl_language_version))
+    elif args.architecture_spec:
         from equivariant_nas.builder import build_equiformer
         from equivariant_nas.spec import ArchitectureSpec
 
@@ -469,6 +506,10 @@ def main(args):
         if args.evaluate_test:
             raise ValueError(
                 "inherited initialization is calibration-only and cannot evaluate the test split"
+            )
+        if args.dsl_program:
+            raise ValueError(
+                "legacy field-level inherited initialization is not defined for DSL programs"
             )
         if not args.architecture_spec:
             raise ValueError("inherited initialization requires --architecture-spec")

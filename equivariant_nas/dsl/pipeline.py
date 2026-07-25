@@ -1,0 +1,443 @@
+"""Native evaluation pipeline for typed EvoEquiLang candidates."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import random
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from ..budget import BudgetExceeded, BudgetLedger
+from ..evaluation import BASELINE_PARAMETERS
+from .compiler import Compiler
+from .registry import core_registry
+from .reference_motifs import reference_motif_registry
+from .serialization import load_program, load_task_contract
+from .backends import build_qm9_dsl_model
+
+
+def _count_parameters(model) -> int:
+    return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+
+
+def _relative_error(actual, expected) -> float:
+    return float((actual - expected).norm().detach().cpu()) / max(
+        float(expected.norm().detach().cpu()), 1.0e-12
+    )
+
+
+def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
+    import torch
+    from e3nn import o3
+
+    model.eval()
+    with torch.no_grad():
+        reference = model(
+            f_in=batch.x,
+            pos=batch.pos,
+            batch=batch.batch,
+            node_atom=batch.z,
+            edge_d_index=batch.edge_d_index,
+            edge_d_attr=batch.edge_d_attr,
+        )
+        rotation = o3.rand_matrix(dtype=batch.pos.dtype, device=batch.pos.device)
+        rotated = model(
+            f_in=batch.x,
+            pos=batch.pos @ rotation.transpose(0, 1),
+            batch=batch.batch,
+            node_atom=batch.z,
+            edge_d_index=batch.edge_d_index,
+            edge_d_attr=batch.edge_d_attr,
+        )
+        translated = model(
+            f_in=batch.x,
+            pos=batch.pos + batch.pos.new_tensor([[1.25, -0.75, 0.5]]),
+            batch=batch.batch,
+            node_atom=batch.z,
+            edge_d_index=batch.edge_d_index,
+            edge_d_attr=batch.edge_d_attr,
+        )
+        permutation = torch.cat([
+            torch.nonzero(batch.batch == graph_id, as_tuple=False).flatten().flip(0)
+            for graph_id in torch.unique(batch.batch, sorted=True)
+        ])
+        permuted = model(
+            f_in=batch.x.index_select(0, permutation),
+            pos=batch.pos.index_select(0, permutation),
+            batch=batch.batch.index_select(0, permutation),
+            node_atom=batch.z.index_select(0, permutation),
+            edge_d_index=None,
+            edge_d_attr=None,
+        )
+    errors = {
+        "rotation_invariance": _relative_error(rotated, reference),
+        "translation_invariance": _relative_error(translated, reference),
+        "permutation_invariance": _relative_error(permuted, reference),
+    }
+    return {"errors": errors, "maximum": max(errors.values())}
+
+
+def _gradient_health(model, batch) -> Dict[str, Any]:
+    import torch
+
+    model.train()
+    model.zero_grad(set_to_none=True)
+    prediction = model(
+        f_in=batch.x,
+        pos=batch.pos,
+        batch=batch.batch,
+        node_atom=batch.z,
+        edge_d_index=batch.edge_d_index,
+        edge_d_attr=batch.edge_d_attr,
+    ).squeeze()
+    loss = torch.nn.functional.l1_loss(prediction, batch.y[:, 1])
+    loss.backward()
+    gradients = [
+        parameter.grad.detach()
+        for parameter in model.parameters()
+        if parameter.grad is not None
+    ]
+    finite = bool(gradients) and all(bool(torch.isfinite(item).all()) for item in gradients)
+    squared_norm = sum(float(torch.sum(item.float() ** 2).cpu()) for item in gradients)
+    maximum = max((float(item.abs().max().cpu()) for item in gradients), default=0.0)
+    model.zero_grad(set_to_none=True)
+    return {
+        "loss": float(loss.detach().cpu()),
+        "global_l2_norm": squared_norm ** 0.5,
+        "maximum_absolute_gradient": maximum,
+        "gradients_present": bool(gradients),
+        "all_finite": finite,
+    }
+
+
+def evaluate_dsl_candidate_pipeline(
+    program_path: str,
+    project_root: str,
+    equiformer_root: str,
+    data_path: str,
+    max_steps: int = 0,
+    seed: int = 0,
+    parameter_ratio_limit: float = 1.2,
+    symmetry_threshold: float = 2.5e-1,
+    symmetry_warning_threshold: float = 1.0e-2,
+    run_symmetry: bool = True,
+    gpu_budget_hours: Optional[float] = None,
+    resume_checkpoint: str = "",
+    batch_size: int = 64,
+    train_subset_file: str = "",
+    eval_interval_epochs: int = 0,
+    data_epoch_origin_step: int = 0,
+    allow_data_transition: bool = False,
+    resume_model_only: bool = False,
+    lr_schedule_origin_step: int = 0,
+    equiformer_v2_root: str = "",
+    task_contract_path: str = "",
+) -> Dict[str, Any]:
+    project = Path(project_root)
+    if equiformer_root not in sys.path:
+        sys.path.insert(0, equiformer_root)
+    program_file = Path(program_path).resolve()
+    program = load_program(str(program_file))
+    task = load_task_contract(task_contract_path) if task_contract_path else None
+    compiler = Compiler(core_registry(), reference_motif_registry())
+    artifact = compiler.analyze(program, task)
+    architecture_id = artifact.architecture_id
+    subset_fingerprint = ""
+    if train_subset_file:
+        subset_path = Path(train_subset_file).resolve()
+        if not subset_path.is_file():
+            raise FileNotFoundError(subset_path)
+        subset_fingerprint = hashlib.sha256(subset_path.read_bytes()).hexdigest()
+        train_subset_file = str(subset_path)
+    protocol = {
+        "pipeline_version": "dsl-2",
+        "architecture_id": architecture_id,
+        "seed": int(seed),
+        "max_steps": int(max_steps),
+        "run_symmetry": bool(run_symmetry),
+        "symmetry_threshold": float(symmetry_threshold),
+        "parameter_ratio_limit": float(parameter_ratio_limit),
+        "batch_size": int(batch_size),
+        "train_subset_sha256": subset_fingerprint,
+        "eval_interval_epochs": int(eval_interval_epochs),
+        "data_epoch_origin_step": int(data_epoch_origin_step),
+        "lr_schedule_origin_step": int(lr_schedule_origin_step),
+        "equiformer_v2_commit": (
+            "d5ad4be729b56f74012ebb7f097f77c5b00a1004" if equiformer_v2_root else ""
+        ),
+        "task_contract_hash": task.content_hash() if task is not None else "unresolved-task-contract",
+    }
+    protocol_id = hashlib.sha256(json.dumps(protocol, sort_keys=True).encode("utf-8")).hexdigest()[:10]
+    run_dir = project / "runs" / "dsl_candidates" / architecture_id / (
+        "seed{}_steps{}_{}".format(seed, max_steps, protocol_id)
+    )
+    result_path = run_dir / "result.json"
+    if result_path.exists():
+        cached = json.loads(result_path.read_text(encoding="utf-8"))
+        checkpoint = run_dir / "training" / "checkpoint_last.pth"
+        if cached.get("valid") or not checkpoint.exists():
+            cached["cache_hit"] = True
+            return cached
+    run_dir.mkdir(parents=True, exist_ok=True)
+    canonical_program = run_dir / "architecture.dsl.json"
+    canonical_program.write_text(
+        json.dumps(program.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
+    )
+    result: Dict[str, Any] = {
+        "architecture_id": architecture_id,
+        "language_version": program.language_version,
+        "candidate_format": "evoequilang",
+        "valid": False,
+        "combined_score": -1.0e9,
+        "fidelity_steps": int(max_steps),
+        "seed": int(seed),
+        "cache_hit": False,
+        "run_dir": str(run_dir),
+        "test_evaluated": False,
+    }
+    resolved_budget = float(gpu_budget_hours) if gpu_budget_hours is not None else float(
+        os.environ.get("NAS_GPU_BUDGET_HOURS", "5.0")
+    )
+    ledger = BudgetLedger(
+        os.environ.get("NAS_BUDGET_LEDGER", str(project / "runs" / "budget_ledger.jsonl")),
+        resolved_budget,
+    )
+    started = time.perf_counter()
+    gpu_started = None
+    try:
+        stage_name = "dsl_steps{}".format(max_steps)
+        ledger.require_available(
+            ledger.estimate_stage_gpu_hours(
+                stage_name,
+                fallback_gpu_hours=max_steps * 0.00015 + (0.02 if run_symmetry else 0.0),
+            )
+        )
+        import numpy as np
+        import torch
+
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+        model = build_qm9_dsl_model(
+            program,
+            compiler,
+            radius=float(program.parameters.get("radius", 5.0)),
+            equiformer_v2_root=equiformer_v2_root or None,
+            task=task,
+        )
+        parameter_count = _count_parameters(model)
+        parameter_ratio = parameter_count / BASELINE_PARAMETERS
+        degrees = [
+            irrep.degree
+            for value_type in artifact.inference.value_types.values()
+            for _, irrep in value_type.irreps
+        ]
+        higher_order = sum(
+            multiplicity * irrep.dimension
+            for value_type in artifact.inference.value_types.values()
+            for multiplicity, irrep in value_type.irreps
+            if irrep.degree > 0
+        )
+        total_width = sum(
+            value_type.irreps.dimension for value_type in artifact.inference.value_types.values()
+        )
+        result.update({
+            "parameter_count": parameter_count,
+            "parameter_ratio": parameter_ratio,
+            "lmax": max(degrees, default=0),
+            "num_layers": len(artifact.expanded_program.nodes),
+            "higher_order_fraction": higher_order / max(total_width, 1),
+            "compiler_obligations": [item.to_dict() for item in artifact.inference.obligations],
+            "backend_semantics": model.graph_model.backend_semantics_version,
+        })
+        if parameter_ratio > parameter_ratio_limit:
+            raise ValueError(
+                "parameter ratio {:.4f} exceeds {:.4f}".format(parameter_ratio, parameter_ratio_limit)
+            )
+
+        batch = None
+        if run_symmetry:
+            from datasets.pyg.qm9 import QM9
+            from torch_geometric.loader import DataLoader
+            from torch.utils.data import Subset
+
+            dataset = QM9(data_path, "train", feature_type="one_hot")
+            if train_subset_file:
+                with np.load(train_subset_file) as payload:
+                    dataset = Subset(dataset, np.asarray(payload["train_local_indices"], dtype=np.int64).tolist())
+            batch = next(iter(DataLoader(dataset, batch_size=2))).to("cuda")
+            model = model.to("cuda")
+            gpu_started = time.perf_counter()
+            symmetry = _observable_symmetry_report(model, batch)
+            result["pretrain_symmetry_report"] = symmetry
+            result["pretrain_max_symmetry_error"] = symmetry["maximum"]
+            result["pretrain_symmetry_warning"] = symmetry["maximum"] > symmetry_warning_threshold
+            result["gradient_health"] = _gradient_health(model, batch)
+            if not result["gradient_health"]["all_finite"]:
+                raise ValueError("non-finite or missing gradients in pre-training gate")
+            if symmetry["maximum"] > symmetry_threshold:
+                raise ValueError(
+                    "pre-training symmetry error {:.6g} exceeds {:.6g}".format(
+                        symmetry["maximum"], symmetry_threshold
+                    )
+                )
+            (run_dir / "pretrain_symmetry_report.json").write_text(
+                json.dumps(symmetry, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            del model
+            torch.cuda.empty_cache()
+
+        if max_steps > 0:
+            train_dir = run_dir / "training"
+            automatic_resume = train_dir / "checkpoint_last.pth"
+            effective_resume = str(resume_checkpoint or (automatic_resume if automatic_resume.exists() else ""))
+            command = [
+                "/home/20262202788/conda-envs/equiformer/bin/python",
+                "-u",
+                "-m",
+                "equivariant_nas.training.fixed_step_trainer",
+                "--output-dir", str(train_dir),
+                "--dsl-program", str(canonical_program),
+                "--equiformer-root", equiformer_root,
+                "--input-irreps", "5x0e",
+                "--target", "1",
+                "--data-path", data_path,
+                "--feature-type", "one_hot",
+                "--batch-size", str(batch_size),
+                "--max-steps", str(max_steps),
+                "--reference-steps-per-epoch", "859",
+                "--eval-interval-steps", str(max_steps),
+                "--eval-interval-epochs", str(eval_interval_epochs),
+                "--data-epoch-origin-step", str(data_epoch_origin_step),
+                "--lr-schedule-origin-step", str(lr_schedule_origin_step),
+                "--checkpoint-interval-steps", "859",
+                "--epochs", "300",
+                "--radius", str(program.parameters.get("radius", 5.0)),
+                "--num-basis", "128",
+                "--drop-path", "0.0",
+                "--weight-decay", "5e-3",
+                "--lr", "5e-4",
+                "--min-lr", "1e-6",
+                "--workers", "4",
+                "--print-freq", "100",
+                "--seed", str(seed),
+                "--no-model-ema",
+                "--no-amp",
+            ]
+            if task_contract_path:
+                command.extend(["--dsl-task-contract", str(Path(task_contract_path).resolve())])
+            if equiformer_v2_root:
+                command.extend(["--equiformer-v2-root", equiformer_v2_root])
+            if train_subset_file:
+                command.extend(["--train-subset-file", train_subset_file])
+            if effective_resume:
+                command.extend(["--resume-step", effective_resume])
+            if allow_data_transition:
+                command.append("--allow-data-transition")
+            if resume_model_only:
+                command.append("--resume-model-only")
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = project_root
+            environment["EQUIFORMER_ROOT"] = equiformer_root
+            if equiformer_v2_root:
+                environment["EQUIFORMER_V2_ROOT"] = equiformer_v2_root
+            gpu_started = gpu_started or time.perf_counter()
+            timeout = min(
+                max(1800, int(max_steps * 2.0)),
+                max(1, int(ledger.remaining_gpu_hours() * 3600.0 - (time.perf_counter() - gpu_started))),
+            )
+            with (run_dir / "trainer_console.log").open("w", encoding="utf-8") as log:
+                completed = subprocess.run(
+                    command,
+                    env=environment,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    timeout=timeout,
+                    check=False,
+                )
+            if completed.returncode != 0:
+                raise RuntimeError("trainer exited with code {}".format(completed.returncode))
+            summary = json.loads((train_dir / "training_summary.json").read_text(encoding="utf-8"))
+            metric_lines = [
+                json.loads(line)
+                for line in (train_dir / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            endpoint = metric_lines[-1]
+            validation_mae = float(endpoint["val_mae"])
+            result.update({
+                "validation_alpha_mae": validation_mae,
+                "best_validation_alpha_mae": float(summary["best_val_mae"]),
+                "best_step": int(summary["best_step"]),
+                "endpoint_step": int(endpoint["global_step"]),
+                "training_time_sec": float(summary["training_time_sec"]),
+                "training_wall_time_sec": float(summary["wall_time_sec_current_job"]),
+                "combined_score": -validation_mae,
+                "resumed_from": effective_resume,
+                "batch_size": int(summary.get("batch_size", batch_size)),
+                "test_evaluated": bool(summary.get("test_evaluated", False)),
+            })
+            if result["test_evaluated"]:
+                raise ValueError("search pipeline must not evaluate the test split")
+            if run_symmetry:
+                audited = build_qm9_dsl_model(
+                    program,
+                    compiler,
+                    radius=float(program.parameters.get("radius", 5.0)),
+                    equiformer_v2_root=equiformer_v2_root or None,
+                    task=task,
+                ).to("cuda")
+                checkpoint = torch.load(train_dir / "checkpoint_last.pth", map_location="cpu")
+                audited.load_state_dict(checkpoint["model"])
+                post = _observable_symmetry_report(audited, batch)
+                result["posttrain_symmetry_report"] = post
+                result["max_symmetry_error"] = post["maximum"]
+                result["symmetry_warning"] = post["maximum"] > symmetry_warning_threshold
+                (run_dir / "posttrain_symmetry_report.json").write_text(
+                    json.dumps(post, indent=2, sort_keys=True), encoding="utf-8"
+                )
+                if post["maximum"] > symmetry_threshold:
+                    raise ValueError(
+                        "post-training symmetry error {:.6g} exceeds {:.6g}".format(
+                            post["maximum"], symmetry_threshold
+                        )
+                    )
+        else:
+            result["combined_score"] = 0.0
+        result["valid"] = True
+        result["failure_stage"] = ""
+    except Exception as exc:
+        result.update({
+            "valid": False,
+            "combined_score": -1.0e9,
+            "failure_stage": "dsl_pipeline",
+            "error_type": type(exc).__name__,
+            "error": str(exc)[:2000],
+        })
+    finally:
+        elapsed = time.perf_counter() - started
+        gpu_seconds = time.perf_counter() - gpu_started if gpu_started is not None else 0.0
+        result["evaluation_wall_time_sec"] = elapsed
+        result["charged_gpu_seconds"] = gpu_seconds
+        try:
+            ledger.append({
+                "architecture_id": architecture_id,
+                "stage": "dsl_steps{}".format(max_steps),
+                "seed": seed,
+                "gpu_seconds": gpu_seconds,
+                "valid": bool(result.get("valid")),
+            })
+        except Exception as budget_exc:
+            result["budget_error"] = str(budget_exc)
+        result["used_gpu_hours"] = ledger.used_gpu_hours()
+        checkpoint = run_dir / "training" / "checkpoint_last.pth"
+        result["checkpoint_last"] = str(checkpoint) if checkpoint.exists() else ""
+        result_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+    return result

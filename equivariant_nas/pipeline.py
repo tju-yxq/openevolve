@@ -11,8 +11,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from torch_geometric.loader import DataLoader
-
 from .budget import BudgetExceeded, BudgetLedger
 from .builder import build_equiformer, count_trainable_parameters
 from .candidate import extract_literal_spec
@@ -40,8 +38,47 @@ def evaluate_candidate_pipeline(
     allow_data_transition: bool = False,
     resume_model_only: bool = False,
     lr_schedule_origin_step: int = 0,
+    equiformer_v2_root: str = "",
+    dsl_task_contract: str = "",
 ) -> Dict[str, Any]:
     """Evaluate one architecture with hard gates before optional training."""
+
+    candidate_path = Path(program_path)
+    try:
+        candidate_payload = json.loads(candidate_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        candidate_payload = None
+    if isinstance(candidate_payload, dict) and {
+        "language_version",
+        "task_contract",
+        "nodes",
+        "outputs",
+    }.issubset(candidate_payload):
+        from .dsl.pipeline import evaluate_dsl_candidate_pipeline
+
+        return evaluate_dsl_candidate_pipeline(
+            program_path=program_path,
+            project_root=project_root,
+            equiformer_root=equiformer_root,
+            data_path=data_path,
+            max_steps=max_steps,
+            seed=seed,
+            parameter_ratio_limit=parameter_ratio_limit,
+            symmetry_threshold=symmetry_threshold,
+            symmetry_warning_threshold=symmetry_warning_threshold,
+            run_symmetry=run_symmetry,
+            gpu_budget_hours=gpu_budget_hours,
+            resume_checkpoint=resume_checkpoint,
+            batch_size=batch_size,
+            train_subset_file=train_subset_file,
+            eval_interval_epochs=eval_interval_epochs,
+            data_epoch_origin_step=data_epoch_origin_step,
+            allow_data_transition=allow_data_transition,
+            resume_model_only=resume_model_only,
+            lr_schedule_origin_step=lr_schedule_origin_step,
+            equiformer_v2_root=equiformer_v2_root,
+            task_contract_path=dsl_task_contract,
+        )
 
     project = Path(project_root)
     subset_fingerprint = ""
@@ -151,6 +188,7 @@ def evaluate_candidate_pipeline(
 
             add_equiformer_to_path(equiformer_root)
             from datasets.pyg.qm9 import QM9
+            from torch_geometric.loader import DataLoader
 
             gpu_started = time.perf_counter()
             # Static symmetry/gradient gates use training molecules only. The

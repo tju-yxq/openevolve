@@ -43,6 +43,12 @@ def evaluate(program_path):
             os.environ.get("NAS_LR_SCHEDULE_ORIGIN_STEP", "0"),
         ]
     )
+    equiformer_v2_root = os.environ.get("EQUIFORMER_V2_ROOT", "")
+    if equiformer_v2_root:
+        command.extend(["--equiformer-v2-root", equiformer_v2_root])
+    task_contract = os.environ.get("DSL_TASK_CONTRACT", "")
+    if task_contract:
+        command.extend(["--dsl-task-contract", task_contract])
     subset_file = os.environ.get("NAS_TRAIN_SUBSET_FILE", "")
     if subset_file:
         command.extend(["--train-subset-file", subset_file])

@@ -10,6 +10,8 @@ def main():
     parser.add_argument("--program", required=True)
     parser.add_argument("--project-root", required=True)
     parser.add_argument("--equiformer-root", required=True)
+    parser.add_argument("--equiformer-v2-root", default="")
+    parser.add_argument("--dsl-task-contract", default="")
     parser.add_argument("--data-path", required=True)
     parser.add_argument("--max-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0)
@@ -39,6 +41,8 @@ def main():
         allow_data_transition=args.allow_data_transition,
         resume_model_only=args.resume_model_only,
         lr_schedule_origin_step=args.lr_schedule_origin_step,
+        equiformer_v2_root=args.equiformer_v2_root,
+        dsl_task_contract=args.dsl_task_contract,
     )
     print(json.dumps(result, sort_keys=True))
 

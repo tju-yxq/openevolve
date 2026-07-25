@@ -22,7 +22,8 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
     features = torch.randn(7, 5, dtype=torch.float64)
     positions = torch.randn(7, 3, dtype=torch.float64)
     batch = torch.tensor([0, 0, 0, 0, 1, 1, 1], dtype=torch.long)
-    prediction = model(features, positions, batch)
+    node_atom = torch.tensor([1, 6, 7, 8, 1, 6, 8], dtype=torch.long)
+    prediction = model(features, positions, batch, node_atom)
     assert prediction.shape == (2, 1)
     loss = prediction.square().mean()
     loss.backward()
@@ -34,10 +35,20 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
     from e3nn import o3
 
     rotation = o3.rand_matrix(dtype=torch.float64)
-    rotated = model(features, positions @ rotation.transpose(0, 1), batch)
-    translated = model(features, positions + torch.tensor([[2.0, -1.0, 0.5]], dtype=torch.float64), batch)
+    rotated = model(features, positions @ rotation.transpose(0, 1), batch, node_atom)
+    translated = model(
+        features,
+        positions + torch.tensor([[2.0, -1.0, 0.5]], dtype=torch.float64),
+        batch,
+        node_atom,
+    )
     permutation = torch.tensor([3, 2, 1, 0, 6, 5, 4], dtype=torch.long)
-    permuted = model(features[permutation], positions[permutation], batch[permutation])
+    permuted = model(
+        features[permutation],
+        positions[permutation],
+        batch[permutation],
+        node_atom[permutation],
+    )
     assert torch.allclose(rotated, prediction.detach(), atol=1e-7, rtol=1e-7)
     assert torch.allclose(translated, prediction.detach(), atol=1e-7, rtol=1e-7)
     assert torch.allclose(permuted, prediction.detach(), atol=1e-7, rtol=1e-7)

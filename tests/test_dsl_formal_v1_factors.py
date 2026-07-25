@@ -38,6 +38,15 @@ def test_formal_v1_factor_ownership_is_unique():
     profile = equiformer_v1_capability_profile()
     validate_unique_factor_ownership(profile.enabled_factors)
     assert {item.factor_id for item in profile.enabled_factors} == {"F2.2", "F4.4", "F5.3", "F6.3"}
+    assert {
+        item.factor_id: item.required_backend_capability
+        for item in profile.enabled_factors
+    } == {
+        "F2.2": "exact_constructor",
+        "F4.4": "exact_constructor",
+        "F5.3": "exact_constructor",
+        "F6.3": "exact_hybrid",
+    }
 
 
 @pytest.mark.parametrize(
@@ -67,6 +76,7 @@ def test_constructor_factor_patch_has_exact_official_lowering(factor_id, region_
     assert audit["factor_id"] == factor_id
     assert audit["changed_parameters"] == [path]
     assert plan.mode == "exact_constructor"
+    assert region.backend_capability == plan.mode
     assert region_id in plan.supported_regions
 
 
@@ -105,6 +115,7 @@ def test_radial_factor_requires_and_lowers_the_complete_preregistered_option():
         "constructor.operator.num_basis",
         "constructor.operator.radial_hidden",
     ]
+    assert radial.backend_capability == compiler.plan_lowering(child).mode
 
 
 def test_factor_patch_cannot_change_an_unowned_constructor_parameter():

@@ -72,7 +72,7 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
                 "constructor.operator.num_basis",
                 "constructor.operator.radial_hidden",
             ),
-            "exact_v1_constructor",
+            "exact_constructor",
             {"basis_type": "gaussian", "num_basis": 128, "radial_hidden": [64, 64]},
             (
                 {"basis_type": "gaussian", "num_basis": 96, "radial_hidden": [96, 96]},
@@ -92,7 +92,7 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
             "Multi-head organization inside invariant attention routing.",
             "v1_attention_heads",
             ("constructor.operator.num_heads",),
-            "exact_v1_constructor",
+            "exact_constructor",
             {"num_heads": 4},
             ({"num_heads": 2}, {"num_heads": 8}),
         ),
@@ -102,7 +102,7 @@ def equiformer_v1_capability_profile() -> CapabilityProfile:
             "Equivariant normalization and degree-rescaling stability.",
             "v1_normalization",
             ("constructor.action.norm_layer", "constructor.action.rescale_degree"),
-            "exact_v1_constructor",
+            "exact_constructor",
             {"norm_layer": "layer", "rescale_degree": False},
             (
                 {"norm_layer": "layer", "rescale_degree": True},

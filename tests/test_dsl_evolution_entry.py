@@ -6,11 +6,25 @@ import pytest
 from openevolve_adapter import evaluator
 from scripts.run_dsl_evolution import (
     _ensure_compiler_manifest,
+    _is_exact_constructor_capability_label_fix,
     _lineage_root,
     _next_forced_factor,
     _valid_factor_counts,
     get_parser,
 )
+
+
+def _manifest_with_capabilities(constructor_capability):
+    return {
+        "compiler_semantics_version": "evoequilang-3",
+        "rewrite_registry_hash": "rules-a",
+        "region_registry": [
+            {"factor_id": "F2.2", "region_id": "radial", "backend_capability": constructor_capability},
+            {"factor_id": "F4.4", "region_id": "heads", "backend_capability": constructor_capability},
+            {"factor_id": "F5.3", "region_id": "norm", "backend_capability": constructor_capability},
+            {"factor_id": "F6.3", "region_id": "readout", "backend_capability": "exact_hybrid"},
+        ],
+    }
 
 
 def test_dsl_evolution_entry_requires_program_task_evaluator_and_config():
@@ -48,6 +62,52 @@ def test_compiler_manifest_prevents_silent_resume_under_new_semantics(tmp_path):
 def test_legacy_database_without_manifest_is_not_adopted(tmp_path):
     with pytest.raises(RuntimeError):
         _ensure_compiler_manifest(tmp_path, {"compiler_semantics_version": "evoequilang-2"}, database_has_programs=True)
+
+
+def test_exact_constructor_capability_label_fix_is_narrow_and_audited(tmp_path):
+    old = _manifest_with_capabilities("exact_v1_constructor")
+    new = _manifest_with_capabilities("exact_constructor")
+    assert _is_exact_constructor_capability_label_fix(old, new)
+    _ensure_compiler_manifest(tmp_path, old, database_has_programs=False)
+    (tmp_path / "evolution.jsonl").write_text(
+        json.dumps({
+            "iteration": 8,
+            "region_audit": {"factor_id": "F6.3"},
+            "metrics": {
+                "architecture_id": "readout-child",
+                "valid": True,
+                "test_evaluated": False,
+                "lowering_mode": "exact_hybrid",
+            },
+        }) + "\n",
+        encoding="utf-8",
+    )
+    path = _ensure_compiler_manifest(tmp_path, new, database_has_programs=True)
+    assert json.loads(path.read_text(encoding="utf-8")) == new
+    migrations = (tmp_path / "compiler_manifest_migrations" / "migrations.jsonl").read_text(encoding="utf-8")
+    assert "exact_constructor_capability_label_fix" in migrations
+    assert "readout-child" in migrations
+
+
+def test_exact_constructor_capability_label_fix_refuses_affected_valid_candidate(tmp_path):
+    old = _manifest_with_capabilities("exact_v1_constructor")
+    new = _manifest_with_capabilities("exact_constructor")
+    _ensure_compiler_manifest(tmp_path, old, database_has_programs=False)
+    (tmp_path / "evolution.jsonl").write_text(
+        json.dumps({
+            "iteration": 9,
+            "region_audit": {"factor_id": "F4.4"},
+            "metrics": {
+                "architecture_id": "constructor-child",
+                "valid": True,
+                "test_evaluated": False,
+                "lowering_mode": "exact_constructor",
+            },
+        }) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError, match="admission semantics could have changed"):
+        _ensure_compiler_manifest(tmp_path, new, database_has_programs=True)
 
 
 def test_language_lineage_prefers_the_openevolve_island_identity():

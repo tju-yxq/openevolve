@@ -147,6 +147,47 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
             if upgraded == payload and not _valid_candidate_ids(Path(output) / "evolution.jsonl"):
                 _write_json(path, payload)
                 return path
+            if _is_exact_constructor_capability_label_fix(existing, payload):
+                valid_records = _valid_candidate_records(Path(output) / "evolution.jsonl")
+                incompatible = [
+                    record
+                    for record in valid_records
+                    if (record.get("region_audit") or {}).get("factor_id") != "F6.3"
+                    or (record.get("metrics") or {}).get("lowering_mode") != "exact_hybrid"
+                ]
+                if incompatible:
+                    raise RuntimeError(
+                        "exact-constructor capability-label migration found a valid candidate "
+                        "whose admission semantics could have changed"
+                    )
+                old_bytes = path.read_bytes()
+                old_hash = hashlib.sha256(old_bytes).hexdigest()
+                new_bytes = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+                new_hash = hashlib.sha256(new_bytes).hexdigest()
+                archive = Path(output) / "compiler_manifest_migrations"
+                archive.mkdir(exist_ok=True)
+                previous = archive / "compiler_manifest_{}.previous.json".format(old_hash[:12])
+                if not previous.exists():
+                    previous.write_bytes(old_bytes)
+                _append_jsonl(
+                    archive / "migrations.jsonl",
+                    {
+                        "kind": "exact_constructor_capability_label_fix",
+                        "old_sha256": old_hash,
+                        "new_sha256": new_hash,
+                        "valid_candidates_preserved": [
+                            (record.get("metrics") or {}).get("architecture_id", "")
+                            for record in valid_records
+                        ],
+                        "reason": (
+                            "Region capability used the stale label exact_v1_constructor while "
+                            "the certified compiler lowering mode is exact_constructor"
+                        ),
+                        "migrated_at": _now(),
+                    },
+                )
+                _write_json(path, payload)
+                return path
             raise RuntimeError(
                 "compiler manifest mismatch; resume requires the exact task, language, rewrite registry, compiler, and backend semantics"
             )
@@ -157,6 +198,62 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
         )
     _write_json(path, payload)
     return path
+
+
+def _valid_candidate_records(evolution_path):
+    path = Path(evolution_path)
+    if not path.exists():
+        return []
+    records = []
+    seen = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if int(record.get("iteration", 0)) <= 0:
+            continue
+        metrics = record.get("metrics") or {}
+        architecture_id = str(metrics.get("architecture_id", record.get("architecture_id", "")))
+        if (
+            not architecture_id
+            or architecture_id in seen
+            or metrics.get("valid") is not True
+            or metrics.get("test_evaluated") is not False
+        ):
+            continue
+        seen.add(architecture_id)
+        records.append(record)
+    return records
+
+
+def _is_exact_constructor_capability_label_fix(existing, requested):
+    old = json.loads(json.dumps(existing))
+    new = json.loads(json.dumps(requested))
+    old_regions = old.pop("region_registry", None)
+    new_regions = new.pop("region_registry", None)
+    if old != new or not isinstance(old_regions, list) or not isinstance(new_regions, list):
+        return False
+    if len(old_regions) != len(new_regions):
+        return False
+    changed = set()
+    for old_region, new_region in zip(old_regions, new_regions):
+        old_item = dict(old_region)
+        new_item = dict(new_region)
+        old_capability = old_item.pop("backend_capability", None)
+        new_capability = new_item.pop("backend_capability", None)
+        if old_item != new_item:
+            return False
+        factor_id = str(new_item.get("factor_id", ""))
+        if old_capability == new_capability:
+            continue
+        if (
+            factor_id not in {"F2.2", "F4.4", "F5.3"}
+            or old_capability != "exact_v1_constructor"
+            or new_capability != "exact_constructor"
+        ):
+            return False
+        changed.add(factor_id)
+    return changed == {"F2.2", "F4.4", "F5.3"}
 
 
 def _ensure_language_preregistration(output, preregistration, *, database_has_programs):

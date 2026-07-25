@@ -227,8 +227,8 @@ def main():
             plan = compiler.plan_lowering(child)
             check(
                 "factor:{}:option{}".format(factor.factor_id, option_index),
-                plan.mode == "exact_constructor",
-                plan.to_dict(),
+                plan.mode == "exact_constructor" and region.backend_capability == plan.mode,
+                {"lowering": plan.to_dict(), "required_backend_capability": region.backend_capability},
             )
             factor_results.append({
                 "factor_id": factor.factor_id,

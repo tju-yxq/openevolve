@@ -12,10 +12,42 @@ from scripts.run_dsl_evolution import (
     _is_generation_attempt_extension,
     _lineage_root,
     _next_forced_factor,
+    _used_factor_patch_signatures,
     _unique_initial_parent,
     _valid_factor_counts,
     get_parser,
 )
+
+
+def test_used_factor_patch_signatures_only_include_valid_validation_only_choices(tmp_path):
+    path = tmp_path / "evolution.jsonl"
+    rows = [
+        {
+            "iteration": 18,
+            "region_audit": {"factor_id": "F4.4"},
+            "patch": {"edits": [{"kind": "change_parameters", "target": "constructor.operator.num_heads", "payload": {"value": 2}}]},
+            "metrics": {"valid": True, "test_evaluated": False, "architecture_id": "heads-2"},
+        },
+        {
+            "iteration": 19,
+            "region_audit": {"factor_id": "F4.4"},
+            "patch": {"edits": [{"kind": "change_parameters", "target": "constructor.operator.num_heads", "payload": {"value": 8}}]},
+            "metrics": {"valid": False, "test_evaluated": False, "architecture_id": "failed-heads-8"},
+        },
+        {
+            "iteration": 20,
+            "region_audit": {"factor_id": "F5.3"},
+            "patch": {"edits": [{"kind": "change_parameters", "target": "constructor.action.norm_layer", "payload": {"value": "fast_layer"}}]},
+            "metrics": {"valid": True, "test_evaluated": False, "architecture_id": "fast-layer"},
+        },
+    ]
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    assert _used_factor_patch_signatures(path, "F4.4") == [
+        {
+            "architecture_id": "heads-2",
+            "edits": [{"target": "constructor.operator.num_heads", "value": 2}],
+        }
+    ]
 
 
 def _manifest_with_capabilities(constructor_capability):

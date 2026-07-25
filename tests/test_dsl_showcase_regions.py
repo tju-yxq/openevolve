@@ -210,3 +210,58 @@ def test_region_critic_schema_failure_is_repaired_without_changing_factor(tmp_pa
     with sqlite3.connect(str(tmp_path / "evidence.sqlite")) as connection:
         roles = [row[0] for row in connection.execute("SELECT role FROM prompt_runs ORDER BY created_at")]
     assert roles == ["factor_router", "region_critic", "region_critic_repairer", "patch_synthesizer"]
+
+
+def test_forced_factor_coverage_repairs_an_already_evaluated_constructor_option(tmp_path):
+    parent, compiler, task, vocabulary, store = _objects(tmp_path)
+    parent_id = compiler.analyze(parent, task).architecture_id
+    critic = json.dumps({
+        "factor_id": "F4.4",
+        "region_id": "v1_attention_heads",
+        "claim": "measure the remaining certified attention-head organization",
+        "mechanism": "head count changes invariant attention organization without changing irreps",
+        "edit_plan": ["select one capability-admitted num_heads value not already evaluated"],
+        "preserved_invariants": ["all other constructor fields remain frozen"],
+        "evidence_refs": [],
+        "uncertainty": "the remaining option may not improve validation MAE",
+        "risk": "attention partitioning may reduce optimization quality",
+        "acceptance_metrics": ["endpoint validation MAE", "equivariance error"],
+    })
+
+    def constructor_patch(value):
+        return json.dumps({
+            "patch_version": "1.0",
+            "parent_architecture_id": parent_id,
+            "language_version": parent.language_version,
+            "hypothesis": {"factor_id": "F4.4", "claim": "measure unused head count"},
+            "scope": ["constructor.operator.num_heads"],
+            "edits": [{
+                "kind": "change_parameters",
+                "target": "constructor.operator.num_heads",
+                "payload": {"value": value},
+            }],
+            "preconditions": [],
+            "postconditions": [],
+            "expected_effects": {"validation_alpha_mae": "hypothesis_only"},
+        })
+
+    ensemble = FakeEnsemble([critic, constructor_patch(2), constructor_patch(8)])
+    result = asyncio.run(
+        DSLGenerationEngine(compiler, task, vocabulary, store, model_name="fake", repair_attempts=1).generate_region_candidate(
+            ensemble,
+            parent,
+            (),
+            v1_region_registry(parent),
+            forced_factor_id="F4.4",
+            excluded_patch_signatures=[{
+                "architecture_id": "previous-heads-2",
+                "edits": [{"target": "constructor.operator.num_heads", "value": 2}],
+            }],
+        )
+    )
+    assert result.repair_count == 1
+    assert result.patch.edits[0].payload == {"value": 8}
+    assert result.planner_response["excluded_patch_signatures"][0]["architecture_id"] == "previous-heads-2"
+    repair_payload = json.loads(ensemble.calls[2]["messages"][0]["content"])
+    assert repair_payload["diagnostics"][0]["code"] == "E_SEARCH_002"
+    assert repair_payload["failed_patch"]["edits"][0]["payload"] == {"value": 2}

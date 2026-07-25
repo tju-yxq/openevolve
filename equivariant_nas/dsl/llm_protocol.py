@@ -342,6 +342,8 @@ def synthesizer_prompt(
         "program output targets MUST use output:<name>. "
         "never invent canonical n0000-style aliases. Every edit MUST contain exactly kind, "
         "target, and payload. Return one JSON object matching authoritative_patch_schema and no prose. "
+        "If plan.excluded_patch_signatures is non-empty, the complete change_parameters edit "
+        "signature MUST differ from every excluded signature; select another admitted option. "
         "Condition kind MUST be one of node_exists, node_absent, node_op_is, "
         "node_attr_equals, node_input_equals, or output_source_is; an operator or motif name "
         "is never a condition kind. For constructor-factor patches, prefer empty preconditions "

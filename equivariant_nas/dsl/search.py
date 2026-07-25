@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -187,6 +189,7 @@ class DSLGenerationEngine:
         evidence: Sequence[EvidenceItem],
         regions: Sequence[RegionDefinition],
         forced_factor_id: str = "",
+        excluded_patch_signatures: Sequence[Mapping[str, Any]] = (),
     ) -> GenerationResult:
         """Generate one candidate through Router, Critic, Synthesizer, then conditional Repair."""
 
@@ -209,6 +212,11 @@ class DSLGenerationEngine:
                 "evidence_refs": [],
                 "expected_value": "measure one controlled leaf-factor intervention",
                 "risk": "forced coverage may allocate budget to a weak direction",
+                "excluded_patch_signatures": [dict(item) for item in excluded_patch_signatures],
+                "coverage_requirement": (
+                    "choose a certified semantic option whose complete change_parameters signature "
+                    "is not listed in excluded_patch_signatures"
+                ),
             }
         else:
             router_request = region_router_prompt(self.task, parent_program, evidence, regions)
@@ -288,6 +296,12 @@ class DSLGenerationEngine:
             "allowed_region_ops": list(region.allowed_ops),
             "boundary_sources": list(region.boundary_sources),
             "region_backend_capability": region.backend_capability,
+            "excluded_patch_signatures": [dict(item) for item in excluded_patch_signatures],
+            "coverage_requirement": (
+                "the complete constructor patch signature must differ from every excluded signature"
+                if excluded_patch_signatures
+                else ""
+            ),
         }
         synth_request = synthesizer_prompt(
             self.task,
@@ -332,6 +346,32 @@ class DSLGenerationEngine:
                         Diagnostic("E_LLM_019", "patch hypothesis changed the routed leaf factor", expected=region.factor_id, actual=patch_factor)
                     ])
                 failed_patch = patch
+                if excluded_patch_signatures:
+                    proposed = [
+                        {"target": edit.target, "value": edit.payload.get("value")}
+                        for edit in patch.edits
+                        if edit.kind == "change_parameters" and set(edit.payload) == {"value"}
+                    ]
+                    proposed.sort(key=lambda item: (item["target"], json.dumps(item["value"], sort_keys=True)))
+                    excluded = []
+                    for item in excluded_patch_signatures:
+                        signature = [dict(edit) for edit in item.get("edits", [])]
+                        signature.sort(key=lambda edit: (str(edit.get("target", "")), json.dumps(edit.get("value"), sort_keys=True)))
+                        excluded.append((str(item.get("architecture_id", "")), signature))
+                    duplicate = next((architecture_id for architecture_id, signature in excluded if proposed == signature), "")
+                    if duplicate:
+                        raise DSLValidationError([
+                            Diagnostic(
+                                "E_SEARCH_002",
+                                "forced factor coverage reused an already evaluated constructor option",
+                                actual=json.dumps(proposed, ensure_ascii=False, sort_keys=True),
+                                details={
+                                    "duplicate_architecture_id": duplicate,
+                                    "excluded_patch_signatures": [dict(item) for item in excluded_patch_signatures],
+                                    "required_action": "choose a different capability-admitted option without widening scope",
+                                },
+                            )
+                        ])
                 child_program = apply_typed_patch(
                     parent_program,
                     patch,

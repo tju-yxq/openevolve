@@ -100,6 +100,48 @@ def _valid_factor_counts(evolution_path):
     return counts
 
 
+def _used_factor_patch_signatures(evolution_path, factor_id):
+    """Return valid root-isolated constructor choices already charged to one factor quota."""
+
+    path = Path(evolution_path)
+    signatures = []
+    seen = set()
+    if not path.exists() or not factor_id:
+        return signatures
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        metrics = record.get("metrics") or {}
+        if (
+            int(record.get("iteration", 0)) <= 0
+            or not metrics.get("valid")
+            or metrics.get("test_evaluated") is not False
+            or str((record.get("region_audit") or {}).get("factor_id", "")) != str(factor_id)
+        ):
+            continue
+        edits = []
+        for edit in (record.get("patch") or {}).get("edits", []):
+            if edit.get("kind") != "change_parameters":
+                continue
+            payload = edit.get("payload") or {}
+            if set(payload) != {"value"}:
+                continue
+            edits.append({"target": str(edit.get("target", "")), "value": payload["value"]})
+        edits.sort(key=lambda item: (item["target"], json.dumps(item["value"], sort_keys=True)))
+        if not edits:
+            continue
+        canonical = json.dumps(edits, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if canonical in seen:
+            continue
+        seen.add(canonical)
+        signatures.append({
+            "architecture_id": str(metrics.get("architecture_id", record.get("architecture_id", ""))),
+            "edits": edits,
+        })
+    return signatures
+
+
 def _next_forced_factor(forced_factors, factor_counts, per_factor_target, iteration):
     ordered = tuple(dict.fromkeys(forced_factors))
     if not ordered:
@@ -889,6 +931,10 @@ async def run(args):
                     _measured_evidence(parent, inspirations),
                     regions,
                     forced_factor_id=forced_factor_id,
+                    excluded_patch_signatures=_used_factor_patch_signatures(
+                        output / "evolution.jsonl",
+                        forced_factor_id,
+                    ),
                 )
                 child_id = generated.child.architecture_id
                 child_path = candidates / "iteration_{:04d}_{}.dsl.json".format(iteration, child_id)

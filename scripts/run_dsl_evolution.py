@@ -51,6 +51,24 @@ def _append_jsonl(path, payload):
         handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def _load_verified_initial_metrics(path, *, architecture_id, seed, max_steps):
+    metrics = json.loads(Path(path).read_text(encoding="utf-8"))
+    required_identity = ("program_id", "executable_id", "protocol_id", "runtime_manifest_sha256")
+    missing = [key for key in required_identity if not metrics.get(key)]
+    if missing:
+        raise ValueError("initial metrics lack formal V1 identity fields: {}".format(missing))
+    if metrics.get("test_evaluated") is not False:
+        raise ValueError("initial metrics must explicitly prove test_evaluated=false")
+    if metrics["program_id"] != architecture_id:
+        raise ValueError("initial metrics program_id does not match the imported parent")
+    if int(metrics.get("seed", -1)) != int(seed):
+        raise ValueError("initial metrics seed does not match the search protocol")
+    endpoint = int(metrics.get("endpoint_step", metrics.get("fidelity_steps", -1)))
+    if endpoint != int(max_steps):
+        raise ValueError("initial metrics fidelity does not match the search protocol")
+    return metrics
+
+
 def _ensure_compiler_manifest(output, payload, *, database_has_programs):
     path = Path(output) / "compiler_manifest.json"
     if path.exists():
@@ -213,6 +231,7 @@ async def run(args):
     import evaluator as evaluator_adapter
 
     output = Path(args.output).resolve()
+    forced_factors = tuple(item.strip() for item in args.forced_factor_sequence.split(",") if item.strip())
     candidates = output / "candidates"
     output.mkdir(parents=True, exist_ok=True)
     candidates.mkdir(exist_ok=True)
@@ -275,6 +294,13 @@ async def run(args):
         "language_preregistration_hash": language_preregistration.content_hash() if language_preregistration else "",
         "initial_lowering_plan": compiler.plan_lowering(initial_program, task).to_dict(),
         "region_registry": [item.to_dict() for item in v1_region_registry(initial_program)],
+        "formal_v1_search_protocol": {
+            "forced_factor_sequence": list(forced_factors),
+            "max_steps": int(args.max_steps),
+            "batch_size": int(args.batch_size),
+            "seed": int(args.seed),
+            "test_during_search": False,
+        },
     }
     _ensure_compiler_manifest(output, compiler_manifest, database_has_programs=bool(database.programs))
     ensemble = LLMEnsemble(config.llm.models)
@@ -309,7 +335,12 @@ async def run(args):
         initial_path = candidates / "iteration_0000.dsl.json"
         initial_path.write_text(dumps_program(initial_program), encoding="utf-8")
         metrics = (
-            json.loads(Path(args.initial_metrics).read_text(encoding="utf-8"))
+            _load_verified_initial_metrics(
+                args.initial_metrics,
+                architecture_id=artifact.architecture_id,
+                seed=args.seed,
+                max_steps=args.max_steps,
+            )
             if args.initial_metrics
             else _evaluate(evaluator_adapter, initial_path, artifact.architecture_id)
         )
@@ -350,45 +381,82 @@ async def run(args):
         })
         island_index = (iteration - 1) % len(database.islands)
         database.set_current_island(island_index)
-        parent, inspirations = database.sample(num_inspirations=args.inspirations)
-        parent_program = loads_program(parent.code)
-        regions = v1_region_registry(parent_program)
-        record = {
-            "iteration": iteration,
-            "parent_program_id": parent.id,
-            "parent_architecture_id": parent.metrics.get("architecture_id"),
-            "inspiration_ids": [item.id for item in inspirations],
-            "target_island": island_index,
-        }
+        current_path = output / "current_candidate.json"
+        current_payload = json.loads(current_path.read_text(encoding="utf-8")) if current_path.exists() else None
+        record = {"iteration": iteration, "target_island": island_index}
         try:
-            generated = await engine.generate_region_candidate(
-                ensemble,
-                parent_program,
-                _measured_evidence(parent, inspirations),
-                regions,
-            )
-            child_id = generated.child.architecture_id
-            child_path = candidates / "iteration_{:04d}_{}.dsl.json".format(iteration, child_id)
-            child_path.write_text(dumps_program(generated.child.source_program), encoding="utf-8")
-            _write_json(output / "current_candidate.json", {
-                "status": "evaluating",
-                "updated_at": _now(),
-                "iteration": iteration,
-                "architecture_id": child_id,
-                "candidate_path": str(child_path),
-            })
+            if current_payload is not None:
+                if int(current_payload.get("iteration", -1)) != iteration:
+                    raise RuntimeError("current_candidate iteration does not match the resumable database boundary")
+                child_id = str(current_payload["architecture_id"])
+                child_path = Path(current_payload["candidate_path"])
+                expected_sha = str(current_payload.get("candidate_sha256", ""))
+                actual_sha = hashlib.sha256(child_path.read_bytes()).hexdigest()
+                if expected_sha and actual_sha != expected_sha:
+                    raise RuntimeError("current candidate program hash changed; refuse identity drift")
+                child_code = child_path.read_text(encoding="utf-8")
+                parent_db_id = str(current_payload["parent_program_id"])
+                parent_generation = int(current_payload["parent_generation"])
+                generation_metadata = dict(current_payload["generation_metadata"])
+                record.update(dict(current_payload["record"]))
+                record["recovered_without_llm_call"] = True
+                _write_json(output / "heartbeat.json", {
+                    "status": "recovering_candidate",
+                    "updated_at": _now(),
+                    "iteration": iteration,
+                    "architecture_id": child_id,
+                    "candidate_path": str(child_path),
+                })
+            else:
+                parent, inspirations = database.sample(num_inspirations=args.inspirations)
+                parent_program = loads_program(parent.code)
+                regions = v1_region_registry(parent_program)
+                record.update({
+                    "parent_program_id": parent.id,
+                    "parent_architecture_id": parent.metrics.get("architecture_id"),
+                    "inspiration_ids": [item.id for item in inspirations],
+                })
+                generated = await engine.generate_region_candidate(
+                    ensemble,
+                    parent_program,
+                    _measured_evidence(parent, inspirations),
+                    regions,
+                    forced_factor_id=(forced_factors[(iteration - 1) % len(forced_factors)] if forced_factors else ""),
+                )
+                child_id = generated.child.architecture_id
+                child_path = candidates / "iteration_{:04d}_{}.dsl.json".format(iteration, child_id)
+                child_code = dumps_program(generated.child.source_program)
+                child_path.write_text(child_code, encoding="utf-8")
+                parent_db_id = parent.id
+                parent_generation = parent.generation
+                generation_metadata = {
+                    "architecture_id": child_id,
+                    "patch": generated.patch.to_dict(),
+                    "router_response": dict(generated.router_response),
+                    "critic_response": dict(generated.critic_response),
+                    "region_audit": dict(generated.region_audit),
+                    "repair_count": generated.repair_count,
+                    "planner_repair_count": generated.planner_repair_count,
+                }
+                record.update(dict(generation_metadata, planner_response=dict(generated.planner_response)))
+                _write_json(current_path, {
+                    "status": "evaluating",
+                    "updated_at": _now(),
+                    "iteration": iteration,
+                    "architecture_id": child_id,
+                    "candidate_path": str(child_path),
+                    "candidate_sha256": hashlib.sha256(child_path.read_bytes()).hexdigest(),
+                    "parent_program_id": parent_db_id,
+                    "parent_generation": parent_generation,
+                    "generation_metadata": generation_metadata,
+                    "record": record,
+                })
             metrics = _evaluate(evaluator_adapter, child_path, child_id)
-            record.update({
-                "architecture_id": child_id,
-                "patch": generated.patch.to_dict(),
-                "planner_response": dict(generated.planner_response),
-                "router_response": dict(generated.router_response),
-                "critic_response": dict(generated.critic_response),
-                "region_audit": dict(generated.region_audit),
-                "repair_count": generated.repair_count,
-                "planner_repair_count": generated.planner_repair_count,
-                "metrics": metrics,
-            })
+            partial_checkpoint = Path(str(metrics.get("checkpoint_last", "")))
+            if not metrics.get("valid") and partial_checkpoint.is_file():
+                record["same_candidate_retry_from_checkpoint"] = True
+                metrics = _evaluate(evaluator_adapter, child_path, child_id)
+            record.update({"architecture_id": child_id, "metrics": metrics})
             store.add_evaluation(
                 child_id,
                 split="validation",
@@ -400,30 +468,21 @@ async def run(args):
             if metrics.get("valid"):
                 child = Program(
                     id=str(uuid.uuid4()),
-                    code=dumps_program(generated.child.source_program),
+                    code=child_code,
                     language="json",
-                    parent_id=parent.id,
-                    generation=parent.generation + 1,
+                    parent_id=parent_db_id,
+                    generation=parent_generation + 1,
                     metrics=metrics,
                     iteration_found=iteration,
-                    metadata={
-                        "architecture_id": child_id,
-                        "patch": generated.patch.to_dict(),
-                        "router_response": dict(generated.router_response),
-                        "critic_response": dict(generated.critic_response),
-                        "region_audit": dict(generated.region_audit),
-                        "repair_count": generated.repair_count,
-                        "planner_repair_count": generated.planner_repair_count,
-                    },
+                    metadata=generation_metadata,
                 )
                 database.add(child, iteration=iteration, target_island=island_index)
         except Exception as exc:
             record.update({"error_type": type(exc).__name__, "error": str(exc)[:4000]})
         _append_jsonl(output / "evolution.jsonl", record)
         database.save(str(output / "database"), iteration=iteration)
-        current = output / "current_candidate.json"
-        if current.exists():
-            current.unlink()
+        if current_path.exists():
+            current_path.unlink()
         best = database.get_best_program()
         summary = {
             "last_completed_iteration": iteration,
@@ -486,6 +545,11 @@ def get_parser():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--repair-attempts", type=int, default=2)
     parser.add_argument("--model-label", default="openevolve-ensemble")
+    parser.add_argument(
+        "--forced-factor-sequence",
+        default="",
+        help="Comma-separated pre-registered factor ids; skips the Router LLM call and cycles by iteration.",
+    )
     parser.add_argument("--initial-metrics", default="")
     parser.add_argument("--skip-symmetry", action="store_true")
     parser.add_argument("--stop-file", default="")

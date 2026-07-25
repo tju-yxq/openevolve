@@ -165,6 +165,7 @@ def region_router_prompt(
         "measured_evidence": [item.to_dict() for item in visible],
         "regions": [item.to_dict() for item in regions],
         "response_schema": {
+            "factor_id": "exactly one capability-enabled leaf factor id",
             "region_id": "exactly one registered region id",
             "rationale": "why this region has the highest expected information value",
             "evidence_refs": ["visible evidence ids"],
@@ -174,8 +175,9 @@ def region_router_prompt(
     }
     return {
         "system": (
-            "You are the region router for a typed equivariant architecture search. "
-            "Select exactly one registered region. Do not propose node edits or code. "
+            "You are the leaf-factor router for a typed equivariant architecture search. "
+            "Select exactly one capability-enabled leaf factor and its uniquely owned region. "
+            "Do not propose node edits or code. "
             "Return exactly one JSON object matching response_schema."
         ),
         "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
@@ -184,13 +186,23 @@ def region_router_prompt(
 
 def parse_region_router_response(text: str, regions: Sequence[RegionDefinition]) -> Dict[str, Any]:
     value = _load_json_object(text, "region_router")
-    required = {"region_id", "rationale", "evidence_refs", "expected_value", "risk"}
+    required = {"factor_id", "region_id", "rationale", "evidence_refs", "expected_value", "risk"}
     if set(value) != required:
         raise DSLValidationError([Diagnostic("E_LLM_011", "region router response does not match the exact schema")])
     allowed = {item.region_id for item in regions}
     if value["region_id"] not in allowed:
         raise DSLValidationError([
             Diagnostic("E_LLM_012", "region router selected an unauthorized region", actual=str(value["region_id"]))
+        ])
+    selected = next(item for item in regions if item.region_id == value["region_id"])
+    if value["factor_id"] != selected.factor_id:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_LLM_017",
+                "factor router selected a factor that does not own the selected region",
+                expected=selected.factor_id,
+                actual=str(value["factor_id"]),
+            )
         ])
     if not value["rationale"] or not value["expected_value"]:
         raise DSLValidationError([Diagnostic("E_LLM_013", "region router omitted its decision rationale")])
@@ -224,6 +236,7 @@ def region_critic_prompt(
         "evidence": [item.to_dict() for item in visible],
         "allowed_vocabulary_contracts": list(describe_active_vocabulary(vocabulary, primitives, motifs)),
         "response_schema": {
+            "factor_id": region.factor_id,
             "region_id": region.region_id,
             "claim": "one falsifiable local structural hypothesis",
             "mechanism": "why the proposed local computation could affect the target",
@@ -237,7 +250,7 @@ def region_critic_prompt(
     }
     return {
         "system": (
-            "You are the independent region critic. Analyze only the selected region and its declared boundary. "
+            "You are the independent leaf-factor critic. Analyze only the selected factor, region, and declared boundary. "
             "Produce a mechanistic, falsifiable edit plan but no patch or source code. Do not widen the region. "
             "Return exactly one JSON object matching response_schema."
         ),
@@ -248,7 +261,7 @@ def region_critic_prompt(
 def parse_region_critic_response(text: str, region: RegionDefinition) -> Dict[str, Any]:
     value = _load_json_object(text, "region_critic")
     required = {
-        "region_id", "claim", "mechanism", "edit_plan", "preserved_invariants",
+        "factor_id", "region_id", "claim", "mechanism", "edit_plan", "preserved_invariants",
         "evidence_refs", "uncertainty", "risk", "acceptance_metrics",
     }
     if set(value) != required:
@@ -256,6 +269,10 @@ def parse_region_critic_response(text: str, region: RegionDefinition) -> Dict[st
     if value["region_id"] != region.region_id:
         raise DSLValidationError([
             Diagnostic("E_LLM_015", "region critic widened or changed the routed region", expected=region.region_id, actual=str(value["region_id"]))
+        ])
+    if value["factor_id"] != region.factor_id:
+        raise DSLValidationError([
+            Diagnostic("E_LLM_018", "factor critic changed the routed leaf factor", expected=region.factor_id, actual=str(value["factor_id"]))
         ])
     if not value["claim"] or not value["mechanism"] or not value["edit_plan"] or not value["acceptance_metrics"]:
         raise DSLValidationError([Diagnostic("E_LLM_016", "region critic omitted a falsifiable mechanism or edit plan")])
@@ -297,6 +314,43 @@ def synthesizer_prompt(
         "The compiler, task contract, and trusted kernel are immutable. Expected accuracy "
         "effects are hypotheses, never measurements."
     )
+    parameter_scope = [item for item in plan["scope"] if str(item).startswith("constructor.")]
+    worked_example = (
+        {
+            "explanation": "For constructor-factor regions, emit only change_parameters edits on exact scoped paths.",
+            "edits": [
+                {
+                    "kind": "change_parameters",
+                    "target": parameter_scope[0],
+                    "payload": {"value": "choose one capability-admitted value with the correct JSON type"},
+                }
+            ],
+        }
+        if parameter_scope
+        else {
+            "explanation": "Illustrative graph edit list only. Copy actual ids, ports, ops, attrs, and references from parent_program and visible_vocabulary.",
+            "edits": [
+                {
+                    "kind": "insert_before",
+                    "target": "existing_scoped_node_id",
+                    "payload": {
+                        "node": {
+                            "id": "new_unique_node_id",
+                            "op": "visible.op",
+                            "inputs": {"x": ["existing_predecessor_id"]},
+                            "attrs": {},
+                            "outputs": ["out"],
+                        }
+                    },
+                },
+                {
+                    "kind": "rewire_port",
+                    "target": "existing_scoped_node_id",
+                    "payload": {"port": "x", "references": ["new_unique_node_id"]},
+                },
+            ],
+        }
+    )
     payload = {
         "task_id": task.task_id,
         "parent_architecture_id": parent_architecture_id,
@@ -323,29 +377,7 @@ def synthesizer_prompt(
             else []
         ),
         "authoritative_patch_schema": patch_protocol_schema(parent_architecture_id, parent.language_version, tuple(plan["scope"])),
-        "worked_edit_example": {
-            "explanation": "Illustrative edit list only. Copy actual ids, ports, ops, attrs, and references from parent_program and visible_vocabulary.",
-            "edits": [
-                {
-                    "kind": "insert_before",
-                    "target": "existing_scoped_node_id",
-                    "payload": {
-                        "node": {
-                            "id": "new_unique_node_id",
-                            "op": "visible.op",
-                            "inputs": {"x": ["existing_predecessor_id"]},
-                            "attrs": {},
-                            "outputs": ["out"],
-                        }
-                    },
-                },
-                {
-                    "kind": "rewire_port",
-                    "target": "existing_scoped_node_id",
-                    "payload": {"port": "x", "references": ["new_unique_node_id"]},
-                },
-            ],
-        },
+        "worked_edit_example": worked_example,
     }
     return {"system": system, "user": json.dumps(payload, ensure_ascii=False, sort_keys=True)}
 

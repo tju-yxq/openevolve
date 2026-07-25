@@ -79,7 +79,7 @@ def test_lowering_plan_distinguishes_reference_hybrid_and_untrusted_v1(tmp_path)
 
 def test_region_audit_hashes_the_frozen_v1_complement(tmp_path):
     parent, _compiler, _task, _vocabulary, _store = _objects(tmp_path)
-    region = v1_region_registry(parent)[0]
+    region = next(item for item in v1_region_registry(parent) if item.region_id == "v1_readout")
     audit = validate_region_transition(parent, _hybrid(parent, "block2"), region)
     assert audit["region_id"] == "v1_readout"
     assert len(audit["frozen_complement_hash"]) == 64
@@ -96,6 +96,7 @@ def test_fixed_router_critic_synthesizer_flow_produces_certified_hybrid(tmp_path
     parent, compiler, task, vocabulary, store = _objects(tmp_path)
     parent_id = compiler.analyze(parent, task).architecture_id
     router = json.dumps({
+        "factor_id": "F6.3",
         "region_id": "v1_readout",
         "rationale": "the readout is the lowest-risk exact hybrid boundary",
         "evidence_refs": [],
@@ -103,6 +104,7 @@ def test_fixed_router_critic_synthesizer_flow_produces_certified_hybrid(tmp_path
         "risk": "the auxiliary feature may add no useful signal",
     })
     critic = json.dumps({
+        "factor_id": "F6.3",
         "region_id": "v1_readout",
         "claim": "adding one block3 invariant readout can improve endpoint validation MAE",
         "mechanism": "block3 can retain complementary local-environment information",

@@ -11,3 +11,7 @@ requires-python = ">=3.8"
 [tool.setuptools.packages.find]
 include = ["equivariant_nas*"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+norecursedirs = ["第三方源码", "reports", "tmp", ".tmp"]

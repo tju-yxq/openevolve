@@ -1,0 +1,37 @@
+{
+  "version": "formal-v1.0.0",
+  "project_root": "/home/20262202788/equivariant-nas",
+  "equiformer_root": "/home/20262202788/equiformer",
+  "openevolve_root": "/home/20262202788/openevolve",
+  "openevolve_python": "/home/20262202788/conda-envs/openevolve/bin/python",
+  "equiformer_python": "/home/20262202788/conda-envs/equiformer/bin/python",
+  "data_path": "/home/20262202788/equiformer/datasets/qm9",
+  "quarter_subset_file": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
+  "task_contract": "/home/20262202788/equivariant-nas/configs/qm9_alpha_formal_v1_task.json",
+  "llm_config": "/home/20262202788/openevolve/configs/local_glm_5_2.yaml",
+  "seed": 201,
+  "batch_size": 32,
+  "forced_factor_sequence": [
+    "F2.2",
+    "F4.4",
+    "F5.3",
+    "F6.3",
+    "F2.2",
+    "F4.4",
+    "F5.3",
+    "F6.3"
+  ],
+  "stage_steps": [
+    8000,
+    80000,
+    250000
+  ],
+  "candidate_counts": [
+    8,
+    4,
+    2
+  ],
+  "validation_interval_data_epochs": 10,
+  "test_during_search": false,
+  "checkpoint_interval_steps": 859
+}

@@ -14,6 +14,7 @@ from .motifs import expand_motifs
 from .reference_motifs import reference_motif_registry
 from .registry import core_registry
 from .types import Carrier, EquivariantType
+from .backends.equiformer_v1_constructor import baseline_constructor_parameters
 
 
 def _as_so3(text: str) -> str:
@@ -72,6 +73,7 @@ def import_equiformer_v1(spec: ArchitectureSpec, *, task_contract: str = "qm9_al
         inputs=(InputPort("node_features", input_type), InputPort("edge_sh", sh_type)),
         nodes=tuple(nodes),
         outputs=(OutputPort("prediction", "graph_pool", graph_scalar),),
+        parameters=baseline_constructor_parameters(spec),
         program_id="equiformer_v1_{}".format(spec.architecture_id()),
         annotations={
             "legacy_backend": "equiformer_v1",

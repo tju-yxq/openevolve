@@ -1,0 +1,48 @@
+{
+  "allowed_evidence_splits": [
+    "train",
+    "validation"
+  ],
+  "group": {
+    "dimension": 3,
+    "family": "SO3",
+    "order": 0,
+    "periodicity": "none",
+    "permutation": "node_set",
+    "translation": "relative_coordinates"
+  },
+  "metadata": {
+    "dataset": "QM9",
+    "target": "alpha",
+    "test_policy": "frozen-final-audit-only",
+    "formal_v1": true
+  },
+  "output_type": {
+    "axes": [],
+    "carrier": "graph",
+    "dtype": "float32",
+    "equivariance_level": 2,
+    "frame": {
+      "kind": "global",
+      "reference": ""
+    },
+    "group": {
+      "dimension": 3,
+      "family": "SO3",
+      "order": 0,
+      "periodicity": "none",
+      "permutation": "node_set",
+      "translation": "relative_coordinates"
+    },
+    "irreps": "1x0",
+    "measure": "dimensionless"
+  },
+  "resource_contract": {
+    "max_parameters": 4238058,
+    "max_peak_memory_bytes": 85899345920,
+    "max_static_flops": 0,
+    "max_step_time_ratio": 2.0
+  },
+  "task_id": "qm9_alpha",
+  "training_protocol_hash": "qm9-alpha-formal-v1-batch32-8k80k250k-seed201"
+}

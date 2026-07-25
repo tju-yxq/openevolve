@@ -7,6 +7,7 @@ from .completion import AvailableValue, CompletionAction, CompletionDistance, Ho
 from .cost import CostEstimate, enforce_static_resource_contract, estimate_static_cost
 from .diagnostics import DSLValidationError, Diagnostic
 from .evidence_store import EvidenceStore
+from .factors import CapabilityProfile, LeafFactorDefinition, equiformer_v1_capability_profile, factor_by_region, validate_unique_factor_ownership
 from .groups import GroupSpec
 from .inference import InferenceResult, TypeChecker
 from .irreps import Irrep, Irreps
@@ -44,6 +45,8 @@ __all__ = [
     "EquivariantType",
     "EvidenceItem",
     "EvidenceStore",
+    "CapabilityProfile",
+    "LeafFactorDefinition",
     "Frame",
     "HoleSink",
     "GroupSpec",
@@ -96,6 +99,8 @@ __all__ = [
     "describe_active_vocabulary",
     "enforce_static_resource_contract",
     "estimate_static_cost",
+    "equiformer_v1_capability_profile",
+    "factor_by_region",
     "expand_motifs",
     "import_equiformer_v1",
     "reference_motif_registry",
@@ -111,6 +116,7 @@ __all__ = [
     "select_active_vocabulary",
     "strict_rewrite_registry_hash",
     "validate_region_transition",
+    "validate_unique_factor_ownership",
     "v1_region_registry",
     "synthesizer_prompt",
     "run_language_evolution_boundary",

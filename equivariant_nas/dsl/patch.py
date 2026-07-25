@@ -22,6 +22,7 @@ _EDIT_KINDS = {
     "insert_after",
     "delete_if_bypassed",
     "instantiate_motif",
+    "change_parameters",
 }
 
 _CONDITION_FIELDS = {
@@ -136,7 +137,7 @@ def patch_protocol_schema(
                         "kind": {"enum": sorted(_EDIT_KINDS)},
                         "target": {
                             "type": "string",
-                            "description": "exact source node id, or output:<name> for rewire_output",
+                            "description": "exact source node id, output:<name>, or an authorized constructor.* parameter path",
                         },
                         "payload": {"type": "object"},
                     },
@@ -155,11 +156,17 @@ def patch_protocol_schema(
             "insert_after": {"node": "complete Node object with a new unique id"},
             "delete_if_bypassed": {"replacement_reference": "existing source reference"},
             "instantiate_motif": {"op": "visible motif name", "attrs": "motif attrs object"},
+            "change_parameters": {"updates": "mapping from authorized flat parameter path to JSON value"},
         },
         "node_contract": {
             "required": ["id", "op", "inputs"],
             "optional": ["attrs", "outputs", "declared_types", "annotations"],
             "input_reference_format": "node_id or node_id:output_port; external inputs use input:port_name",
+        },
+        "formal_v1_constructor_contract": {
+            "edit_kind": "change_parameters",
+            "target": "one exact constructor.* path present in immutable scope",
+            "payload": {"value": "one JSON value admitted by the capability profile"},
         },
         "condition_contracts": {
             name: sorted(fields) for name, fields in sorted(_CONDITION_FIELDS.items())
@@ -278,6 +285,7 @@ def apply_typed_patch(
     _assert_conditions(parent, patch.preconditions, "precondition")
     nodes = list(parent.nodes)
     outputs = list(parent.outputs)
+    parameters = dict(parent.parameters)
     inserted_node_ids = set()
 
     def scope_allows(target: str) -> bool:
@@ -288,6 +296,19 @@ def apply_typed_patch(
         return any(target == item or target.startswith(item + "__") or target.startswith(item + ".") for item in patch.scope)
 
     for edit in patch.edits:
+        if edit.kind == "change_parameters":
+            if not edit.target.startswith("constructor."):
+                raise DSLValidationError([
+                    Diagnostic("E_PATCH_016", "change_parameters target must be a constructor parameter path", actual=edit.target)
+                ])
+            if not scope_allows(edit.target):
+                raise DSLValidationError([Diagnostic("E_PATCH_007", "patch edit escapes its declared scope", node_id=edit.target)])
+            if set(edit.payload) != {"value"}:
+                raise DSLValidationError([
+                    Diagnostic("E_PATCH_017", "change_parameters payload must contain exactly value", actual=sorted(edit.payload))
+                ])
+            parameters[edit.target] = edit.payload["value"]
+            continue
         if edit.kind == "rewire_output":
             if not edit.target.startswith("output:") or edit.target.count(":") != 1:
                 raise DSLValidationError([
@@ -365,7 +386,7 @@ def apply_typed_patch(
                 rewritten.append(replace(node, inputs=inputs))
             nodes = [node for node in rewritten if node.id != target.id]
             outputs = [replace(item, source=replacement_ref if item.source in target_refs else item.source) for item in outputs]
-    child = replace(parent, nodes=tuple(nodes), outputs=tuple(outputs))
+    child = replace(parent, nodes=tuple(nodes), outputs=tuple(outputs), parameters=parameters)
     _assert_conditions(child, patch.postconditions, "postcondition")
     if validate_child_with_core_registry:
         TypeChecker(registry).check(child)

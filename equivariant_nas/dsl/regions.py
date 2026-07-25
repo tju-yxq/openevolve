@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Sequence, Tuple
 
 from .ast import ArchitectureProgram, Node
@@ -27,6 +27,9 @@ class RegionDefinition:
     max_new_nodes: int = 8
     backend_capability: str = "analysis_only"
     invariants: Tuple[str, ...] = ()
+    factor_id: str = ""
+    parameter_paths: Tuple[str, ...] = ()
+    allowed_parameter_values: Mapping[str, Tuple[Any, ...]] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -38,6 +41,9 @@ class RegionDefinition:
             "max_new_nodes": self.max_new_nodes,
             "backend_capability": self.backend_capability,
             "invariants": list(self.invariants),
+            "factor_id": self.factor_id,
+            "parameter_paths": list(self.parameter_paths),
+            "allowed_parameter_values": {key: list(values) for key, values in sorted(self.allowed_parameter_values.items())},
         }
 
 
@@ -53,7 +59,37 @@ def v1_region_registry(program: ArchitectureProgram) -> Tuple[RegionDefinition, 
     auxiliary_blocks = tuple(item for item in block_ids[:-1])
     if not auxiliary_blocks:
         return ()
-    return (
+    from .factors import equiformer_v1_capability_profile
+
+    profile = equiformer_v1_capability_profile()
+    constructor_regions = tuple(
+        RegionDefinition(
+            region_id=factor.region_id,
+            description=factor.scientific_role,
+            editable_targets=tuple(factor.parameter_paths),
+            boundary_sources=(),
+            allowed_ops=(),
+            max_new_nodes=0,
+            backend_capability=factor.required_backend_capability,
+            invariants=(
+                "Only parameter paths owned by the selected leaf factor may change.",
+                "The imported V1 graph structure and all unselected constructor fields remain frozen.",
+            ),
+            factor_id=factor.factor_id,
+            parameter_paths=tuple(factor.parameter_paths),
+            allowed_parameter_values={
+                path: tuple(
+                    option[path.rsplit(".", 1)[1]]
+                    for option in (factor.identity_option,) + factor.alternative_options
+                    if path.rsplit(".", 1)[1] in option
+                )
+                for path in factor.parameter_paths
+            },
+        )
+        for factor in profile.enabled_factors
+        if factor.parameter_paths
+    )
+    readout = (
         RegionDefinition(
             region_id="v1_readout",
             description=(
@@ -74,8 +110,10 @@ def v1_region_registry(program: ArchitectureProgram) -> Tuple[RegionDefinition, 
                 "The hybrid backend adds a trainable auxiliary scalar head and a trainable two-input combiner; it is not parameter-free.",
                 "max_new_nodes counts source-AST nodes; the selected motif expands into certified internal nodes.",
             ),
+            factor_id="F6.3",
         ),
     )
+    return constructor_regions + readout
 
 
 def region_by_id(regions: Sequence[RegionDefinition], region_id: str) -> RegionDefinition:
@@ -112,7 +150,12 @@ def frozen_complement_payload(
         output.to_dict() for output in program.outputs
         if output.name not in editable_outputs
     ]
-    return {"nodes": nodes, "outputs": outputs}
+    excluded_parameters = set(region.parameter_paths)
+    parameters = {
+        key: value for key, value in sorted(program.parameters.items())
+        if key not in excluded_parameters
+    }
+    return {"nodes": nodes, "outputs": outputs, "parameters": parameters}
 
 
 def frozen_complement_hash(
@@ -151,6 +194,34 @@ def validate_region_transition(
         raise DSLValidationError([
             Diagnostic("E_REGION_003", "patch deleted frozen nodes", details={"nodes": illegal_deleted})
         ])
+    changed_parameters = sorted(
+        key for key in set(parent.parameters) | set(child.parameters)
+        if parent.parameters.get(key) != child.parameters.get(key)
+    )
+    illegal_parameters = sorted(set(changed_parameters) - set(region.parameter_paths))
+    if illegal_parameters:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_REGION_008",
+                "patch changed parameters outside the selected factor",
+                details={"parameters": illegal_parameters, "factor_id": region.factor_id},
+            )
+        ])
+    if region.parameter_paths and not changed_parameters:
+        raise DSLValidationError([
+            Diagnostic("E_REGION_009", "constructor factor patch did not change an owned parameter", actual=region.factor_id)
+        ])
+    for path in changed_parameters:
+        allowed_values = region.allowed_parameter_values.get(path, ())
+        if allowed_values and child.parameters.get(path) not in allowed_values:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_REGION_010",
+                    "constructor factor value is outside the capability-admitted options",
+                    actual=repr(child.parameters.get(path)),
+                    details={"parameter": path, "allowed": list(allowed_values)},
+                )
+            ])
     parent_hash = frozen_complement_hash(parent, region, original_node_ids=parent_ids)
     child_hash = frozen_complement_hash(child, region, original_node_ids=parent_ids)
     if parent_hash != child_hash:
@@ -195,8 +266,10 @@ def validate_region_transition(
                     ])
     return {
         "region_id": region.region_id,
+        "factor_id": region.factor_id,
         "frozen_complement_hash": child_hash,
         "inserted_node_ids": inserted,
         "deleted_node_ids": deleted,
         "edited_target_ids": sorted(editable_nodes & set(child_nodes)),
+        "changed_parameters": changed_parameters,
     }

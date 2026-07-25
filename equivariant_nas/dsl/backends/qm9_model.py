@@ -35,7 +35,15 @@ def build_qm9_dsl_model(
                 details=lowering.to_dict(),
             )
         ])
-    if lowering.mode in ("exact_reference", "exact_hybrid") and not equiformer_root:
+    if lowering.mode == "experimental_node_graph":
+        raise DSLValidationError([
+            Diagnostic(
+                "E_QM9_BACKEND_007",
+                "experimental node-graph semantics are excluded from formal V1 training",
+                details=lowering.to_dict(),
+            )
+        ])
+    if lowering.mode in ("exact_reference", "exact_constructor", "exact_hybrid") and not equiformer_root:
         raise DSLValidationError([
             Diagnostic("E_QM9_BACKEND_006", "exact V1 lowering requires equiformer_root")
         ])
@@ -55,12 +63,31 @@ def build_qm9_dsl_model(
         model.reference_model_identity = lowering.reference_model_identity
         model.lowering_plan = lowering.to_dict()
         return model
+    if lowering.mode == "exact_constructor":
+        from ...builder import build_equiformer
+        from .equiformer_v1_constructor import effective_v1_spec
+
+        model = build_equiformer(
+            effective_v1_spec(program),
+            equiformer_root,
+            task_mean=task_mean,
+            task_std=task_std,
+            atomref=atomref,
+        )
+        model.dsl_architecture_id = artifact.architecture_id
+        model.dsl_language_version = program.language_version
+        model.backend_family = lowering.backend_family
+        model.backend_semantics_version = lowering.backend_semantics_version
+        model.lowering_mode = lowering.mode
+        model.reference_model_identity = lowering.reference_model_identity
+        model.lowering_plan = lowering.to_dict()
+        return model
     if lowering.mode == "exact_hybrid":
         from ...builder import build_equiformer
-        from ...spec import ArchitectureSpec
         from .hybrid_v1 import build_v1_readout_hybrid, parse_v1_readout_hybrid
+        from .equiformer_v1_constructor import effective_v1_spec
 
-        spec = ArchitectureSpec.from_dict(program.annotations["legacy_architecture_spec"])
+        spec = effective_v1_spec(program)
         base = build_equiformer(
             spec,
             equiformer_root,

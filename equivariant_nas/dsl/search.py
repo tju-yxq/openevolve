@@ -185,6 +185,7 @@ class DSLGenerationEngine:
         parent_program,
         evidence: Sequence[EvidenceItem],
         regions: Sequence[RegionDefinition],
+        forced_factor_id: str = "",
     ) -> GenerationResult:
         """Generate one candidate through Router, Critic, Synthesizer, then conditional Repair."""
 
@@ -193,20 +194,36 @@ class DSLGenerationEngine:
         parent = self.compiler.analyze(parent_program, self.task)
         parent_id = self.store.add_compiled_candidate(parent, self.task)
 
-        router_request = region_router_prompt(self.task, parent_program, evidence, regions)
-        router_text = await self._call(ensemble, router_request)
-        self.store.add_prompt_run(
-            parent_id,
-            role="region_router",
-            model=self.model_name,
-            prompt=router_request,
-            response_text=router_text,
-            vocabulary=self.vocabulary,
-            evidence_ids=[item.evidence_id for item in evidence],
-            visible_splits=[item.split for item in evidence],
-            token_usage={},
-        )
-        router = parse_region_router_response(router_text, regions)
+        if forced_factor_id:
+            matches = [item for item in regions if item.factor_id == forced_factor_id]
+            if len(matches) != 1:
+                raise DSLValidationError([
+                    Diagnostic("E_FACTOR_004", "forced factor is unavailable or ambiguous", actual=forced_factor_id)
+                ])
+            forced_region = matches[0]
+            router = {
+                "factor_id": forced_region.factor_id,
+                "region_id": forced_region.region_id,
+                "rationale": "pre-registered factor coverage",
+                "evidence_refs": [],
+                "expected_value": "measure one controlled leaf-factor intervention",
+                "risk": "forced coverage may allocate budget to a weak direction",
+            }
+        else:
+            router_request = region_router_prompt(self.task, parent_program, evidence, regions)
+            router_text = await self._call(ensemble, router_request)
+            self.store.add_prompt_run(
+                parent_id,
+                role="factor_router",
+                model=self.model_name,
+                prompt=router_request,
+                response_text=router_text,
+                vocabulary=self.vocabulary,
+                evidence_ids=[item.evidence_id for item in evidence],
+                visible_splits=[item.split for item in evidence],
+                token_usage={},
+            )
+            router = parse_region_router_response(router_text, regions)
         region = region_by_id(regions, str(router["region_id"]))
 
         critic_request = region_critic_prompt(
@@ -240,6 +257,7 @@ class DSLGenerationEngine:
             "uncertainty": critic["uncertainty"],
             "risk": critic["risk"],
             "region_id": region.region_id,
+            "factor_id": region.factor_id,
             "mechanism": critic["mechanism"],
             "preserved_invariants": list(critic["preserved_invariants"]),
             "acceptance_metrics": list(critic["acceptance_metrics"]),
@@ -283,6 +301,11 @@ class DSLGenerationEngine:
                             expected=str(list(region.editable_targets)),
                             actual=str(list(patch.scope)),
                         )
+                    ])
+                patch_factor = str(patch.hypothesis.get("factor_id", region.factor_id))
+                if patch_factor != region.factor_id:
+                    raise DSLValidationError([
+                        Diagnostic("E_LLM_019", "patch hypothesis changed the routed leaf factor", expected=region.factor_id, actual=patch_factor)
                     ])
                 failed_patch = patch
                 child_program = apply_typed_patch(

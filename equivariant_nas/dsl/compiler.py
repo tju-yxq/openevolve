@@ -121,11 +121,14 @@ class Compiler:
         artifact = self.analyze(program, task)
         if program.annotations.get("legacy_backend") != "equiformer_v1":
             return LoweringPlan(
-                "exact_node_graph",
+                "experimental_node_graph",
                 "e3nn_graph",
-                "e3nn-graph-v1",
-                supported_regions=("fully_lowered_core_graph",),
-                details={"architecture_id": artifact.architecture_id},
+                "e3nn-graph-experimental-v1",
+                supported_regions=(),
+                details={
+                    "architecture_id": artifact.architecture_id,
+                    "reason": "generic graph primitives require per-operation numerical certification before formal ranking",
+                },
             )
 
         unresolved = self.analyze(program)
@@ -138,6 +141,37 @@ class Compiler:
                 reference_model_identity="official_equiformer_v1_graph_attention_transformer",
                 supported_regions=("reference_model",),
                 details={"legacy_lock_architecture_id": lock},
+            )
+
+        from .backends.equiformer_v1_constructor import (
+            changed_constructor_parameters,
+            effective_v1_spec,
+            restored_constructor_parameters,
+        )
+        from .factors import equiformer_v1_capability_profile
+
+        # Constructor parameters are part of the DSL semantics, but execute
+        # through the unchanged official V1 builder rather than the generic
+        # graph backend.
+        effective_v1_spec(program)
+        changed_parameters = changed_constructor_parameters(program)
+        restored_constructor = restored_constructor_parameters(program)
+        if changed_parameters and self.analyze(restored_constructor).architecture_id == lock:
+            profile = equiformer_v1_capability_profile()
+            supported = tuple(
+                factor.region_id for factor in profile.enabled_factors
+                if set(changed_parameters).intersection(factor.parameter_paths)
+            )
+            return LoweringPlan(
+                "exact_constructor",
+                "equiformer_v1",
+                "equiformer-v1-official-constructor-dsl-v1",
+                reference_model_identity="official_equiformer_v1_graph_attention_transformer",
+                supported_regions=supported,
+                details={
+                    "legacy_lock_architecture_id": lock,
+                    "changed_constructor_parameters": list(changed_parameters),
+                },
             )
 
         from .backends.hybrid_v1 import parse_v1_readout_hybrid
@@ -156,7 +190,7 @@ class Compiler:
                 else node
                 for node in program.nodes
             )
-            restored = replace(program, nodes=restored_nodes)
+            restored = restored_constructor_parameters(replace(program, nodes=restored_nodes))
             restored_id = self.analyze(restored).architecture_id
             if restored_id != lock:
                 return LoweringPlan(
@@ -178,7 +212,7 @@ class Compiler:
                 "equiformer-v1-readout-hybrid-v1",
                 reference_model_identity="official_equiformer_v1_graph_attention_transformer",
                 supported_regions=tuple(item.region_id for item in regions),
-                details=hybrid.to_dict(),
+                details=dict(hybrid.to_dict(), changed_constructor_parameters=list(changed_parameters)),
             )
         return LoweringPlan(
             "representation_only",

@@ -26,9 +26,10 @@ def _count_parameters(model) -> int:
 
 
 def _relative_error(actual, expected) -> float:
-    return float((actual - expected).norm().detach().cpu()) / max(
-        float(expected.norm().detach().cpu()), 1.0e-12
-    )
+    import math
+
+    stable_scale = max(float(expected.norm().detach().cpu()), math.sqrt(max(expected.numel(), 1)) * 1.0e-6)
+    return float((actual - expected).norm().detach().cpu()) / stable_scale
 
 
 def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
@@ -45,41 +46,49 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
             edge_d_index=batch.edge_d_index,
             edge_d_attr=batch.edge_d_attr,
         )
-        rotation = o3.rand_matrix(dtype=batch.pos.dtype, device=batch.pos.device)
-        rotated = model(
-            f_in=batch.x,
-            pos=batch.pos @ rotation.transpose(0, 1),
-            batch=batch.batch,
-            node_atom=batch.z,
-            edge_d_index=batch.edge_d_index,
-            edge_d_attr=batch.edge_d_attr,
+        errors = {}
+        for index in range(4):
+            rotation = o3.rand_matrix(dtype=batch.pos.dtype, device=batch.pos.device)
+            rotated = model(
+                f_in=batch.x,
+                pos=batch.pos @ rotation.transpose(0, 1),
+                batch=batch.batch,
+                node_atom=batch.z,
+                edge_d_index=batch.edge_d_index,
+                edge_d_attr=batch.edge_d_attr,
+            )
+            errors["rotation_{:02d}".format(index)] = _relative_error(rotated, reference)
+        for index, translation in enumerate(((1.25, -0.75, 0.5), (-0.4, 0.9, 1.1))):
+            translated = model(
+                f_in=batch.x,
+                pos=batch.pos + batch.pos.new_tensor([translation]),
+                batch=batch.batch,
+                node_atom=batch.z,
+                edge_d_index=batch.edge_d_index,
+                edge_d_attr=batch.edge_d_attr,
+            )
+            errors["translation_{:02d}".format(index)] = _relative_error(translated, reference)
+        graph_nodes = [torch.nonzero(batch.batch == graph_id, as_tuple=False).flatten() for graph_id in torch.unique(batch.batch, sorted=True)]
+        permutations = (
+            torch.cat([nodes.flip(0) for nodes in graph_nodes]),
+            torch.cat([nodes.roll(1) for nodes in graph_nodes]),
         )
-        translated = model(
-            f_in=batch.x,
-            pos=batch.pos + batch.pos.new_tensor([[1.25, -0.75, 0.5]]),
-            batch=batch.batch,
-            node_atom=batch.z,
-            edge_d_index=batch.edge_d_index,
-            edge_d_attr=batch.edge_d_attr,
-        )
-        permutation = torch.cat([
-            torch.nonzero(batch.batch == graph_id, as_tuple=False).flatten().flip(0)
-            for graph_id in torch.unique(batch.batch, sorted=True)
-        ])
-        permuted = model(
-            f_in=batch.x.index_select(0, permutation),
-            pos=batch.pos.index_select(0, permutation),
-            batch=batch.batch.index_select(0, permutation),
-            node_atom=batch.z.index_select(0, permutation),
-            edge_d_index=None,
-            edge_d_attr=None,
-        )
-    errors = {
-        "rotation_invariance": _relative_error(rotated, reference),
-        "translation_invariance": _relative_error(translated, reference),
-        "permutation_invariance": _relative_error(permuted, reference),
+        for index, permutation in enumerate(permutations):
+            permuted = model(
+                f_in=batch.x.index_select(0, permutation),
+                pos=batch.pos.index_select(0, permutation),
+                batch=batch.batch.index_select(0, permutation),
+                node_atom=batch.z.index_select(0, permutation),
+                edge_d_index=None,
+                edge_d_attr=None,
+            )
+            errors["permutation_{:02d}".format(index)] = _relative_error(permuted, reference)
+    return {
+        "protocol_version": "formal-v1-symmetry@1",
+        "molecule_count": int(reference.shape[0]),
+        "errors": errors,
+        "maximum": max(errors.values()),
     }
-    return {"errors": errors, "maximum": max(errors.values())}
 
 
 def _gradient_health(model, batch, target_mean: float, target_std: float) -> Dict[str, Any]:
@@ -170,8 +179,8 @@ def evaluate_dsl_candidate_pipeline(
     max_steps: int = 0,
     seed: int = 0,
     parameter_ratio_limit: float = 1.2,
-    symmetry_threshold: float = 2.5e-1,
-    symmetry_warning_threshold: float = 1.0e-2,
+    symmetry_threshold: float = 1.0e-4,
+    symmetry_warning_threshold: float = 1.0e-5,
     run_symmetry: bool = True,
     gpu_budget_hours: Optional[float] = None,
     resume_checkpoint: str = "",
@@ -202,9 +211,32 @@ def evaluate_dsl_candidate_pipeline(
             raise FileNotFoundError(subset_path)
         subset_fingerprint = hashlib.sha256(subset_path.read_bytes()).hexdigest()
         train_subset_file = str(subset_path)
+    from .runtime_manifest import build_runtime_manifest, manifest_hash
+
+    runtime_manifest = build_runtime_manifest(
+        project_root=str(project),
+        equiformer_root=equiformer_root,
+        program_path=str(program_file),
+        architecture_id=architecture_id,
+        lowering_plan=lowering.to_dict(),
+        task_contract_hash=task.content_hash() if task is not None else "unresolved-task-contract",
+        data_path=data_path,
+        train_subset_sha256=subset_fingerprint,
+        critical_files=(
+            "equivariant_nas/dsl/compiler.py",
+            "equivariant_nas/dsl/pipeline.py",
+            "equivariant_nas/dsl/backends/qm9_model.py",
+            "equivariant_nas/dsl/backends/equiformer_v1_constructor.py",
+            "equivariant_nas/training/fixed_step_trainer.py",
+        ),
+    )
+    executable_id = runtime_manifest["executable_id"]
+    runtime_manifest_sha256 = manifest_hash(runtime_manifest)
     protocol = {
-        "pipeline_version": "dsl-2",
+        "pipeline_version": "dsl-formal-v1",
         "architecture_id": architecture_id,
+        "executable_id": executable_id,
+        "runtime_manifest_sha256": runtime_manifest_sha256,
         "seed": int(seed),
         "max_steps": int(max_steps),
         "run_symmetry": bool(run_symmetry),
@@ -221,6 +253,8 @@ def evaluate_dsl_candidate_pipeline(
         "task_contract_hash": task.content_hash() if task is not None else "unresolved-task-contract",
         "lowering_plan_hash": lowering.content_hash(),
         "backend_semantics_version": lowering.backend_semantics_version,
+        "allow_data_transition": bool(allow_data_transition),
+        "resume_model_only": bool(resume_model_only),
     }
     protocol_id = hashlib.sha256(json.dumps(protocol, sort_keys=True).encode("utf-8")).hexdigest()[:10]
     run_dir = project / "runs" / "dsl_candidates" / architecture_id / (
@@ -229,8 +263,10 @@ def evaluate_dsl_candidate_pipeline(
     result_path = run_dir / "result.json"
     if result_path.exists():
         cached = json.loads(result_path.read_text(encoding="utf-8"))
+        cached_manifest_path = run_dir / "runtime_manifest.json"
+        cached_manifest = json.loads(cached_manifest_path.read_text(encoding="utf-8")) if cached_manifest_path.exists() else None
         checkpoint = run_dir / "training" / "checkpoint_last.pth"
-        if cached.get("valid") or not checkpoint.exists():
+        if cached_manifest == runtime_manifest and (cached.get("valid") or not checkpoint.exists()):
             cached["cache_hit"] = True
             return cached
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -238,8 +274,18 @@ def evaluate_dsl_candidate_pipeline(
     canonical_program.write_text(
         json.dumps(program.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
     )
+    (run_dir / "runtime_manifest.json").write_text(
+        json.dumps(runtime_manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    (run_dir / "protocol.json").write_text(
+        json.dumps(dict(protocol, protocol_id=protocol_id), indent=2, sort_keys=True), encoding="utf-8"
+    )
     result: Dict[str, Any] = {
         "architecture_id": architecture_id,
+        "program_id": architecture_id,
+        "executable_id": executable_id,
+        "protocol_id": protocol_id,
+        "runtime_manifest_sha256": runtime_manifest_sha256,
         "language_version": program.language_version,
         "candidate_format": "evoequilang",
         "valid": False,
@@ -329,7 +375,7 @@ def evaluate_dsl_candidate_pipeline(
             if train_subset_file:
                 with np.load(train_subset_file) as payload:
                     dataset = Subset(dataset, np.asarray(payload["train_local_indices"], dtype=np.int64).tolist())
-            batch = next(iter(DataLoader(dataset, batch_size=2))).to("cuda")
+            batch = next(iter(DataLoader(dataset, batch_size=16))).to("cuda")
             model = model.to("cuda")
             gpu_started = time.perf_counter()
             base_dataset = dataset.dataset if isinstance(dataset, Subset) else dataset
@@ -367,8 +413,11 @@ def evaluate_dsl_candidate_pipeline(
             train_dir = run_dir / "training"
             automatic_resume = train_dir / "checkpoint_last.pth"
             effective_resume = str(resume_checkpoint or (automatic_resume if automatic_resume.exists() else ""))
+            configured_python = os.environ.get("EQUIFORMER_PYTHON", "")
+            default_python = "/home/20262202788/conda-envs/equiformer/bin/python"
+            training_python = configured_python or (default_python if Path(default_python).is_file() else sys.executable)
             command = [
-                "/home/20262202788/conda-envs/equiformer/bin/python",
+                training_python,
                 "-u",
                 "-m",
                 "equivariant_nas.training.fixed_step_trainer",

@@ -1,0 +1,16 @@
+{
+  "protocol_version": "formal-v1-symmetry@1",
+  "molecule_count": 16,
+  "random_rotations": 4,
+  "translations": [
+    [1.25, -0.75, 0.5],
+    [-0.4, 0.9, 1.1]
+  ],
+  "permutations": [
+    "reverse_within_graph",
+    "cyclic_shift_within_graph"
+  ],
+  "relative_error_threshold": 0.0001,
+  "warning_threshold": 0.00001,
+  "selection_policy": "hard reject before training and after checkpoint load"
+}

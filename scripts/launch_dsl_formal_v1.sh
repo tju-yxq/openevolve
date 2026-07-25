@@ -4,6 +4,7 @@ set -euo pipefail
 PROJECT="${PROJECT:-/home/20262202788/equivariant-nas}"
 CONFIG="${CONFIG:-$PROJECT/configs/dsl_formal_v1_qm9_alpha_seed201.json}"
 RUN_ROOT="${1:-$PROJECT/runs/dsl_formal_v1_seed201}"
+MODE="${2:-}"
 OPENEVOLVE_PY="${OPENEVOLVE_PY:-/home/20262202788/conda-envs/openevolve/bin/python}"
 EQUIFORMER_PY="${EQUIFORMER_PY:-/home/20262202788/conda-envs/equiformer/bin/python}"
 
@@ -11,6 +12,10 @@ export PYTHONPATH="$PROJECT"
 export EQUIFORMER_PYTHON="$EQUIFORMER_PY"
 
 "$EQUIFORMER_PY" "$PROJECT/scripts/preflight_dsl_formal_v1.py" --config "$CONFIG" --run-root "$RUN_ROOT"
+
+if [ "$MODE" = "--preflight-only" ]; then
+  exit 0
+fi
 
 "$OPENEVOLVE_PY" "$PROJECT/scripts/run_dsl_evolution.py" \
   --initial-program "$RUN_ROOT/initial_program.dsl.json" \

@@ -31,7 +31,7 @@ fi
   --config /home/20262202788/openevolve/configs/local_glm_5_2.yaml \
   --output "$RUN_ROOT/search" \
   --openevolve-root /home/20262202788/openevolve \
-  --iterations 32 \
+  --iterations 48 \
   --valid-candidate-target 8 \
   --valid-per-factor-target 2 \
   --max-steps 8000 \

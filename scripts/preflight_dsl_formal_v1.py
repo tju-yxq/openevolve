@@ -257,6 +257,7 @@ def main():
         "initial_program_sha256": sha256(initial_program),
         "test_during_search": False,
         "gpu_budget_hours": configured_budget,
+        "max_generation_attempts": int(config["max_generation_attempts"]),
         "fallback_seconds_per_step": configured_fallback,
         "budget_ledger": str(expected_ledger),
         "created_at": existing_protocol.get("created_at", datetime.now(timezone.utc).isoformat()),

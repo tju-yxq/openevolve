@@ -9,6 +9,7 @@ from scripts.run_dsl_evolution import (
     _is_exact_constructor_capability_label_fix,
     _is_certified_option_expansion,
     _is_formal_root_parent_policy_fix,
+    _is_generation_attempt_extension,
     _lineage_root,
     _next_forced_factor,
     _unique_initial_parent,
@@ -136,6 +137,24 @@ def test_root_parent_policy_manifest_migration_is_narrow():
     changed = json.loads(json.dumps(new))
     changed["formal_v1_search_protocol"]["valid_per_factor_target"] = 3
     assert not _is_formal_root_parent_policy_fix(old, changed)
+
+
+def test_generation_attempt_extension_is_strictly_monotonic_and_narrow():
+    old = _manifest_with_capabilities("exact_constructor")
+    old["formal_v1_search_protocol"] = {
+        "maximum_generation_attempts": 32,
+        "valid_candidate_target": 8,
+        "test_during_search": False,
+    }
+    new = json.loads(json.dumps(old))
+    new["formal_v1_search_protocol"]["maximum_generation_attempts"] = 48
+    assert _is_generation_attempt_extension(old, new)
+    reduced = json.loads(json.dumps(old))
+    reduced["formal_v1_search_protocol"]["maximum_generation_attempts"] = 16
+    assert not _is_generation_attempt_extension(old, reduced)
+    changed = json.loads(json.dumps(new))
+    changed["formal_v1_search_protocol"]["valid_candidate_target"] = 6
+    assert not _is_generation_attempt_extension(old, changed)
 
 
 def test_certified_option_expansion_only_accepts_monotonic_f2_and_f5_growth():

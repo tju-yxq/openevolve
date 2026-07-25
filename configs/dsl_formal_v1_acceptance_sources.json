@@ -59,6 +59,7 @@
     "scripts/run_dsl_evolution.py",
     "scripts/run_dsl_multifidelity_cycles.py",
     "scripts/migrate_dsl_formal_v1_budget.py",
+    "scripts/migrate_dsl_formal_v1_search_attempts.py",
     "scripts/finalize_dsl_formal_v1.py",
     "equivariant_nas/dsl/factors.py",
     "equivariant_nas/dsl/regions.py",

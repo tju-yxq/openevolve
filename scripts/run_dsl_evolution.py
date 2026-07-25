@@ -285,6 +285,62 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
                 )
                 _write_json(path, payload)
                 return path
+            if _is_generation_attempt_extension(existing, payload):
+                evolution_path = Path(output) / "evolution.jsonl"
+                summary_path = Path(output) / "summary.json"
+                summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
+                old_attempts = int(existing["formal_v1_search_protocol"]["maximum_generation_attempts"])
+                new_attempts = int(payload["formal_v1_search_protocol"]["maximum_generation_attempts"])
+                if summary.get("status") != "generation_attempts_exhausted":
+                    raise RuntimeError("generation-attempt extension requires an exhausted search summary")
+                if int(summary.get("last_completed_iteration", -1)) < old_attempts:
+                    raise RuntimeError("generation-attempt extension requires all original attempts to be recorded")
+                valid_records = _valid_candidate_records(evolution_path)
+                target = int(payload["formal_v1_search_protocol"].get("valid_candidate_target", 0))
+                if len(valid_records) >= target:
+                    raise RuntimeError("generation-attempt extension is unnecessary because the cohort is already complete")
+                old_bytes = path.read_bytes()
+                old_hash = hashlib.sha256(old_bytes).hexdigest()
+                new_bytes = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+                new_hash = hashlib.sha256(new_bytes).hexdigest()
+                archive = Path(output) / "compiler_manifest_migrations"
+                archive.mkdir(exist_ok=True)
+                previous = archive / "compiler_manifest_{}.previous.json".format(old_hash[:12])
+                if not previous.exists():
+                    previous.write_bytes(old_bytes)
+                failures = {}
+                if evolution_path.exists():
+                    for line in evolution_path.read_text(encoding="utf-8").splitlines():
+                        if not line.strip():
+                            continue
+                        record = json.loads(line)
+                        code = str(record.get("error", "")).split(":", 1)[0]
+                        if code:
+                            failures[code] = failures.get(code, 0) + 1
+                _append_jsonl(
+                    archive / "migrations.jsonl",
+                    {
+                        "kind": "formal_generation_attempt_extension",
+                        "old_sha256": old_hash,
+                        "new_sha256": new_hash,
+                        "old_maximum_generation_attempts": old_attempts,
+                        "new_maximum_generation_attempts": new_attempts,
+                        "valid_candidate_count": len(valid_records),
+                        "valid_candidate_target": target,
+                        "failure_code_counts": failures,
+                        "training_protocol_changed": False,
+                        "selection_protocol_changed": False,
+                        "test_evaluated": False,
+                        "reason": (
+                            "The preregistered generation attempts were exhausted before the immutable "
+                            "four-factor coverage target was reached; additional attempts use the same root "
+                            "parent, factors, options, training budget, and validation-only admission rules"
+                        ),
+                        "migrated_at": _now(),
+                    },
+                )
+                _write_json(path, payload)
+                return path
             raise RuntimeError(
                 "compiler manifest mismatch; resume requires the exact task, language, rewrite registry, compiler, and backend semantics"
             )
@@ -348,6 +404,22 @@ def _is_formal_root_parent_policy_fix(existing, requested):
     if old_protocol.get("forced_factor_parent_policy") is not None:
         return False
     if new_protocol.pop("forced_factor_parent_policy", None) != "root_isolated":
+        return False
+    old["formal_v1_search_protocol"] = old_protocol
+    new["formal_v1_search_protocol"] = new_protocol
+    return old == new
+
+
+def _is_generation_attempt_extension(existing, requested):
+    old = json.loads(json.dumps(existing))
+    new = json.loads(json.dumps(requested))
+    old_protocol = dict(old.get("formal_v1_search_protocol") or {})
+    new_protocol = dict(new.get("formal_v1_search_protocol") or {})
+    old_attempts = old_protocol.pop("maximum_generation_attempts", None)
+    new_attempts = new_protocol.pop("maximum_generation_attempts", None)
+    if not isinstance(old_attempts, int) or not isinstance(new_attempts, int):
+        return False
+    if new_attempts <= old_attempts:
         return False
     old["formal_v1_search_protocol"] = old_protocol
     new["formal_v1_search_protocol"] = new_protocol

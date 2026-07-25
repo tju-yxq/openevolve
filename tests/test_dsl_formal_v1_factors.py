@@ -17,6 +17,7 @@ from equivariant_nas.dsl import (
 )
 from equivariant_nas.dsl.backends.equiformer_v1_constructor import effective_v1_spec
 from equivariant_nas.spec import baseline_spec
+from scripts.run_dsl_evolution import _validate_root_isolated_factor_transition
 
 
 def _parent():
@@ -132,6 +133,28 @@ def test_factor_patch_cannot_change_an_unowned_constructor_parameter():
     radial = next(item for item in v1_region_registry(parent) if item.factor_id == "F2.2")
     with pytest.raises(Exception):
         validate_region_transition(parent, child, radial)
+
+
+def test_formal_coverage_rejects_a_single_edit_applied_to_an_already_mutated_parent():
+    root = _parent()
+    compiler = Compiler(core_registry(), reference_motif_registry())
+    root_id = compiler.analyze(root).architecture_id
+    normalization_child = apply_typed_patch(
+        root,
+        _patch(root, compiler, "constructor.action.rescale_degree", True, "F5.3"),
+        compiler.primitives,
+        expected_parent_id=root_id,
+        validate_child_with_core_registry=False,
+    )
+    compound_child = apply_typed_patch(
+        normalization_child,
+        _patch(normalization_child, compiler, "constructor.operator.num_heads", 8, "F4.4"),
+        compiler.primitives,
+        expected_parent_id=compiler.analyze(normalization_child).architecture_id,
+        validate_child_with_core_registry=False,
+    )
+    with pytest.raises(Exception, match="outside the selected factor"):
+        _validate_root_isolated_factor_transition(root, compound_child, "F4.4")
 
 
 def test_constructor_factor_rejects_cross_product_of_individually_allowed_values():

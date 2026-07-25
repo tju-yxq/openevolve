@@ -25,6 +25,7 @@ from equivariant_nas.dsl import (
     reference_motif_registry,
     select_active_vocabulary,
     strict_rewrite_registry_hash,
+    validate_region_transition,
     v1_region_registry,
 )
 from equivariant_nas.dsl.serialization import (
@@ -113,6 +114,28 @@ def _next_forced_factor(forced_factors, factor_counts, per_factor_target, iterat
     return ""
 
 
+def _unique_initial_parent(programs):
+    values = programs.values() if hasattr(programs, "values") else programs
+    parents = [program for program in values if int(program.iteration_found) == 0]
+    if len(parents) != 1:
+        raise RuntimeError(
+            "formal root-isolated coverage requires exactly one iteration-0 parent; found {}".format(len(parents))
+        )
+    return parents[0]
+
+
+def _validate_root_isolated_factor_transition(initial_program, child_program, factor_id):
+    regions = [region for region in v1_region_registry(initial_program) if region.factor_id == factor_id]
+    if len(regions) != 1:
+        raise RuntimeError(
+            "formal root-isolated coverage requires exactly one region for factor {}; found {}".format(
+                factor_id,
+                len(regions),
+            )
+        )
+    return validate_region_transition(initial_program, child_program, regions[0])
+
+
 def _load_verified_initial_metrics(path, *, architecture_id, seed, max_steps):
     metrics = json.loads(Path(path).read_text(encoding="utf-8"))
     required_identity = ("program_id", "executable_id", "protocol_id", "runtime_manifest_sha256")
@@ -188,6 +211,49 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
                 )
                 _write_json(path, payload)
                 return path
+            if _is_formal_root_parent_policy_fix(existing, payload):
+                valid_records = _valid_candidate_records(Path(output) / "evolution.jsonl")
+                root_architecture_id = _initial_architecture_id(Path(output) / "evolution.jsonl")
+                incompatible = [
+                    record
+                    for record in valid_records
+                    if str(record.get("parent_architecture_id", "")) != root_architecture_id
+                ]
+                if not root_architecture_id or incompatible:
+                    raise RuntimeError(
+                        "root-isolated parent-policy migration found a valid candidate that was not generated "
+                        "directly from the iteration-0 parent"
+                    )
+                old_bytes = path.read_bytes()
+                old_hash = hashlib.sha256(old_bytes).hexdigest()
+                new_bytes = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+                new_hash = hashlib.sha256(new_bytes).hexdigest()
+                archive = Path(output) / "compiler_manifest_migrations"
+                archive.mkdir(exist_ok=True)
+                previous = archive / "compiler_manifest_{}.previous.json".format(old_hash[:12])
+                if not previous.exists():
+                    previous.write_bytes(old_bytes)
+                _append_jsonl(
+                    archive / "migrations.jsonl",
+                    {
+                        "kind": "formal_root_isolated_parent_policy_fix",
+                        "old_sha256": old_hash,
+                        "new_sha256": new_hash,
+                        "root_architecture_id": root_architecture_id,
+                        "valid_candidates_preserved": [
+                            (record.get("metrics") or {}).get("architecture_id", "")
+                            for record in valid_records
+                        ],
+                        "reason": (
+                            "The forced four-factor coverage cohort must contain candidates that differ from "
+                            "the official iteration-0 parent in exactly the routed factor; sampling an evolved "
+                            "parent silently admitted multi-factor candidates into single-factor quotas"
+                        ),
+                        "migrated_at": _now(),
+                    },
+                )
+                _write_json(path, payload)
+                return path
             raise RuntimeError(
                 "compiler manifest mismatch; resume requires the exact task, language, rewrite registry, compiler, and backend semantics"
             )
@@ -224,6 +290,37 @@ def _valid_candidate_records(evolution_path):
         seen.add(architecture_id)
         records.append(record)
     return records
+
+
+def _initial_architecture_id(evolution_path):
+    path = Path(evolution_path)
+    if not path.exists():
+        return ""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if int(record.get("iteration", -1)) != 0:
+            continue
+        metrics = record.get("metrics") or {}
+        architecture_id = str(metrics.get("architecture_id", ""))
+        if architecture_id:
+            return architecture_id
+    return ""
+
+
+def _is_formal_root_parent_policy_fix(existing, requested):
+    old = json.loads(json.dumps(existing))
+    new = json.loads(json.dumps(requested))
+    old_protocol = dict(old.get("formal_v1_search_protocol") or {})
+    new_protocol = dict(new.get("formal_v1_search_protocol") or {})
+    if old_protocol.get("forced_factor_parent_policy") is not None:
+        return False
+    if new_protocol.pop("forced_factor_parent_policy", None) != "root_isolated":
+        return False
+    old["formal_v1_search_protocol"] = old_protocol
+    new["formal_v1_search_protocol"] = new_protocol
+    return old == new
 
 
 def _is_exact_constructor_capability_label_fix(existing, requested):
@@ -472,6 +569,7 @@ async def run(args):
             "maximum_generation_attempts": int(args.iterations),
             "valid_candidate_target": int(args.valid_candidate_target),
             "valid_per_factor_target": int(args.valid_per_factor_target),
+            "forced_factor_parent_policy": "root_isolated" if forced_factors and args.valid_per_factor_target > 0 else "evolutionary",
             "train_subset_sha256": hashlib.sha256(Path(args.train_subset_file).read_bytes()).hexdigest()
             if args.train_subset_file
             else "",
@@ -624,20 +722,23 @@ async def run(args):
                     "candidate_path": str(child_path),
                 })
             else:
-                parent, inspirations = database.sample(num_inspirations=args.inspirations)
-                parent_program = loads_program(parent.code)
-                regions = v1_region_registry(parent_program)
+                sampled_parent, inspirations = database.sample(num_inspirations=args.inspirations)
                 forced_factor_id = _next_forced_factor(
                     forced_factors,
                     factor_counts,
                     args.valid_per_factor_target,
                     iteration,
                 )
+                root_isolated = bool(forced_factor_id and args.valid_per_factor_target > 0)
+                parent = _unique_initial_parent(database.programs) if root_isolated else sampled_parent
+                parent_program = loads_program(parent.code)
+                regions = v1_region_registry(parent_program)
                 record.update({
                     "parent_program_id": parent.id,
                     "parent_architecture_id": parent.metrics.get("architecture_id"),
                     "inspiration_ids": [item.id for item in inspirations],
                     "forced_factor_id": forced_factor_id,
+                    "parent_policy": "root_isolated" if root_isolated else "evolutionary",
                 })
                 generated = await engine.generate_region_candidate(
                     ensemble,
@@ -674,6 +775,14 @@ async def run(args):
                     "generation_metadata": generation_metadata,
                     "record": record,
                 })
+            forced_factor_id = str(record.get("forced_factor_id", ""))
+            if forced_factor_id and args.valid_per_factor_target > 0:
+                root_audit = _validate_root_isolated_factor_transition(
+                    initial_program,
+                    loads_program(child_code),
+                    forced_factor_id,
+                )
+                record["root_isolation_audit"] = dict(root_audit)
             metrics = _evaluate(evaluator_adapter, child_path, child_id)
             partial_checkpoint = Path(str(metrics.get("checkpoint_last", "")))
             if not metrics.get("valid") and partial_checkpoint.is_file():

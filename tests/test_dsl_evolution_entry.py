@@ -7,8 +7,10 @@ from openevolve_adapter import evaluator
 from scripts.run_dsl_evolution import (
     _ensure_compiler_manifest,
     _is_exact_constructor_capability_label_fix,
+    _is_formal_root_parent_policy_fix,
     _lineage_root,
     _next_forced_factor,
+    _unique_initial_parent,
     _valid_factor_counts,
     get_parser,
 )
@@ -114,6 +116,25 @@ def test_language_lineage_prefers_the_openevolve_island_identity():
     root = SimpleNamespace(id="root", parent_id=None, metadata={"island": 0})
     child = SimpleNamespace(id="child", parent_id="root", metadata={"island": 2})
     assert _lineage_root(child, {"root": root, "child": child}) == "island:2"
+
+
+def test_formal_coverage_selects_the_unique_iteration_zero_parent():
+    root = SimpleNamespace(id="root", iteration_found=0)
+    evolved = SimpleNamespace(id="evolved", iteration_found=9)
+    assert _unique_initial_parent({"root": root, "evolved": evolved}) is root
+    with pytest.raises(RuntimeError, match="exactly one iteration-0 parent"):
+        _unique_initial_parent({"a": root, "b": SimpleNamespace(id="b", iteration_found=0)})
+
+
+def test_root_parent_policy_manifest_migration_is_narrow():
+    old = _manifest_with_capabilities("exact_constructor")
+    old["formal_v1_search_protocol"] = {"forced_factor_sequence": ["F2.2"], "valid_per_factor_target": 2}
+    new = json.loads(json.dumps(old))
+    new["formal_v1_search_protocol"]["forced_factor_parent_policy"] = "root_isolated"
+    assert _is_formal_root_parent_policy_fix(old, new)
+    changed = json.loads(json.dumps(new))
+    changed["formal_v1_search_protocol"]["valid_per_factor_target"] = 3
+    assert not _is_formal_root_parent_policy_fix(old, changed)
 
 
 def test_evaluator_forwards_the_preregistered_seed(monkeypatch):

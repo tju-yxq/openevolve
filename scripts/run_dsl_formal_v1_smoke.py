@@ -47,8 +47,8 @@ def _load_json(path: Path, default=None):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _constructor_child(parent, compiler, factor):
-    option = dict(factor.alternative_options[0])
+def _constructor_child(parent, compiler, factor, option_index):
+    option = dict(factor.alternative_options[option_index])
     patch = TypedPatch(
         "1.0",
         compiler.analyze(parent).architecture_id,
@@ -122,20 +122,24 @@ def materialize_candidates(output: Path):
     regions = {item.factor_id: item for item in v1_region_registry(parent)}
     candidates = [("parent", "Equiformer V1父代", parent, None, None)]
     for factor in profile.enabled_factors:
-        if factor.parameter_paths:
-            child, patch = _constructor_child(parent, compiler, factor)
-        else:
-            child, patch = _readout_child(parent, compiler, factor)
-        audit = validate_region_transition(parent, child, regions[factor.factor_id])
-        candidates.append(
-            (
-                "factor_{}".format(factor.factor_id.replace(".", "_")),
-                "{}替代候选".format(factor.factor_id),
-                child,
-                patch,
-                audit,
+        alternative_count = len(factor.alternative_options) if factor.parameter_paths else 1
+        for option_index in range(alternative_count):
+            if factor.parameter_paths:
+                child, patch = _constructor_child(parent, compiler, factor, option_index)
+            else:
+                child, patch = _readout_child(parent, compiler, factor)
+            audit = validate_region_transition(parent, child, regions[factor.factor_id])
+            base_key = "factor_{}".format(factor.factor_id.replace(".", "_"))
+            key = base_key if option_index == 0 else "{}_option{}".format(base_key, option_index + 1)
+            candidates.append(
+                (
+                    key,
+                    "{}替代候选{}".format(factor.factor_id, option_index + 1),
+                    child,
+                    patch,
+                    audit,
+                )
             )
-        )
 
     materialized = []
     for key, label, program, patch, audit in candidates:
@@ -318,7 +322,7 @@ def get_parser():
     parser.add_argument(
         "--candidate-keys",
         default="",
-        help="Optional comma-separated subset of parent,factor_F2_2,factor_F4_4,factor_F5_3,factor_F6_3.",
+        help="Optional comma-separated subset of keys emitted by candidate_index.json.",
     )
     parser.add_argument(
         "--allow-gate-rejections",

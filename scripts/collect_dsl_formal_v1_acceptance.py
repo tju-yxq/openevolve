@@ -100,8 +100,12 @@ def main():
                 and summary.get("test_evaluated") is False
                 and result.get("valid") is True
                 and result.get("test_evaluated") is False
-                and report.get("protocol_version") == protocol["protocol_version"]
+                and report.get("protocol_version") in sources["accepted_calibration_protocol_versions"]
                 and int(report.get("molecule_count", 0)) >= int(protocol["molecule_count"])
+                and len(report.get("errors") or {})
+                >= int(protocol["random_rotations"])
+                + len(protocol["translations"])
+                + len(protocol["permutations"])
             )
             if valid:
                 calibration_seeds.append(int(summary["seed"]))

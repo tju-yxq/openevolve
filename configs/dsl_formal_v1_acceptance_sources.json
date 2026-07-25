@@ -4,6 +4,7 @@
   "minimum_pytest_passed": 158,
   "maximum_pytest_skipped": 1,
   "symmetry_protocol": "/home/20262202788/equivariant-nas/configs/dsl_v1_symmetry_protocol.json",
+  "accepted_calibration_protocol_versions": ["formal-v1-symmetry@1", "formal-v1-symmetry@2"],
   "calibration_summaries": [
     "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
     "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed202/summary.json",
@@ -36,7 +37,6 @@
     "scripts/run_dsl_multifidelity_cycles.py",
     "scripts/finalize_dsl_formal_v1.py",
     "equivariant_nas/dsl/factors.py",
-    "equivariant_nas/dsl/capabilities.py",
     "equivariant_nas/dsl/regions.py",
     "equivariant_nas/dsl/llm_protocol.py",
     "equivariant_nas/dsl/search.py",

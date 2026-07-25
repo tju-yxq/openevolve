@@ -12,6 +12,8 @@
   "acceptance_evidence": "/home/20262202788/equivariant-nas/.formal_v1_acceptance/acceptance_evidence.json",
   "seed": 201,
   "batch_size": 32,
+  "gpu_budget_hours": 40.0,
+  "fallback_seconds_per_step": 0.12,
   "forced_factor_sequence": [
     "F2.2",
     "F4.4",

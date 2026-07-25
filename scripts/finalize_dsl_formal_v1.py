@@ -80,10 +80,19 @@ def selection_payload(state, state_path):
         raise RuntimeError("validation selection is not frozen")
     winner = state.get("winner_by_validation") or {}
     metrics = winner.get("metrics_250000") or {}
+    parent = state.get("parent_baseline") or {}
+    parent_metrics = parent.get("metrics_250000") or {}
     if not winner.get("program") or not winner.get("checkpoint_250000"):
         raise RuntimeError("validation winner lacks program or full-fidelity checkpoint")
     if metrics.get("test_evaluated") is not False:
         raise RuntimeError("winner was exposed to Test before selection freeze")
+    if (
+        parent_metrics.get("valid") is not True
+        or parent_metrics.get("test_evaluated") is not False
+        or int(parent_metrics.get("endpoint_step", 0)) != 250000
+        or not Path(str(parent.get("checkpoint_250000", ""))).is_file()
+    ):
+        raise RuntimeError("full-fidelity parent baseline is incomplete or exposed to Test")
     return {
         "frozen_at": now(),
         "selection_split": "validation",
@@ -96,6 +105,12 @@ def selection_payload(state, state_path):
         "checkpoint": str(Path(winner["checkpoint_250000"]).resolve()),
         "checkpoint_sha256": sha256(winner["checkpoint_250000"]),
         "validation_mae": float(metrics["validation_alpha_mae"]),
+        "parent_validation_mae": float(parent_metrics["validation_alpha_mae"]),
+        "validation_mae_delta_vs_parent": float(metrics["validation_alpha_mae"])
+        - float(parent_metrics["validation_alpha_mae"]),
+        "candidate_beats_parent": float(metrics["validation_alpha_mae"])
+        < float(parent_metrics["validation_alpha_mae"]),
+        "parent_checkpoint_sha256": sha256(parent["checkpoint_250000"]),
         "multifidelity_state_sha256": sha256(state_path),
     }
 
@@ -106,7 +121,14 @@ def ensure_freeze(root, state, state_path):
     if path.exists():
         existing = read_json(path)
         immutable = (
-            "architecture_id", "program_id", "program_sha256", "checkpoint_sha256", "validation_mae"
+            "architecture_id",
+            "program_id",
+            "program_sha256",
+            "checkpoint_sha256",
+            "validation_mae",
+            "parent_validation_mae",
+            "parent_checkpoint_sha256",
+            "candidate_beats_parent",
         )
         if any(existing.get(key) != proposed.get(key) for key in immutable):
             raise RuntimeError("frozen validation selection changed before final Test")
@@ -215,6 +237,7 @@ def collect_run_materials(root, search_dir, state):
                 "test_evaluated": metrics.get("test_evaluated"),
             })
     write_jsonl(root / "promotion_history.jsonl", promotions)
+    write_json(root / "parent_baseline.json", state.get("parent_baseline") or {})
     return candidates, promotions
 
 
@@ -286,6 +309,14 @@ def make_plots(root, state):
         for item in items:
             metrics = item.get(metric_keys[stage]) or {}
             by_architecture.setdefault(item.get("architecture_id"), {"factor": item.get("factor_id", "")})[stage] = metrics.get("validation_alpha_mae")
+    parent = state.get("parent_baseline") or {}
+    parent_values = {"factor": "Parent"}
+    for stage in (8000, 80000, 250000):
+        value = (parent.get("metrics_{}".format(stage)) or {}).get("validation_alpha_mae")
+        if value is not None:
+            parent_values[stage] = value
+    if len(parent_values) > 1:
+        by_architecture["parent_baseline"] = parent_values
     plt.figure(figsize=(8, 5))
     for architecture_id, values in sorted(by_architecture.items()):
         xs = [stage for stage in (8000, 80000, 250000) if values.get(stage) is not None]
@@ -320,6 +351,8 @@ def make_plots(root, state):
 def write_reports(root, state, freeze, test_summary, candidates):
     winner = state["winner_by_validation"]
     validation_mae = float(freeze["validation_mae"])
+    parent_validation_mae = float(freeze["parent_validation_mae"])
+    validation_delta = float(freeze["validation_mae_delta_vs_parent"])
     test_mae = float(test_summary["endpoint_test_mae"])
     report = """# 等变DSL正式V1实验报告
 
@@ -328,6 +361,9 @@ def write_reports(root, state, freeze, test_summary, candidates):
 - Validation冻结赢家：`{architecture}`
 - 叶子因子：`{factor}`
 - 250000-step Validation MAE：`{validation:.8f}`
+- Equiformer V1父代250000-step Validation MAE：`{parent_validation:.8f}`
+- 相对父代Validation MAE差值：`{validation_delta:+.8f}`
+- 候选是否优于父代：`{candidate_beats_parent}`
 - 冻结后一次性Test MAE：`{test:.8f}`
 - Test评估执行Optimizer step：`0`
 - 搜索期间Test参与：`false`
@@ -346,6 +382,9 @@ def write_reports(root, state, freeze, test_summary, candidates):
         architecture=freeze["architecture_id"],
         factor=winner.get("factor_id", ""),
         validation=validation_mae,
+        parent_validation=parent_validation_mae,
+        validation_delta=validation_delta,
+        candidate_beats_parent=str(bool(freeze["candidate_beats_parent"])).lower(),
         test=test_mae,
         candidate_count=len(candidates),
     )
@@ -412,6 +451,9 @@ def main():
         "status": "completed",
         "selection_freeze": freeze,
         "final_test": state["final_test"],
+        "parent_baseline": state.get("parent_baseline"),
+        "candidate_beats_parent": freeze["candidate_beats_parent"],
+        "validation_mae_delta_vs_parent": freeze["validation_mae_delta_vs_parent"],
         "test_evaluated": True,
         "reports": [str(root / "final_report.md"), str(root / "final_report.html")],
     })

@@ -4,7 +4,13 @@ from types import SimpleNamespace
 import pytest
 
 from openevolve_adapter import evaluator
-from scripts.run_dsl_evolution import _ensure_compiler_manifest, _lineage_root, get_parser
+from scripts.run_dsl_evolution import (
+    _ensure_compiler_manifest,
+    _lineage_root,
+    _next_forced_factor,
+    _valid_factor_counts,
+    get_parser,
+)
 
 
 def test_dsl_evolution_entry_requires_program_task_evaluator_and_config():
@@ -61,3 +67,23 @@ def test_evaluator_forwards_the_preregistered_seed(monkeypatch):
     assert evaluator.evaluate("candidate.dsl.json")["valid"] is True
     seed_index = captured["command"].index("--seed")
     assert captured["command"][seed_index + 1] == "201"
+
+
+def test_formal_factor_coverage_routes_to_a_factor_with_remaining_quota(tmp_path):
+    evolution = tmp_path / "evolution.jsonl"
+    records = [
+        {
+            "iteration": 1,
+            "region_audit": {"factor_id": "F2.2"},
+            "metrics": {"valid": True, "test_evaluated": False, "architecture_id": "a"},
+        },
+        {
+            "iteration": 2,
+            "region_audit": {"factor_id": "F2.2"},
+            "metrics": {"valid": True, "test_evaluated": False, "architecture_id": "b"},
+        },
+    ]
+    evolution.write_text("\n".join(json.dumps(item) for item in records) + "\n", encoding="utf-8")
+    counts = _valid_factor_counts(evolution)
+    assert counts == {"F2.2": 2}
+    assert _next_forced_factor(("F2.2", "F4.4", "F5.3", "F6.3"), counts, 2, 5) == "F4.4"

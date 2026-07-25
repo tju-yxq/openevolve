@@ -335,10 +335,12 @@ def evaluate_dsl_candidate_pipeline(
     gpu_started = None
     try:
         stage_name = "dsl_steps{}".format(max_steps)
+        fallback_seconds_per_step = float(os.environ.get("NAS_FALLBACK_SECONDS_PER_STEP", "0.54"))
         ledger.require_available(
             ledger.estimate_stage_gpu_hours(
                 stage_name,
-                fallback_gpu_hours=max_steps * 0.00015 + (0.02 if run_symmetry else 0.0),
+                fallback_gpu_hours=max_steps * fallback_seconds_per_step / 3600.0
+                + (0.02 if run_symmetry else 0.0),
             )
         )
         import numpy as np

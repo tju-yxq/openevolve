@@ -7,6 +7,9 @@ def test_formal_v1_launcher_exposes_safe_preflight_only_mode():
     assert 'MODE="${2:-}"' in content
     assert 'if [ "$MODE" = "--preflight-only" ]' in content
     assert content.index("preflight_dsl_formal_v1.py") < content.index("--preflight-only")
+    assert 'NAS_BUDGET_LEDGER="${NAS_BUDGET_LEDGER:-$RUN_ROOT/budget_ledger.jsonl}"' in content
+    assert "--valid-per-factor-target 2" in content
+    assert '--parent-program "$RUN_ROOT/initial_program.dsl.json"' in content
 
 
 def test_formal_v1_supervisor_stops_after_completion_and_supports_one_shot_validation():

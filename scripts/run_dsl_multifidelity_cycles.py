@@ -85,11 +85,12 @@ def run_pipeline(args, candidate, *, max_steps, checkpoint, subset_file, transit
         "--data-path", args.data_path,
         "--max-steps", str(max_steps),
         "--seed", str(args.seed),
-        "--resume-checkpoint", checkpoint,
         "--batch-size", "32",
         "--eval-interval-epochs", "10",
         "--dsl-task-contract", args.task_contract,
     ]
+    if checkpoint:
+        command.extend(["--resume-checkpoint", checkpoint])
     if subset_file:
         command.extend(["--train-subset-file", subset_file])
     if transition:
@@ -103,13 +104,63 @@ def run_pipeline(args, candidate, *, max_steps, checkpoint, subset_file, transit
     result = json.loads(completed.stdout)
     if result.get("test_evaluated") is not False:
         raise RuntimeError("test leakage detected during formal V1 promotion")
-    if result.get("program_id") != candidate["program_id"]:
+    if candidate.get("program_id") and result.get("program_id") != candidate["program_id"]:
         raise RuntimeError("promotion changed Program ID")
     if not result.get("valid"):
         raise RuntimeError("promotion failed: {}".format(result.get("error", "unknown failure")))
     if int(result.get("endpoint_step", 0)) != int(max_steps):
         raise RuntimeError("promotion did not reach the requested endpoint")
     return result
+
+
+def parent_stage_complete(parent, stage):
+    metrics = parent.get("metrics_{}".format(stage)) or {}
+    checkpoint = Path(str(parent.get("checkpoint_{}".format(stage), "")))
+    return (
+        metrics.get("valid") is True
+        and metrics.get("test_evaluated") is False
+        and int(metrics.get("endpoint_step", 0)) == int(stage)
+        and checkpoint.is_file()
+    )
+
+
+def train_parent_baseline(args, root, state, subset, stop):
+    parent = state.get("parent_baseline") or {
+        "factor_id": "parent",
+        "program": str(Path(args.parent_program).resolve()),
+        "architecture_id": "parent_pending",
+        "program_id": "",
+    }
+    stages = (
+        (8000, "", str(subset), False),
+        (80000, "checkpoint_8000", str(subset), False),
+        (250000, "checkpoint_80000", "", True),
+    )
+    for stage, checkpoint_key, subset_file, transition in stages:
+        if stop.exists() or parent_stage_complete(parent, stage):
+            continue
+        checkpoint = str(parent.get(checkpoint_key, "")) if checkpoint_key else ""
+        state["current"] = {"architecture_id": parent.get("architecture_id", "parent_pending"), "max_steps": stage, "role": "parent_baseline"}
+        state["parent_baseline"] = parent
+        write_json(Path(root) / "state.json", state)
+        update_status(root, state)
+        metrics = run_pipeline(
+            args,
+            parent,
+            max_steps=stage,
+            checkpoint=checkpoint,
+            subset_file=subset_file,
+            transition=transition,
+        )
+        if not parent.get("program_id"):
+            parent["program_id"] = metrics["program_id"]
+            parent["architecture_id"] = metrics["architecture_id"]
+            parent["executable_id"] = metrics.get("executable_id", "")
+        parent["metrics_{}".format(stage)] = metrics
+        parent["checkpoint_{}".format(stage)] = metrics["checkpoint_last"]
+        state["parent_baseline"] = parent
+        write_json(Path(root) / "state.json", state)
+    return parent
 
 
 def update_status(root, state):
@@ -122,6 +173,7 @@ def update_status(root, state):
         "- 8k完成：`{}`".format(len(state.get("candidates_8000", []))),
         "- 80k完成：`{}`".format(len(state.get("candidates_80000", []))),
         "- 250k完成：`{}`".format(len(state.get("candidates_250000", []))),
+        "- 父代250k基线：`{}`".format("完成" if parent_stage_complete(state.get("parent_baseline") or {}, 250000) else "未完成"),
     ]
     current = state.get("current")
     if current:
@@ -133,6 +185,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True)
     parser.add_argument("--search-dir", required=True)
+    parser.add_argument("--parent-program", required=True)
     parser.add_argument("--project-root", required=True)
     parser.add_argument("--equiformer-root", required=True)
     parser.add_argument("--data-path", required=True)
@@ -149,7 +202,7 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
     subset = Path(args.quarter_subset_file).resolve()
     protocol = {
-        "protocol_version": "formal-v1-8-4-2@1",
+        "protocol_version": "formal-v1-8-4-2@2",
         "batch_size": 32,
         "stage_steps": [8000, 80000, 250000],
         "candidate_counts": [args.cohort, args.promote_80k, args.promote_250k],
@@ -158,6 +211,8 @@ def main():
         "seed": args.seed,
         "test_during_search": False,
         "full_transition": "model_only_optimizer_restart",
+        "parent_baseline": "same_seed_same_data_schedule_to_250000",
+        "parent_program_sha256": hashlib.sha256(Path(args.parent_program).read_bytes()).hexdigest(),
     }
     state_path = root / "state.json"
     state = read_json(state_path, {"stage": "collect_8k", "protocol": protocol, "created_at": now()})
@@ -213,12 +268,36 @@ def main():
         if len(completed) >= args.promote_250k:
             completed = sorted(completed, key=lambda item: float(item["metrics_250000"]["validation_alpha_mae"]))
             state["candidates_250000"] = completed
-            state["winner_by_validation"] = completed[0]
+            state["candidate_winner_by_validation"] = completed[0]
+            state["stage"] = "train_parent_baseline"
+            state.pop("current", None)
+            write_json(state_path, state)
+            update_status(root, state)
+
+    if state["stage"] == "train_parent_baseline" and not stop.exists():
+        parent = train_parent_baseline(args, root, state, subset, stop)
+        if parent_stage_complete(parent, 250000):
+            winner = state["candidate_winner_by_validation"]
+            candidate_mae = float(winner["metrics_250000"]["validation_alpha_mae"])
+            parent_mae = float(parent["metrics_250000"]["validation_alpha_mae"])
+            state["winner_by_validation"] = winner
+            state["candidate_beats_parent"] = candidate_mae < parent_mae
+            state["validation_mae_delta_vs_parent"] = candidate_mae - parent_mae
             state["stage"] = "completed_validation_selection"
             state.pop("current", None)
             state["completed_at"] = now()
             write_json(state_path, state)
-            append_jsonl(root / "full_fidelity_archive.jsonl", dict(completed[0], selected_at=now(), selection_split="validation"))
+            append_jsonl(
+                root / "full_fidelity_archive.jsonl",
+                dict(
+                    winner,
+                    selected_at=now(),
+                    selection_split="validation",
+                    parent_validation_alpha_mae=parent_mae,
+                    validation_mae_delta_vs_parent=candidate_mae - parent_mae,
+                    candidate_beats_parent=candidate_mae < parent_mae,
+                ),
+            )
             update_status(root, state)
 
     print(json.dumps({"root": str(root), "stage": state["stage"], "test_evaluated": False}, ensure_ascii=False, sort_keys=True))

@@ -16,9 +16,11 @@ def _module():
 def test_selection_freeze_requires_validation_only_winner_and_binds_files(tmp_path):
     program = tmp_path / "winner.dsl.json"
     checkpoint = tmp_path / "checkpoint_last.pth"
+    parent_checkpoint = tmp_path / "parent_checkpoint_last.pth"
     state_path = tmp_path / "state.json"
     program.write_text("{}", encoding="utf-8")
     checkpoint.write_bytes(b"checkpoint")
+    parent_checkpoint.write_bytes(b"parent checkpoint")
     state = {
         "stage": "completed_validation_selection",
         "winner_by_validation": {
@@ -29,6 +31,15 @@ def test_selection_freeze_requires_validation_only_winner_and_binds_files(tmp_pa
             "checkpoint_250000": str(checkpoint),
             "metrics_250000": {"validation_alpha_mae": 0.1, "test_evaluated": False},
         },
+        "parent_baseline": {
+            "checkpoint_250000": str(parent_checkpoint),
+            "metrics_250000": {
+                "validation_alpha_mae": 0.12,
+                "endpoint_step": 250000,
+                "valid": True,
+                "test_evaluated": False,
+            },
+        },
     }
     state_path.write_text(json.dumps(state), encoding="utf-8")
     freeze = _module().selection_payload(state, state_path)
@@ -36,6 +47,7 @@ def test_selection_freeze_requires_validation_only_winner_and_binds_files(tmp_pa
     assert freeze["test_evaluated_before_freeze"] is False
     assert len(freeze["program_sha256"]) == 64
     assert len(freeze["checkpoint_sha256"]) == 64
+    assert freeze["candidate_beats_parent"] is True
 
 
 def test_selection_freeze_rejects_prior_test_exposure(tmp_path):

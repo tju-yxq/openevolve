@@ -77,3 +77,21 @@ def test_preflight_discovers_llm_environment_contract_without_reading_secret(tmp
         encoding="utf-8",
     )
     assert _module().required_environment_variables(config) == ["DEEPSEEK_API_KEY", "GLM_API_KEY"]
+
+
+def test_preflight_allows_audited_protocol_correction_only_before_training(tmp_path):
+    module = _module()
+    run_root = tmp_path / "run"
+    run_root.mkdir()
+    protocol = run_root / "protocol.json"
+    protocol.write_text('{"version": 1}', encoding="utf-8")
+    assert module.write_frozen_material(protocol, '{"version": 2}', run_root, "protocol") == "migrated"
+    assert (run_root / "protocol_migrations" / "migrations.jsonl").is_file()
+    evolution = run_root / "search" / "evolution.jsonl"
+    evolution.parent.mkdir()
+    evolution.write_text(
+        json.dumps({"metrics": {"charged_gpu_seconds": 1.0, "checkpoint_last": ""}}) + "\n",
+        encoding="utf-8",
+    )
+    with __import__("pytest").raises(RuntimeError, match="refuse protocol drift"):
+        module.write_frozen_material(protocol, '{"version": 3}', run_root, "protocol")

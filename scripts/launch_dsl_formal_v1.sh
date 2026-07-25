@@ -14,6 +14,9 @@ exec > >(tee -a "$RUN_ROOT/controller.log") 2>&1
 
 export PYTHONPATH="$PROJECT"
 export EQUIFORMER_PYTHON="$EQUIFORMER_PY"
+export NAS_GPU_BUDGET_HOURS="${NAS_GPU_BUDGET_HOURS:-40.0}"
+export NAS_FALLBACK_SECONDS_PER_STEP="${NAS_FALLBACK_SECONDS_PER_STEP:-0.12}"
+export NAS_BUDGET_LEDGER="${NAS_BUDGET_LEDGER:-$RUN_ROOT/budget_ledger.jsonl}"
 
 "$EQUIFORMER_PY" "$PROJECT/scripts/preflight_dsl_formal_v1.py" --config "$CONFIG" --run-root "$RUN_ROOT"
 
@@ -30,6 +33,7 @@ fi
   --openevolve-root /home/20262202788/openevolve \
   --iterations 32 \
   --valid-candidate-target 8 \
+  --valid-per-factor-target 2 \
   --max-steps 8000 \
   --batch-size 32 \
   --seed 201 \
@@ -39,6 +43,7 @@ fi
 "$EQUIFORMER_PY" "$PROJECT/scripts/run_dsl_multifidelity_cycles.py" \
   --root "$RUN_ROOT/multifidelity" \
   --search-dir "$RUN_ROOT/search" \
+  --parent-program "$RUN_ROOT/initial_program.dsl.json" \
   --project-root "$PROJECT" \
   --equiformer-root /home/20262202788/equiformer \
   --data-path /home/20262202788/equiformer/datasets/qm9 \

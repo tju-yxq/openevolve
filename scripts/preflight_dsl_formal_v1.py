@@ -45,6 +45,51 @@ def required_environment_variables(config_path):
     return sorted(set(re.findall(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", text)))
 
 
+def _training_started(run_root):
+    root = Path(run_root)
+    if any(root.rglob("checkpoint_last.pth")):
+        return True
+    for evolution in root.rglob("evolution.jsonl"):
+        for line in evolution.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            metrics = (json.loads(line).get("metrics") or {})
+            if float(metrics.get("charged_gpu_seconds", 0.0)) > 0.0 or Path(str(metrics.get("checkpoint_last", ""))).is_file():
+                return True
+    return False
+
+
+def write_frozen_material(path, text, run_root, label):
+    path = Path(path)
+    encoded = text.encode("utf-8")
+    if path.is_file() and path.read_bytes() == encoded:
+        return "unchanged"
+    existed = path.exists()
+    if existed and _training_started(run_root):
+        raise RuntimeError("{} changed after training started; refuse protocol drift".format(label))
+    if existed:
+        previous = path.read_bytes()
+        migrations = Path(run_root) / "protocol_migrations"
+        migrations.mkdir(parents=True, exist_ok=True)
+        old_hash = hashlib.sha256(previous).hexdigest()
+        new_hash = hashlib.sha256(encoded).hexdigest()
+        archive = migrations / "{}_{}.previous".format(label, old_hash[:12])
+        if not archive.exists():
+            archive.write_bytes(previous)
+        with (migrations / "migrations.jsonl").open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({
+                "label": label,
+                "old_sha256": old_hash,
+                "new_sha256": new_hash,
+                "reason": "pretraining formal-V1 protocol correction",
+                "migrated_at": datetime.now(timezone.utc).isoformat(),
+            }, ensure_ascii=False, sort_keys=True) + "\n")
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_bytes(encoded)
+    temporary.replace(path)
+    return "migrated" if existed else "created"
+
+
 def validate_acceptance_evidence(project, evidence_path):
     evidence_path = Path(evidence_path).resolve()
     checks = []
@@ -127,6 +172,24 @@ def main():
 
     acceptance_checks, acceptance = validate_acceptance_evidence(project, config["acceptance_evidence"])
     checks.extend(acceptance_checks)
+    configured_budget = float(config["gpu_budget_hours"])
+    configured_fallback = float(config["fallback_seconds_per_step"])
+    check(
+        "formal_gpu_budget",
+        abs(float(os.environ.get("NAS_GPU_BUDGET_HOURS", "nan")) - configured_budget) < 1.0e-12,
+        {"configured_hours": configured_budget, "environment": os.environ.get("NAS_GPU_BUDGET_HOURS", "missing")},
+    )
+    check(
+        "formal_step_cost_fallback",
+        abs(float(os.environ.get("NAS_FALLBACK_SECONDS_PER_STEP", "nan")) - configured_fallback) < 1.0e-12,
+        {"configured_seconds": configured_fallback, "environment": os.environ.get("NAS_FALLBACK_SECONDS_PER_STEP", "missing")},
+    )
+    expected_ledger = run_root / "budget_ledger.jsonl"
+    check(
+        "formal_run_budget_ledger",
+        Path(os.environ.get("NAS_BUDGET_LEDGER", "")).resolve() == expected_ledger.resolve(),
+        {"expected": str(expected_ledger), "actual": os.environ.get("NAS_BUDGET_LEDGER", "missing")},
+    )
 
     profile = equiformer_v1_capability_profile()
     validate_unique_factor_ownership(profile.enabled_factors)
@@ -177,9 +240,15 @@ def main():
             })
 
     initial_program = run_root / "initial_program.dsl.json"
-    initial_program.write_text(dumps_program(parent), encoding="utf-8")
+    write_frozen_material(initial_program, dumps_program(parent), run_root, "initial_program")
     frozen_config = run_root / "formal_v1_config.json"
-    frozen_config.write_text(json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    write_frozen_material(
+        frozen_config,
+        json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True),
+        run_root,
+        "formal_v1_config",
+    )
+    existing_protocol = json.loads((run_root / "protocol.json").read_text(encoding="utf-8")) if (run_root / "protocol.json").is_file() else {}
     protocol = {
         "version": config["version"],
         "config_sha256": sha256(frozen_config),
@@ -187,9 +256,17 @@ def main():
         "quarter_subset_sha256": sha256(config["quarter_subset_file"]),
         "initial_program_sha256": sha256(initial_program),
         "test_during_search": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "gpu_budget_hours": configured_budget,
+        "fallback_seconds_per_step": configured_fallback,
+        "budget_ledger": str(expected_ledger),
+        "created_at": existing_protocol.get("created_at", datetime.now(timezone.utc).isoformat()),
     }
-    (run_root / "protocol.json").write_text(json.dumps(protocol, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    write_frozen_material(
+        run_root / "protocol.json",
+        json.dumps(protocol, ensure_ascii=False, indent=2, sort_keys=True),
+        run_root,
+        "protocol",
+    )
     ready = {
         "ready": all(item["passed"] for item in checks),
         "formal_v1_version": config["version"],

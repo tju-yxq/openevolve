@@ -71,6 +71,48 @@ def _valid_candidate_ids(evolution_path):
     return identifiers
 
 
+def _valid_factor_counts(evolution_path):
+    path = Path(evolution_path)
+    counts = {}
+    seen = set()
+    if not path.exists():
+        return counts
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if int(record.get("iteration", 0)) <= 0:
+            continue
+        metrics = record.get("metrics") or {}
+        architecture_id = str(metrics.get("architecture_id", record.get("architecture_id", "")))
+        factor_id = str((record.get("region_audit") or {}).get("factor_id", ""))
+        if (
+            not architecture_id
+            or architecture_id in seen
+            or not factor_id
+            or not metrics.get("valid")
+            or metrics.get("test_evaluated") is not False
+        ):
+            continue
+        seen.add(architecture_id)
+        counts[factor_id] = counts.get(factor_id, 0) + 1
+    return counts
+
+
+def _next_forced_factor(forced_factors, factor_counts, per_factor_target, iteration):
+    ordered = tuple(dict.fromkeys(forced_factors))
+    if not ordered:
+        return ""
+    if per_factor_target <= 0:
+        return forced_factors[(iteration - 1) % len(forced_factors)]
+    start = (iteration - 1) % len(ordered)
+    for offset in range(len(ordered)):
+        factor_id = ordered[(start + offset) % len(ordered)]
+        if int(factor_counts.get(factor_id, 0)) < per_factor_target:
+            return factor_id
+    return ""
+
+
 def _load_verified_initial_metrics(path, *, architecture_id, seed, max_steps):
     metrics = json.loads(Path(path).read_text(encoding="utf-8"))
     required_identity = ("program_id", "executable_id", "protocol_id", "runtime_manifest_sha256")
@@ -94,6 +136,14 @@ def _ensure_compiler_manifest(output, payload, *, database_has_programs):
     if path.exists():
         existing = json.loads(path.read_text(encoding="utf-8"))
         if existing != payload:
+            upgraded = json.loads(json.dumps(existing))
+            existing_protocol = upgraded.get("formal_v1_search_protocol") or {}
+            requested_protocol = payload.get("formal_v1_search_protocol") or {}
+            if "valid_per_factor_target" not in existing_protocol:
+                existing_protocol["valid_per_factor_target"] = requested_protocol.get("valid_per_factor_target", 0)
+            if upgraded == payload and not _valid_candidate_ids(Path(output) / "evolution.jsonl"):
+                _write_json(path, payload)
+                return path
             raise RuntimeError(
                 "compiler manifest mismatch; resume requires the exact task, language, rewrite registry, compiler, and backend semantics"
             )
@@ -321,6 +371,7 @@ async def run(args):
             "seed": int(args.seed),
             "maximum_generation_attempts": int(args.iterations),
             "valid_candidate_target": int(args.valid_candidate_target),
+            "valid_per_factor_target": int(args.valid_per_factor_target),
             "test_during_search": False,
         },
     }
@@ -386,6 +437,29 @@ async def run(args):
             resources={"charged_gpu_seconds": metrics.get("charged_gpu_seconds", 0.0)},
         )
         _append_jsonl(output / "evolution.jsonl", {"iteration": 0, "kind": "initial", "metrics": metrics})
+    else:
+        parents = [program for program in database.programs.values() if int(program.iteration_found) == 0]
+        if len(parents) == 1 and (parents[0].metrics or {}).get("error_type") == "BudgetExceeded":
+            artifact = compiler.analyze(initial_program, task)
+            initial_path = candidates / "iteration_0000.dsl.json"
+            metrics = _evaluate(evaluator_adapter, initial_path, artifact.architecture_id)
+            metrics["architecture_id"] = artifact.architecture_id
+            if not metrics.get("valid"):
+                raise RuntimeError("initial parent recovery failed: {}".format(metrics.get("error", "unknown error")))
+            parents[0].metrics = metrics
+            database.save(str(output / "database"), iteration=database.last_iteration)
+            store.add_evaluation(
+                artifact.architecture_id,
+                split="validation",
+                fidelity_steps=int(metrics.get("fidelity_steps", args.max_steps)),
+                seed=args.seed,
+                metrics=metrics,
+                resources={"charged_gpu_seconds": metrics.get("charged_gpu_seconds", 0.0)},
+            )
+            _append_jsonl(
+                output / "evolution.jsonl",
+                {"iteration": 0, "kind": "initial_recovery", "recovered_from": "BudgetExceeded", "metrics": metrics},
+            )
 
     start = int(database.last_iteration) + 1
     stop_file = Path(args.stop_file).resolve() if args.stop_file else output / "STOP"
@@ -395,7 +469,13 @@ async def run(args):
         if stop_file.exists():
             break
         valid_ids = _valid_candidate_ids(output / "evolution.jsonl")
-        if args.valid_candidate_target and len(valid_ids) >= args.valid_candidate_target:
+        factor_counts = _valid_factor_counts(output / "evolution.jsonl")
+        factor_coverage_reached = (
+            not forced_factors
+            or args.valid_per_factor_target <= 0
+            or all(factor_counts.get(factor_id, 0) >= args.valid_per_factor_target for factor_id in set(forced_factors))
+        )
+        if args.valid_candidate_target and len(valid_ids) >= args.valid_candidate_target and factor_coverage_reached:
             break
         completed = iteration
         _write_json(output / "heartbeat.json", {
@@ -405,6 +485,8 @@ async def run(args):
             "last_completed_iteration": iteration - 1,
             "valid_candidate_count": len(valid_ids),
             "valid_candidate_target": int(args.valid_candidate_target),
+            "valid_factor_counts": factor_counts,
+            "valid_per_factor_target": int(args.valid_per_factor_target),
             "stop_file": str(stop_file),
         })
         island_index = (iteration - 1) % len(database.islands)
@@ -439,17 +521,24 @@ async def run(args):
                 parent, inspirations = database.sample(num_inspirations=args.inspirations)
                 parent_program = loads_program(parent.code)
                 regions = v1_region_registry(parent_program)
+                forced_factor_id = _next_forced_factor(
+                    forced_factors,
+                    factor_counts,
+                    args.valid_per_factor_target,
+                    iteration,
+                )
                 record.update({
                     "parent_program_id": parent.id,
                     "parent_architecture_id": parent.metrics.get("architecture_id"),
                     "inspiration_ids": [item.id for item in inspirations],
+                    "forced_factor_id": forced_factor_id,
                 })
                 generated = await engine.generate_region_candidate(
                     ensemble,
                     parent_program,
                     _measured_evidence(parent, inspirations),
                     regions,
-                    forced_factor_id=(forced_factors[(iteration - 1) % len(forced_factors)] if forced_factors else ""),
+                    forced_factor_id=forced_factor_id,
                 )
                 child_id = generated.child.architecture_id
                 child_path = candidates / "iteration_{:04d}_{}.dsl.json".format(iteration, child_id)
@@ -513,6 +602,7 @@ async def run(args):
             current_path.unlink()
         best = database.get_best_program()
         valid_ids = _valid_candidate_ids(output / "evolution.jsonl")
+        factor_counts = _valid_factor_counts(output / "evolution.jsonl")
         summary = {
             "last_completed_iteration": iteration,
             "program_count": len(database.programs),
@@ -520,6 +610,8 @@ async def run(args):
             "best_metrics": best.metrics if best else None,
             "valid_candidate_count": len(valid_ids),
             "valid_candidate_target": int(args.valid_candidate_target),
+            "valid_factor_counts": factor_counts,
+            "valid_per_factor_target": int(args.valid_per_factor_target),
             "task_contract_hash": task.content_hash(),
             "language_registry_hash": language.registry_hash(),
             "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
@@ -531,6 +623,7 @@ async def run(args):
 
     best = database.get_best_program()
     valid_ids = _valid_candidate_ids(output / "evolution.jsonl")
+    factor_counts = _valid_factor_counts(output / "evolution.jsonl")
     database.save(str(output / "database"), iteration=completed)
     language_snapshot = None
     if language_preregistration is not None:
@@ -543,7 +636,12 @@ async def run(args):
             language_preregistration,
             args.language_holdout_modulus,
         )
-    target_reached = not args.valid_candidate_target or len(valid_ids) >= args.valid_candidate_target
+    factor_coverage_reached = (
+        not forced_factors
+        or args.valid_per_factor_target <= 0
+        or all(factor_counts.get(factor_id, 0) >= args.valid_per_factor_target for factor_id in set(forced_factors))
+    )
+    target_reached = (not args.valid_candidate_target or len(valid_ids) >= args.valid_candidate_target) and factor_coverage_reached
     final = {
         "last_completed_iteration": completed,
         "program_count": len(database.programs),
@@ -551,6 +649,8 @@ async def run(args):
         "best_metrics": best.metrics if best else None,
         "valid_candidate_count": len(valid_ids),
         "valid_candidate_target": int(args.valid_candidate_target),
+        "valid_factor_counts": factor_counts,
+        "valid_per_factor_target": int(args.valid_per_factor_target),
         "task_contract_hash": task.content_hash(),
         "language_registry_hash": language.registry_hash(),
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
@@ -590,6 +690,12 @@ def get_parser():
         type=int,
         default=0,
         help="Stop early after this many unique valid non-parent candidates; zero preserves fixed-attempt behavior.",
+    )
+    parser.add_argument(
+        "--valid-per-factor-target",
+        type=int,
+        default=0,
+        help="Require this many unique valid candidates for every forced factor before stopping.",
     )
     parser.add_argument("--inspirations", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=0)

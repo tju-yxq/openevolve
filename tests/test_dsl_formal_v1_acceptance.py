@@ -68,3 +68,12 @@ def test_acceptance_evidence_rejects_stale_critical_code(tmp_path, monkeypatch):
     monkeypatch.setattr(module, "command_ok", lambda _command: (True, "abc123"))
     checks, _evidence = module.validate_acceptance_evidence(project, evidence_path)
     assert any(item["name"] == "acceptance_critical_file:critical.py" and not item["passed"] for item in checks)
+
+
+def test_preflight_discovers_llm_environment_contract_without_reading_secret(tmp_path):
+    config = tmp_path / "llm.yaml"
+    config.write_text(
+        "api_key: ${GLM_API_KEY}\nsecondary: ${DEEPSEEK_API_KEY}\nrepeat: ${GLM_API_KEY}\n",
+        encoding="utf-8",
+    )
+    assert _module().required_environment_variables(config) == ["DEEPSEEK_API_KEY", "GLM_API_KEY"]

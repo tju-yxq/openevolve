@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,11 @@ def sha256(path):
 def command_ok(command):
     completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
     return completed.returncode == 0, completed.stdout.strip() or completed.stderr.strip()
+
+
+def required_environment_variables(config_path):
+    text = Path(config_path).read_text(encoding="utf-8")
+    return sorted(set(re.findall(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", text)))
 
 
 def validate_acceptance_evidence(project, evidence_path):
@@ -97,6 +103,16 @@ def main():
     for key in ("equiformer_root", "openevolve_root", "data_path", "quarter_subset_file", "task_contract", "llm_config"):
         path = Path(config[key])
         check("path:{}".format(key), path.exists(), path)
+    llm_config = Path(config["llm_config"])
+    if llm_config.is_file():
+        required_variables = required_environment_variables(llm_config)
+        check("llm_environment_contract", bool(required_variables), required_variables)
+        for variable in required_variables:
+            check(
+                "llm_environment:{}".format(variable),
+                bool(os.environ.get(variable)),
+                "set" if os.environ.get(variable) else "missing",
+            )
     for key in ("openevolve_python", "equiformer_python"):
         path = Path(config[key])
         check("executable:{}".format(key), path.is_file(), path)

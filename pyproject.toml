@@ -13,5 +13,4 @@ include = ["equivariant_nas*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
 norecursedirs = ["第三方源码", "reports", "tmp", ".tmp"]

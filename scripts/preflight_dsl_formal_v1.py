@@ -62,7 +62,7 @@ def main():
         path = Path(config[key])
         check("executable:{}".format(key), path.is_file(), path)
 
-    ok, status = command_ok(["git", "-C", str(project), "status", "--porcelain"])
+    ok, status = command_ok(["git", "-C", str(project), "status", "--porcelain", "--untracked-files=no"])
     check("project_git_available", ok, status)
     check("project_git_clean", args.allow_dirty or (ok and not status), status)
     check("cuda_visible", shutil.which("nvidia-smi") is not None, shutil.which("nvidia-smi") or "missing")

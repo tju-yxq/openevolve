@@ -1,4 +1,6 @@
 import pytest
+import os
+from pathlib import Path
 
 
 torch = pytest.importorskip("torch")
@@ -11,9 +13,12 @@ from equivariant_nas.spec import baseline_spec
 
 
 def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients():
+    equiformer_root = Path(os.environ.get("EQUIFORMER_ROOT", "/home/20262202788/equiformer"))
+    if not equiformer_root.is_dir():
+        pytest.skip("official Equiformer V1 source is unavailable")
     program = import_equiformer_v1(baseline_spec())
     compiler = Compiler(core_registry(), reference_motif_registry())
-    model = build_qm9_dsl_model(program, compiler, radius=10.0).double()
+    model = build_qm9_dsl_model(program, compiler, radius=10.0, equiformer_root=str(equiformer_root)).double()
     features = torch.randn(7, 5, dtype=torch.float64)
     positions = torch.randn(7, 3, dtype=torch.float64)
     batch = torch.tensor([0, 0, 0, 0, 1, 1, 1], dtype=torch.long)

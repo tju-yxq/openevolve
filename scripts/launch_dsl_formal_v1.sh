@@ -8,6 +8,10 @@ MODE="${2:-}"
 OPENEVOLVE_PY="${OPENEVOLVE_PY:-/home/20262202788/conda-envs/openevolve/bin/python}"
 EQUIFORMER_PY="${EQUIFORMER_PY:-/home/20262202788/conda-envs/equiformer/bin/python}"
 
+mkdir -p "$RUN_ROOT"
+touch "$RUN_ROOT/supervisor.log"
+exec > >(tee -a "$RUN_ROOT/controller.log") 2>&1
+
 export PYTHONPATH="$PROJECT"
 export EQUIFORMER_PYTHON="$EQUIFORMER_PY"
 

@@ -8,6 +8,7 @@ import hashlib
 import html
 import json
 import os
+import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +50,29 @@ def write_jsonl(path, records):
         encoding="utf-8",
     )
     temporary.replace(path)
+
+
+def copy_atomic(source, target):
+    source = Path(source)
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(target.suffix + ".tmp")
+    shutil.copy2(source, temporary)
+    temporary.replace(target)
+
+
+def link_or_copy_atomic(source, target):
+    source = Path(source)
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(target.suffix + ".tmp")
+    if temporary.exists():
+        temporary.unlink()
+    try:
+        os.link(str(source), str(temporary))
+    except OSError:
+        shutil.copy2(source, temporary)
+    temporary.replace(target)
 
 
 def selection_payload(state, state_path):
@@ -171,6 +195,7 @@ def collect_run_materials(root, search_dir, state):
             failures.append(record)
     write_json(root / "candidate_index.json", candidates)
     write_jsonl(root / "failure_evidence.jsonl", failures)
+    write_jsonl(root / "evolution.jsonl", evolution)
 
     promotions = []
     for stage, key, metrics_key in (
@@ -191,6 +216,56 @@ def collect_run_materials(root, search_dir, state):
             })
     write_jsonl(root / "promotion_history.jsonl", promotions)
     return candidates, promotions
+
+
+def materialize_candidate_evidence(root, search_dir):
+    parent_program = search_dir.parent / "initial_program.dsl.json"
+    records = [item for item in read_jsonl(search_dir / "evolution.jsonl") if int(item.get("iteration", 0)) > 0]
+    for record in records:
+        metrics = record.get("metrics") or {}
+        architecture_id = str(record.get("architecture_id", metrics.get("architecture_id", "unknown")))
+        iteration = int(record["iteration"])
+        material = root / "candidate_materials" / "iteration_{:04d}_{}".format(iteration, architecture_id)
+        if parent_program.is_file():
+            copy_atomic(parent_program, material / "parent.dsl.json")
+        candidates = sorted((search_dir / "candidates").glob("iteration_{:04d}_*.dsl.json".format(iteration)))
+        if candidates:
+            copy_atomic(candidates[0], material / "candidate.dsl.json")
+        write_json(material / "typed_patch.json", record.get("patch") or {})
+        write_json(material / "factor_router.json", record.get("router_response") or {})
+        write_json(material / "factor_critic.json", record.get("critic_response") or {})
+        write_json(material / "synthesizer.json", {
+            "planner_response": record.get("planner_response") or {},
+            "typed_patch": record.get("patch") or {},
+        })
+        write_json(material / "generation_record.json", record)
+        write_json(material / "compiler_report.json", {
+            "region_audit": record.get("region_audit") or {},
+            "compiler_obligations": metrics.get("compiler_obligations") or [],
+            "valid": metrics.get("valid"),
+            "failure_stage": metrics.get("failure_stage", ""),
+        })
+        write_json(material / "lowering_plan.json", metrics.get("lowering_plan") or (record.get("region_audit") or {}).get("lowering_plan") or {})
+        run_dir = Path(str(metrics.get("run_dir", "")))
+        if run_dir.is_dir():
+            runtime_manifest = run_dir / "runtime_manifest.json"
+            if runtime_manifest.is_file():
+                copy_atomic(runtime_manifest, material / "runtime_manifest.json")
+            symmetry = run_dir / "posttrain_symmetry_report.json"
+            if not symmetry.is_file():
+                symmetry = run_dir / "pretrain_symmetry_report.json"
+            if symmetry.is_file():
+                copy_atomic(symmetry, material / "symmetry_audit.json")
+            training = run_dir / "training"
+            for name in ("progress.json", "metrics.jsonl", "checkpoint_last.pth"):
+                source = training / name
+                if source.is_file():
+                    link_or_copy_atomic(source, material / "training" / name)
+            result = run_dir / "result.json"
+            if result.is_file():
+                copy_atomic(result, material / "result.json")
+        if not (material / "result.json").exists():
+            write_json(material / "result.json", metrics)
 
 
 def make_plots(root, state):
@@ -303,6 +378,7 @@ def main():
     freeze = ensure_freeze(root, state, state_path)
     test_summary = run_final_test(args, root, freeze)
     candidates, _promotions = collect_run_materials(root, search_dir, state)
+    materialize_candidate_evidence(root, search_dir)
     make_plots(root, state)
     write_reports(root, state, freeze, test_summary, candidates)
     state["stage"] = "final_completed"
@@ -314,6 +390,24 @@ def main():
         "steps_executed_current_job": 0,
     }
     write_json(state_path, state)
+    write_json(root / "state.json", state)
+    write_json(root / "heartbeat.json", {
+        "status": "final_completed",
+        "updated_at": now(),
+        "test_evaluated": True,
+        "architecture_id": freeze["architecture_id"],
+    })
+    (root / "STATUS.md").write_text(
+        "# 等变DSL正式V1\n\n- 阶段：`final_completed`\n- Validation赢家：`{}`\n- 最终Test MAE：`{:.8f}`\n- Test访问次数：`1`\n".format(
+            freeze["architecture_id"], float(test_summary["endpoint_test_mae"])
+        ),
+        encoding="utf-8",
+    )
+    archive = Path(args.multifidelity_root).resolve() / "full_fidelity_archive.jsonl"
+    if archive.is_file():
+        copy_atomic(archive, root / "full_fidelity_archive.jsonl")
+    for required_log in (root / "controller.log", root / "supervisor.log"):
+        required_log.touch(exist_ok=True)
     write_json(root / "final_result.json", {
         "status": "completed",
         "selection_freeze": freeze,

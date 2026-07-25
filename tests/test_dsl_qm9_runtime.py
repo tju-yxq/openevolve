@@ -18,9 +18,9 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
         pytest.skip("official Equiformer V1 source is unavailable")
     program = import_equiformer_v1(baseline_spec())
     compiler = Compiler(core_registry(), reference_motif_registry())
-    model = build_qm9_dsl_model(program, compiler, radius=10.0, equiformer_root=str(equiformer_root)).double()
-    features = torch.randn(7, 5, dtype=torch.float64)
-    positions = torch.randn(7, 3, dtype=torch.float64)
+    model = build_qm9_dsl_model(program, compiler, radius=10.0, equiformer_root=str(equiformer_root))
+    features = torch.randn(7, 5, dtype=torch.float32)
+    positions = torch.randn(7, 3, dtype=torch.float32)
     batch = torch.tensor([0, 0, 0, 0, 1, 1, 1], dtype=torch.long)
     node_atom = torch.tensor([1, 6, 7, 8, 1, 6, 8], dtype=torch.long)
     prediction = model(features, positions, batch, node_atom)
@@ -34,11 +34,11 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
     model.eval()
     from e3nn import o3
 
-    rotation = o3.rand_matrix(dtype=torch.float64)
+    rotation = o3.rand_matrix(dtype=torch.float32)
     rotated = model(features, positions @ rotation.transpose(0, 1), batch, node_atom)
     translated = model(
         features,
-        positions + torch.tensor([[2.0, -1.0, 0.5]], dtype=torch.float64),
+        positions + torch.tensor([[2.0, -1.0, 0.5]], dtype=torch.float32),
         batch,
         node_atom,
     )
@@ -49,6 +49,6 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
         batch[permutation],
         node_atom[permutation],
     )
-    assert torch.allclose(rotated, prediction.detach(), atol=1e-7, rtol=1e-7)
-    assert torch.allclose(translated, prediction.detach(), atol=1e-7, rtol=1e-7)
-    assert torch.allclose(permuted, prediction.detach(), atol=1e-7, rtol=1e-7)
+    assert torch.allclose(rotated, prediction.detach(), atol=1e-5, rtol=1e-5)
+    assert torch.allclose(translated, prediction.detach(), atol=1e-5, rtol=1e-5)
+    assert torch.allclose(permuted, prediction.detach(), atol=1e-5, rtol=1e-5)

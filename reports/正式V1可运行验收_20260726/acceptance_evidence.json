@@ -1,0 +1,324 @@
+{
+  "artifacts": {
+    "/home/20262202788/equivariant-nas/.formal_v1_acceptance/pytest.log": "3dcb2ee859001ead924c887eec39ac90e3de1f06c75da7acb03e89fd78e577ac",
+    "/home/20262202788/equivariant-nas/configs/dsl_formal_v1_acceptance_sources.json": "5e70a7d763238e3e96bc27f51981e93c322812230c53e69c4c938b4a86870857",
+    "/home/20262202788/equivariant-nas/configs/dsl_formal_v1_qm9_alpha_seed201.json": "b86f7e630b6172f6dce090b2f8463915fb5ef31515b79a0c2b6adde9edd90486",
+    "/home/20262202788/equivariant-nas/configs/dsl_v1_symmetry_protocol.json": "f2f65656cb70117566fdd12198bdbd64d317053fb5eb45ba00701c3e8f6c80a9",
+    "/home/20262202788/equivariant-nas/configs/qm9_alpha_formal_v1_task.json": "e6e394e0f43f53f96610ef6e2a5a14fca390bb90093c7c5fd2a6febdf7f1d837",
+    "/home/20262202788/equivariant-nas/equivariant_nas/dsl/factors.py": "667e6e83627692fdb866f4086f22786579fce7547caa0b5188bf214c3135a44e",
+    "/home/20262202788/equivariant-nas/equivariant_nas/dsl/llm_protocol.py": "f87f0841258dcdab5c7abb3d3579436ae858470859d668c59196015443fa0050",
+    "/home/20262202788/equivariant-nas/equivariant_nas/dsl/pipeline.py": "cdb3da8b7ce50ec6e2da0467f5cd1c60e9a62e9c32ad5898d9ba8a9b2a886557",
+    "/home/20262202788/equivariant-nas/equivariant_nas/dsl/regions.py": "bf57daf1cb67b71f7e4257e26110c74583bb09dab47057c28aeb5d3d111265e3",
+    "/home/20262202788/equivariant-nas/equivariant_nas/dsl/runtime_manifest.py": "de1afbc8678375b41f148fa4b27e4876ccbaf447557037cc4ff3c5f720dee8c3",
+    "/home/20262202788/equivariant-nas/equivariant_nas/dsl/search.py": "ed6a10e51f5abf745b55d9b5fcbd275e4435543d4e78741fb8008966ffb15991",
+    "/home/20262202788/equivariant-nas/equivariant_nas/training/fixed_step_trainer.py": "e71ca0aaff0d67bc7d89ce1ab8b5ec92e4e66acb1e843b85a99d5e682b41d0e0",
+    "/home/20262202788/equivariant-nas/runs/dsl_candidates/2f9873ebb2de9086/seed206_steps1000_c8d93c6125/training/progress.json": "cb6e618df0aa3322cd810a43f73f4f20f1fe2d1fe8b482c7c0025354f74f2b9a",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed202/summary.json": "a8f30a0200c6e93f019f39d7ee51913961a2893604a4cc845b63138257a71521",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed203/summary.json": "00b6745ee7d577a29feeeef9bd376c24883e81f8eedb2e2858ee25482cc7d499",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed204/summary.json": "982f14d8c7c01e448b79b3b2d8a0dc870c1dafe26da19475dfc86bd2a882ff24",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed205/summary.json": "5314ec9e4dfe77f14bfeb721cc9d5455654a4fd49a23681cf2d93762da328201",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_recovery_seed206/post_resume_hashes.txt": "9e89428c677adf2f5ac9ad2ff3a0909b478d80cf99bfc319ae863737c1e1e7cf",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_recovery_seed206/pre_resume_hashes.txt": "89d1fa994295aa4528261c3b99e671686a3b43fd438ca1647ea28f2d558f3ff9",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_recovery_seed206/summary.json": "a583534f8acc2d0d45b15048f6f37b9774a9b0b681fb877efb1f5b8a5d4bc872",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_missing_factors_seed201/summary.json": "673aed4300e08ae2146188fa12fb45435a6a3472f47f3dbbda8b79dc57bf2682",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json": "b0f3242ce3d8e3073add9732cebedac60013622f534ba80fcaa1c1b5044823ed",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_supervisor_validation_20260726a/READY_TO_LAUNCH.json": "c1410ef4988301f578a32c63ce44427d92b8b350b1153c3e9f6e4a60817efffa",
+    "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_supervisor_validation_20260726a/supervisor.log": "c47a4993faf3c35b59837ec1ad62ea11fc5f54729328abe865b91f7805b2c192",
+    "/home/20262202788/equivariant-nas/scripts/collect_dsl_formal_v1_acceptance.py": "1d6a08bb019813e5f2bf7a6c82cd9c2bc9e9c60a9aa30761078e3becde32bbf0",
+    "/home/20262202788/equivariant-nas/scripts/finalize_dsl_formal_v1.py": "f2360fa63767e2382308f09f8c93c5f83937e1e372f260de8b6ed48c8d620b06",
+    "/home/20262202788/equivariant-nas/scripts/launch_dsl_formal_v1.sh": "863880aa2884203cc13a3815ce077125ef9e8bcedd862325a9895fdff9761618",
+    "/home/20262202788/equivariant-nas/scripts/preflight_dsl_formal_v1.py": "b8dffe179e0e0a81f8d3bb80935f97a0919ac5dc32f6dd01e44c14dda0a7ed65",
+    "/home/20262202788/equivariant-nas/scripts/run_dsl_evolution.py": "f934c6c71872bb38bb5cddd4f2b159d333819f84b8712a24906693cb3d4c5699",
+    "/home/20262202788/equivariant-nas/scripts/run_dsl_multifidelity_cycles.py": "c93ac12b70d5dd3a85ef232c3e949321b5f3d4f48fe91b69ffb2c772851e1ad0",
+    "/home/20262202788/equivariant-nas/scripts/supervise_dsl_formal_v1.sh": "885331f0d8b6cd22db9515155283bdc6073dffcae6df393ba5ee3b4dd13ecf80"
+  },
+  "calibration": {
+    "maximum_absolute_error": 0.007137298583984375,
+    "maximum_relative_error": 0.00453571014907851,
+    "seeds": [
+      201,
+      202,
+      203,
+      204,
+      205
+    ]
+  },
+  "checks": [
+    {
+      "details": "61c0ef55b6162c565528991b7cb9026564338441",
+      "name": "project_git_clean",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/collect_dsl_formal_v1_acceptance.py",
+      "name": "critical_file:scripts/collect_dsl_formal_v1_acceptance.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/preflight_dsl_formal_v1.py",
+      "name": "critical_file:scripts/preflight_dsl_formal_v1.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/launch_dsl_formal_v1.sh",
+      "name": "critical_file:scripts/launch_dsl_formal_v1.sh",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/supervise_dsl_formal_v1.sh",
+      "name": "critical_file:scripts/supervise_dsl_formal_v1.sh",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/run_dsl_evolution.py",
+      "name": "critical_file:scripts/run_dsl_evolution.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/run_dsl_multifidelity_cycles.py",
+      "name": "critical_file:scripts/run_dsl_multifidelity_cycles.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/scripts/finalize_dsl_formal_v1.py",
+      "name": "critical_file:scripts/finalize_dsl_formal_v1.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/dsl/factors.py",
+      "name": "critical_file:equivariant_nas/dsl/factors.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/dsl/regions.py",
+      "name": "critical_file:equivariant_nas/dsl/regions.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/dsl/llm_protocol.py",
+      "name": "critical_file:equivariant_nas/dsl/llm_protocol.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/dsl/search.py",
+      "name": "critical_file:equivariant_nas/dsl/search.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/dsl/runtime_manifest.py",
+      "name": "critical_file:equivariant_nas/dsl/runtime_manifest.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/dsl/pipeline.py",
+      "name": "critical_file:equivariant_nas/dsl/pipeline.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/equivariant_nas/training/fixed_step_trainer.py",
+      "name": "critical_file:equivariant_nas/training/fixed_step_trainer.py",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/configs/dsl_v1_symmetry_protocol.json",
+      "name": "critical_file:configs/dsl_v1_symmetry_protocol.json",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/configs/qm9_alpha_formal_v1_task.json",
+      "name": "critical_file:configs/qm9_alpha_formal_v1_task.json",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/configs/dsl_formal_v1_qm9_alpha_seed201.json",
+      "name": "critical_file:configs/dsl_formal_v1_qm9_alpha_seed201.json",
+      "passed": true
+    },
+    {
+      "details": {
+        "log": "/home/20262202788/equivariant-nas/.formal_v1_acceptance/pytest.log",
+        "passed": 160,
+        "skipped": 1
+      },
+      "name": "a100_pytest",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+      "name": "calibration:dsl_formal_v1_smoke_train300_seed201",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed202/summary.json",
+      "name": "calibration:dsl_formal_v1_parent_calibration_seed202",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed203/summary.json",
+      "name": "calibration:dsl_formal_v1_parent_calibration_seed203",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed204/summary.json",
+      "name": "calibration:dsl_formal_v1_parent_calibration_seed204",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_parent_calibration_seed205/summary.json",
+      "name": "calibration:dsl_formal_v1_parent_calibration_seed205",
+      "passed": true
+    },
+    {
+      "details": [
+        201,
+        202,
+        203,
+        204,
+        205
+      ],
+      "name": "calibration_seed_set",
+      "passed": true
+    },
+    {
+      "details": 0.00453571014907851,
+      "name": "calibration_relative_bound",
+      "passed": true
+    },
+    {
+      "details": 0.007137298583984375,
+      "name": "calibration_absolute_bound",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+      "name": "smoke_summary:dsl_formal_v1_smoke_train300_seed201",
+      "passed": true
+    },
+    {
+      "details": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_missing_factors_seed201/summary.json",
+      "name": "smoke_summary:dsl_formal_v1_smoke_train300_missing_factors_seed201",
+      "passed": true
+    },
+    {
+      "details": [
+        "F2.2",
+        "F4.4",
+        "F5.3",
+        "F6.3",
+        "parent"
+      ],
+      "name": "smoke_factor_coverage",
+      "passed": true
+    },
+    {
+      "details": [
+        {
+          "factor": "parent",
+          "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+          "valid": true
+        },
+        {
+          "factor": "F4.4",
+          "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+          "valid": true
+        },
+        {
+          "factor": "F6.3",
+          "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_seed201/summary.json",
+          "valid": true
+        },
+        {
+          "factor": "F2.2",
+          "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_missing_factors_seed201/summary.json",
+          "valid": true
+        },
+        {
+          "factor": "F5.3",
+          "summary": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_smoke_train300_missing_factors_seed201/summary.json",
+          "valid": true
+        }
+      ],
+      "name": "smoke_all_rows_valid",
+      "passed": true
+    },
+    {
+      "details": {
+        "post": {
+          "architecture.dsl.json": "ba0b701f82d112b9654880cbf722663b71de9ec42588a839be610189a58c7fc2",
+          "checkpoint_last.pth": "40a61ed2fc3a5272a5164ea3e59bb09e3cc0cd1970777d4bf61ea441af10c7eb",
+          "protocol.json": "59dda384dcdb23141dc5fa4aa0990b4e517a56cd7481a4660b6c0db10474d93d",
+          "runtime_manifest.json": "bfe938b387f8a82f1d2ed4b8d9a945a79b12372757618d376882b4d6e797af0a"
+        },
+        "pre": {
+          "architecture.dsl.json": "ba0b701f82d112b9654880cbf722663b71de9ec42588a839be610189a58c7fc2",
+          "checkpoint_last.pth": "dbe7b46f84a1e9188dfaaba6e38fdab892b01398f2d57fe1f84ab935c7472948",
+          "protocol.json": "59dda384dcdb23141dc5fa4aa0990b4e517a56cd7481a4660b6c0db10474d93d",
+          "runtime_manifest.json": "bfe938b387f8a82f1d2ed4b8d9a945a79b12372757618d376882b4d6e797af0a"
+        },
+        "progress": {
+          "best_step": 1000,
+          "best_val_mae": 3.1676001724243164,
+          "data_epoch": 1.1641443538998837,
+          "global_step": 1000,
+          "lr": 0.0001008,
+          "reference_epoch": 1.1641443538998837,
+          "start_global_step": 859,
+          "steps_executed_current_job": 141,
+          "steps_per_data_epoch": 859,
+          "train_mae": 6.241198773925186,
+          "training_dataset_id": "qm9_train_subset:d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+          "training_time_sec": 234.2417168058455,
+          "val_mae": 3.1676001724243164,
+          "wall_time_sec_current_job": 97.36015506461263
+        }
+      },
+      "name": "checkpoint_recovery",
+      "passed": true
+    },
+    {
+      "details": {
+        "log": "/home/20262202788/equivariant-nas/runs/dsl_formal_v1_supervisor_validation_20260726a/supervisor.log",
+        "ready": true
+      },
+      "name": "supervisor_empty_run",
+      "passed": true
+    }
+  ],
+  "created_at": "2026-07-25T16:56:23.330692+00:00",
+  "critical_files": {
+    "configs/dsl_formal_v1_qm9_alpha_seed201.json": "b86f7e630b6172f6dce090b2f8463915fb5ef31515b79a0c2b6adde9edd90486",
+    "configs/dsl_v1_symmetry_protocol.json": "f2f65656cb70117566fdd12198bdbd64d317053fb5eb45ba00701c3e8f6c80a9",
+    "configs/qm9_alpha_formal_v1_task.json": "e6e394e0f43f53f96610ef6e2a5a14fca390bb90093c7c5fd2a6febdf7f1d837",
+    "equivariant_nas/dsl/factors.py": "667e6e83627692fdb866f4086f22786579fce7547caa0b5188bf214c3135a44e",
+    "equivariant_nas/dsl/llm_protocol.py": "f87f0841258dcdab5c7abb3d3579436ae858470859d668c59196015443fa0050",
+    "equivariant_nas/dsl/pipeline.py": "cdb3da8b7ce50ec6e2da0467f5cd1c60e9a62e9c32ad5898d9ba8a9b2a886557",
+    "equivariant_nas/dsl/regions.py": "bf57daf1cb67b71f7e4257e26110c74583bb09dab47057c28aeb5d3d111265e3",
+    "equivariant_nas/dsl/runtime_manifest.py": "de1afbc8678375b41f148fa4b27e4876ccbaf447557037cc4ff3c5f720dee8c3",
+    "equivariant_nas/dsl/search.py": "ed6a10e51f5abf745b55d9b5fcbd275e4435543d4e78741fb8008966ffb15991",
+    "equivariant_nas/training/fixed_step_trainer.py": "e71ca0aaff0d67bc7d89ce1ab8b5ec92e4e66acb1e843b85a99d5e682b41d0e0",
+    "scripts/collect_dsl_formal_v1_acceptance.py": "1d6a08bb019813e5f2bf7a6c82cd9c2bc9e9c60a9aa30761078e3becde32bbf0",
+    "scripts/finalize_dsl_formal_v1.py": "f2360fa63767e2382308f09f8c93c5f83937e1e372f260de8b6ed48c8d620b06",
+    "scripts/launch_dsl_formal_v1.sh": "863880aa2884203cc13a3815ce077125ef9e8bcedd862325a9895fdff9761618",
+    "scripts/preflight_dsl_formal_v1.py": "b8dffe179e0e0a81f8d3bb80935f97a0919ac5dc32f6dd01e44c14dda0a7ed65",
+    "scripts/run_dsl_evolution.py": "f934c6c71872bb38bb5cddd4f2b159d333819f84b8712a24906693cb3d4c5699",
+    "scripts/run_dsl_multifidelity_cycles.py": "c93ac12b70d5dd3a85ef232c3e949321b5f3d4f48fe91b69ffb2c772851e1ad0",
+    "scripts/supervise_dsl_formal_v1.sh": "885331f0d8b6cd22db9515155283bdc6073dffcae6df393ba5ee3b4dd13ecf80"
+  },
+  "project_commit": "61c0ef55b6162c565528991b7cb9026564338441",
+  "project_root": "/home/20262202788/equivariant-nas",
+  "ready": true,
+  "schema_version": "formal-v1-acceptance@1",
+  "smoke_factors": [
+    "F2.2",
+    "F4.4",
+    "F5.3",
+    "F6.3",
+    "parent"
+  ],
+  "sources_sha256": "5e70a7d763238e3e96bc27f51981e93c322812230c53e69c4c938b4a86870857",
+  "test_evaluated": false,
+  "test_summary": {
+    "passed": 160,
+    "skipped": 1
+  }
+}

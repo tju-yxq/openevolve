@@ -1,0 +1,18 @@
+{
+  "batch_size": 32,
+  "candidates": [
+    "official_v1_parent",
+    "llm_v1_readout_child"
+  ],
+  "created_at": "2026-07-25T07:31:47.779706+00:00",
+  "dataset": "QM9",
+  "experiment_id": "dsl_showcase_pair8k_seed201_20260725",
+  "generation_architecture_id": "3cebdda4b3529ea4",
+  "max_optimizer_steps": 8000,
+  "seed": 201,
+  "selection_split": "validation",
+  "target": "alpha",
+  "test_evaluated": false,
+  "training_subset": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
+  "validation_interval_data_epochs": 10
+}

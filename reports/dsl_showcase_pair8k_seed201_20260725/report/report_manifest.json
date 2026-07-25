@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "markdown": "/home/20262202788/equivariant-nas/runs/dsl_showcase_pair8k_seed201_20260725/report/等变DSL可信端到端展示实验报告.md",
+  "html": "/home/20262202788/equivariant-nas/runs/dsl_showcase_pair8k_seed201_20260725/report/等变DSL可信端到端展示实验报告.html",
+  "assets": [
+    "/home/20262202788/equivariant-nas/runs/dsl_showcase_pair8k_seed201_20260725/report/assets/父代与DSL子代验证MAE对比.png",
+    "/home/20262202788/equivariant-nas/runs/dsl_showcase_pair8k_seed201_20260725/report/assets/父代与DSL子代训练MAE轨迹.png",
+    "/home/20262202788/equivariant-nas/runs/dsl_showcase_pair8k_seed201_20260725/report/assets/端到端实验工作流.png"
+  ],
+  "test_evaluated": false
+}

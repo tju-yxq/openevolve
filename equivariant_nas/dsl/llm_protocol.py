@@ -13,6 +13,7 @@ from .language import VocabularyDecision, describe_active_vocabulary
 from .motifs import MotifRegistry
 from .patch import TypedPatch, patch_protocol_schema
 from .registry import PrimitiveRegistry
+from .regions import RegionDefinition
 from .task import TaskContract, task_reasoning_context
 
 
@@ -144,6 +145,121 @@ def planner_prompt(
         },
     }
     return {"system": system, "user": json.dumps(payload, ensure_ascii=False, sort_keys=True)}
+
+
+def region_router_prompt(
+    task: TaskContract,
+    parent: ArchitectureProgram,
+    evidence: Sequence[EvidenceItem],
+    regions: Sequence[RegionDefinition],
+) -> Dict[str, str]:
+    visible = _visible_evidence(task, evidence)
+    payload = {
+        "task_id": task.task_id,
+        "trusted_task_semantics": dict(task_reasoning_context(task)),
+        "parent_summary": {
+            "program_id": parent.program_id,
+            "language_version": parent.language_version,
+            "node_ids": [node.id for node in parent.nodes],
+        },
+        "measured_evidence": [item.to_dict() for item in visible],
+        "regions": [item.to_dict() for item in regions],
+        "response_schema": {
+            "region_id": "exactly one registered region id",
+            "rationale": "why this region has the highest expected information value",
+            "evidence_refs": ["visible evidence ids"],
+            "expected_value": "falsifiable expected benefit",
+            "risk": "main risk",
+        },
+    }
+    return {
+        "system": (
+            "You are the region router for a typed equivariant architecture search. "
+            "Select exactly one registered region. Do not propose node edits or code. "
+            "Return exactly one JSON object matching response_schema."
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def parse_region_router_response(text: str, regions: Sequence[RegionDefinition]) -> Dict[str, Any]:
+    value = _load_json_object(text, "region_router")
+    required = {"region_id", "rationale", "evidence_refs", "expected_value", "risk"}
+    if set(value) != required:
+        raise DSLValidationError([Diagnostic("E_LLM_011", "region router response does not match the exact schema")])
+    allowed = {item.region_id for item in regions}
+    if value["region_id"] not in allowed:
+        raise DSLValidationError([
+            Diagnostic("E_LLM_012", "region router selected an unauthorized region", actual=str(value["region_id"]))
+        ])
+    if not value["rationale"] or not value["expected_value"]:
+        raise DSLValidationError([Diagnostic("E_LLM_013", "region router omitted its decision rationale")])
+    return value
+
+
+def region_critic_prompt(
+    task: TaskContract,
+    parent: ArchitectureProgram,
+    evidence: Sequence[EvidenceItem],
+    region: RegionDefinition,
+    router_response: Mapping[str, Any],
+    vocabulary: VocabularyDecision,
+    primitives: PrimitiveRegistry,
+    motifs: MotifRegistry,
+) -> Dict[str, str]:
+    visible = _visible_evidence(task, evidence)
+    visible_ids = set(region.boundary_sources) | {
+        item for item in region.editable_targets if not item.startswith("output:")
+    }
+    local_nodes = [node.to_dict() for node in parent.nodes if node.id in visible_ids]
+    payload = {
+        "task_id": task.task_id,
+        "selected_region": region.to_dict(),
+        "router_decision": dict(router_response),
+        "local_parent_ast": local_nodes,
+        "local_outputs": [
+            item.to_dict() for item in parent.outputs
+            if "output:" + item.name in region.editable_targets
+        ],
+        "evidence": [item.to_dict() for item in visible],
+        "allowed_vocabulary_contracts": list(describe_active_vocabulary(vocabulary, primitives, motifs)),
+        "response_schema": {
+            "region_id": region.region_id,
+            "claim": "one falsifiable local structural hypothesis",
+            "mechanism": "why the proposed local computation could affect the target",
+            "edit_plan": ["ordered abstract edits inside the region"],
+            "preserved_invariants": ["region and task invariants that must remain true"],
+            "evidence_refs": ["visible evidence ids"],
+            "uncertainty": "main uncertainty",
+            "risk": "main correctness or optimization risk",
+            "acceptance_metrics": ["validation-only measurements that could falsify the claim"],
+        },
+    }
+    return {
+        "system": (
+            "You are the independent region critic. Analyze only the selected region and its declared boundary. "
+            "Produce a mechanistic, falsifiable edit plan but no patch or source code. Do not widen the region. "
+            "Return exactly one JSON object matching response_schema."
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def parse_region_critic_response(text: str, region: RegionDefinition) -> Dict[str, Any]:
+    value = _load_json_object(text, "region_critic")
+    required = {
+        "region_id", "claim", "mechanism", "edit_plan", "preserved_invariants",
+        "evidence_refs", "uncertainty", "risk", "acceptance_metrics",
+    }
+    if set(value) != required:
+        raise DSLValidationError([Diagnostic("E_LLM_014", "region critic response does not match the exact schema")])
+    if value["region_id"] != region.region_id:
+        raise DSLValidationError([
+            Diagnostic("E_LLM_015", "region critic widened or changed the routed region", expected=region.region_id, actual=str(value["region_id"]))
+        ])
+    if not value["claim"] or not value["mechanism"] or not value["edit_plan"] or not value["acceptance_metrics"]:
+        raise DSLValidationError([Diagnostic("E_LLM_016", "region critic omitted a falsifiable mechanism or edit plan")])
+    return value
 
 
 def planner_repair_prompt(

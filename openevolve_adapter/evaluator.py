@@ -35,6 +35,8 @@ def evaluate(program_path):
         [
             "--batch-size",
             os.environ.get("NAS_BATCH_SIZE", "64"),
+            "--seed",
+            os.environ.get("NAS_SEED", "0"),
             "--eval-interval-epochs",
             os.environ.get("NAS_EVAL_INTERVAL_EPOCHS", "0"),
             "--data-epoch-origin-step",
@@ -66,7 +68,12 @@ def evaluate(program_path):
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        timeout=max(600, int(max_steps) * 2 + 1200),
+        timeout=int(
+            os.environ.get(
+                "NAS_EVALUATOR_TIMEOUT_SECONDS",
+                max(1800, int(max_steps) * 4 + 2400),
+            )
+        ),
         check=False,
     )
     if completed.returncode != 0:

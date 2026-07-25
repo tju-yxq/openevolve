@@ -1,0 +1,253 @@
+{
+  "architecture_id": "7dd9fec5cc6af301",
+  "backend_family": "equiformer_v1",
+  "backend_semantics": "equiformer-v1-official-constructor-v1",
+  "batch_size": 32,
+  "best_step": 8000,
+  "best_validation_alpha_mae": 0.8173525859832763,
+  "cache_hit": false,
+  "candidate_format": "evoequilang",
+  "charged_gpu_seconds": 1426.0506837293506,
+  "checkpoint_last": "/home/20262202788/equivariant-nas/runs/dsl_candidates/7dd9fec5cc6af301/seed201_steps8000_2ab9202c78/training/checkpoint_last.pth",
+  "combined_score": -0.8173525859832763,
+  "compiler_obligations": [
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "IRREP_PATH_EXISTS",
+      "obligation_id": "block0__couple:paths",
+      "source_node": "block0__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "PARITY_MATCH",
+      "obligation_id": "block0__couple:parity",
+      "source_node": "block0__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.segment_sum@1",
+      "kind": "PERMUTATION_SAFE_AGGREGATION",
+      "obligation_id": "block0__aggregate:permutation",
+      "source_node": "block0__aggregate",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "IRREP_PATH_EXISTS",
+      "obligation_id": "block1__couple:paths",
+      "source_node": "block1__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "PARITY_MATCH",
+      "obligation_id": "block1__couple:parity",
+      "source_node": "block1__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.segment_sum@1",
+      "kind": "PERMUTATION_SAFE_AGGREGATION",
+      "obligation_id": "block1__aggregate:permutation",
+      "source_node": "block1__aggregate",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "IRREP_PATH_EXISTS",
+      "obligation_id": "block2__couple:paths",
+      "source_node": "block2__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "PARITY_MATCH",
+      "obligation_id": "block2__couple:parity",
+      "source_node": "block2__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.segment_sum@1",
+      "kind": "PERMUTATION_SAFE_AGGREGATION",
+      "obligation_id": "block2__aggregate:permutation",
+      "source_node": "block2__aggregate",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "IRREP_PATH_EXISTS",
+      "obligation_id": "block3__couple:paths",
+      "source_node": "block3__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "PARITY_MATCH",
+      "obligation_id": "block3__couple:parity",
+      "source_node": "block3__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.segment_sum@1",
+      "kind": "PERMUTATION_SAFE_AGGREGATION",
+      "obligation_id": "block3__aggregate:permutation",
+      "source_node": "block3__aggregate",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "IRREP_PATH_EXISTS",
+      "obligation_id": "block4__couple:paths",
+      "source_node": "block4__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "PARITY_MATCH",
+      "obligation_id": "block4__couple:parity",
+      "source_node": "block4__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.segment_sum@1",
+      "kind": "PERMUTATION_SAFE_AGGREGATION",
+      "obligation_id": "block4__aggregate:permutation",
+      "source_node": "block4__aggregate",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "IRREP_PATH_EXISTS",
+      "obligation_id": "block5__couple:paths",
+      "source_node": "block5__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.tensor_product@1",
+      "kind": "PARITY_MATCH",
+      "obligation_id": "block5__couple:parity",
+      "source_node": "block5__couple",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "core.segment_sum@1",
+      "kind": "PERMUTATION_SAFE_AGGREGATION",
+      "obligation_id": "block5__aggregate:permutation",
+      "source_node": "block5__aggregate",
+      "status": "discharged"
+    },
+    {
+      "details": {},
+      "discharged_by": "type-checker",
+      "kind": "OUTPUT_CONTRACT_MATCH",
+      "obligation_id": "output:prediction",
+      "source_node": "graph_pool",
+      "status": "discharged"
+    }
+  ],
+  "completed_data_epochs": 9.31315483119907,
+  "data_epoch_origin_step": 0,
+  "endpoint_step": 8000,
+  "eval_interval_epochs": 10,
+  "evaluation_wall_time_sec": 1452.3539677150548,
+  "failure_stage": "",
+  "fidelity_steps": 8000,
+  "gradient_health": {
+    "all_finite": true,
+    "global_l2_norm": 46.544299128081335,
+    "gradients_present": true,
+    "loss": 7.931872844696045,
+    "maximum_absolute_gradient": 4.783209323883057
+  },
+  "higher_order_fraction": 0.7328675486844062,
+  "language_version": "1.0.0",
+  "lmax": 2,
+  "lowering_mode": "exact_reference",
+  "lowering_plan": {
+    "backend_family": "equiformer_v1",
+    "backend_semantics_version": "equiformer-v1-official-constructor-v1",
+    "details": {
+      "legacy_lock_architecture_id": "801f75814e47e35c"
+    },
+    "mode": "exact_reference",
+    "reference_model_identity": "official_equiformer_v1_graph_attention_transformer",
+    "supported_regions": [
+      "reference_model"
+    ],
+    "unsupported_nodes": []
+  },
+  "lowering_plan_hash": "ece1f81adb2777e5848f4bb1aca2b632eb8b7d88883a9ecf30e4e47b3e6980bd",
+  "max_symmetry_error": 0.0004864851738916728,
+  "num_layers": 31,
+  "parameter_count": 3531715,
+  "parameter_ratio": 1.0,
+  "posttrain_symmetry_report": {
+    "errors": {
+      "permutation_invariance": 3.10857961803895e-05,
+      "rotation_invariance": 0.0004864851738916728,
+      "translation_invariance": 9.43212008325945e-06
+    },
+    "maximum": 0.0004864851738916728
+  },
+  "pretrain_max_symmetry_error": 0.0005817623042894889,
+  "pretrain_numerical_health": {
+    "all_finite": true,
+    "limits": {
+      "prediction_max_abs": 100.0,
+      "prediction_rms": 50.0,
+      "standardized_batch_mae": 100.0
+    },
+    "prediction_max_abs": 1.138098955154419,
+    "prediction_mean": 0.864943265914917,
+    "prediction_rms": 0.9070506691932678,
+    "prediction_std": 0.27315568923950195,
+    "standardized_batch_mae": 7.932767391204834
+  },
+  "pretrain_symmetry_report": {
+    "errors": {
+      "permutation_invariance": 0.00026459235093661925,
+      "rotation_invariance": 0.0005817623042894889,
+      "translation_invariance": 0.0002642036966069232
+    },
+    "maximum": 0.0005817623042894889
+  },
+  "pretrain_symmetry_warning": false,
+  "resumed_from": "",
+  "run_dir": "/home/20262202788/equivariant-nas/runs/dsl_candidates/7dd9fec5cc6af301/seed201_steps8000_2ab9202c78",
+  "seed": 201,
+  "steps_per_data_epoch": 859,
+  "symmetry_warning": false,
+  "test_evaluated": false,
+  "train_subset": {
+    "path": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
+    "sha256": "d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+    "size": 27500,
+    "source_train_size": 110000
+  },
+  "training_dataset_id": "qm9_train_subset:d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+  "training_dataset_size": 27500,
+  "training_time_sec": 1332.9456604234874,
+  "training_wall_time_sec": 1371.4817411080003,
+  "used_gpu_hours": 0.3961251899248196,
+  "valid": true,
+  "validation_alpha_mae": 0.8173525859832763
+}

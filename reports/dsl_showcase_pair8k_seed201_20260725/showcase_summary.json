@@ -1,0 +1,773 @@
+{
+  "child": {
+    "architecture_id": "3cebdda4b3529ea4",
+    "backend_family": "equiformer_v1",
+    "backend_semantics": "equiformer-v1-readout-hybrid-v1",
+    "batch_size": 32,
+    "best_step": 8000,
+    "best_validation_alpha_mae": 0.7105508079528808,
+    "cache_hit": false,
+    "candidate_format": "evoequilang",
+    "charged_gpu_seconds": 1430.3241302482784,
+    "checkpoint_last": "/home/20262202788/equivariant-nas/runs/dsl_candidates/3cebdda4b3529ea4/seed201_steps8000_1b1f2c2e71/training/checkpoint_last.pth",
+    "combined_score": -0.7105508079528808,
+    "compiler_obligations": [
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block0__couple:paths",
+        "source_node": "block0__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block0__couple:parity",
+        "source_node": "block0__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block0__aggregate:permutation",
+        "source_node": "block0__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block1__couple:paths",
+        "source_node": "block1__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block1__couple:parity",
+        "source_node": "block1__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block1__aggregate:permutation",
+        "source_node": "block1__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block2__couple:paths",
+        "source_node": "block2__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block2__couple:parity",
+        "source_node": "block2__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block2__aggregate:permutation",
+        "source_node": "block2__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block3__couple:paths",
+        "source_node": "block3__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block3__couple:parity",
+        "source_node": "block3__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block3__aggregate:permutation",
+        "source_node": "block3__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block4__couple:paths",
+        "source_node": "block4__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block4__couple:parity",
+        "source_node": "block4__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block4__aggregate:permutation",
+        "source_node": "block4__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block5__couple:paths",
+        "source_node": "block5__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block5__couple:parity",
+        "source_node": "block5__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block5__aggregate:permutation",
+        "source_node": "block5__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "type-checker",
+        "kind": "OUTPUT_CONTRACT_MATCH",
+        "obligation_id": "output:prediction",
+        "source_node": "graph_pool__project",
+        "status": "discharged"
+      }
+    ],
+    "completed_data_epochs": 9.31315483119907,
+    "data_epoch_origin_step": 0,
+    "endpoint_step": 8000,
+    "eval_interval_epochs": 10,
+    "evaluation_wall_time_sec": 1449.1869672685862,
+    "failure_stage": "",
+    "fidelity_steps": 8000,
+    "gradient_health": {
+      "all_finite": true,
+      "global_l2_norm": 46.55478452289637,
+      "gradients_present": true,
+      "loss": 7.931838035583496,
+      "maximum_absolute_gradient": 4.783856391906738
+    },
+    "higher_order_fraction": 0.7325952893974292,
+    "language_version": "1.0.0",
+    "lmax": 2,
+    "lowering_mode": "exact_hybrid",
+    "lowering_plan": {
+      "backend_family": "equiformer_v1",
+      "backend_semantics_version": "equiformer-v1-readout-hybrid-v1",
+      "details": {
+        "auxiliary_block": 2,
+        "kind": "v1_multilevel_readout"
+      },
+      "mode": "exact_hybrid",
+      "reference_model_identity": "official_equiformer_v1_graph_attention_transformer",
+      "supported_regions": [
+        "v1_readout"
+      ],
+      "unsupported_nodes": []
+    },
+    "lowering_plan_hash": "1fc63247d4a464e00d241ea80b241ca7128879c6501fb6d296844d10255c3082",
+    "max_symmetry_error": 0.0006011180692774082,
+    "num_layers": 35,
+    "parameter_count": 3548358,
+    "parameter_ratio": 1.0047124414059458,
+    "posttrain_symmetry_report": {
+      "errors": {
+        "permutation_invariance": 0.0,
+        "rotation_invariance": 0.0006011180692774082,
+        "translation_invariance": 0.0
+      },
+      "maximum": 0.0006011180692774082
+    },
+    "pretrain_max_symmetry_error": 0.00038081988028532853,
+    "pretrain_numerical_health": {
+      "all_finite": true,
+      "limits": {
+        "prediction_max_abs": 100.0,
+        "prediction_rms": 50.0,
+        "standardized_batch_mae": 100.0
+      },
+      "prediction_max_abs": 1.138671875,
+      "prediction_mean": 0.865234375,
+      "prediction_rms": 0.907413125038147,
+      "prediction_std": 0.2734375,
+      "standardized_batch_mae": 7.933058738708496
+    },
+    "pretrain_symmetry_report": {
+      "errors": {
+        "permutation_invariance": 0.00038081988028532853,
+        "rotation_invariance": 0.0,
+        "translation_invariance": 0.00038081988028532853
+      },
+      "maximum": 0.00038081988028532853
+    },
+    "pretrain_symmetry_warning": false,
+    "resumed_from": "",
+    "run_dir": "/home/20262202788/equivariant-nas/runs/dsl_candidates/3cebdda4b3529ea4/seed201_steps8000_1b1f2c2e71",
+    "seed": 201,
+    "steps_per_data_epoch": 859,
+    "symmetry_warning": false,
+    "test_evaluated": false,
+    "train_subset": {
+      "path": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
+      "sha256": "d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+      "size": 27500,
+      "source_train_size": 110000
+    },
+    "training_dataset_id": "qm9_train_subset:d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+    "training_dataset_size": 27500,
+    "training_time_sec": 1340.0879110768437,
+    "training_wall_time_sec": 1378.6248944737017,
+    "used_gpu_hours": 0.7934374483271192,
+    "valid": true,
+    "validation_alpha_mae": 0.7105508079528808
+  },
+  "child_improved": true,
+  "completed_at": "2026-07-25T08:24:17.044385+00:00",
+  "created_at": "2026-07-25T07:31:47.779706+00:00",
+  "endpoint_validation_mae_delta": -0.10680177803039548,
+  "generation": {
+    "architecture_id": "3cebdda4b3529ea4",
+    "critic_response": {
+      "acceptance_metrics": [
+        "validation alpha MAE strictly lower than the single-pool baseline under identical training budget",
+        "parameter count delta attributable solely to the auxiliary head and combiner, with no structural changes to blocks 0-5",
+        "prediction output type remains exactly graph-carried 1x0 scalar"
+      ],
+      "claim": "Replacing the terminal-only global pool with motif.v1_multilevel_readout@1, binding block2 as the auxiliary tap, yields lower validation alpha MAE by fusing mid-depth and terminal scalar representations without altering any V1 embedding block.",
+      "edit_plan": [
+        "Replace the op of node 'graph_pool' from 'core.global_pool' to 'motif.v1_multilevel_readout@1'.",
+        "Set the 'terminal' input of graph_pool to 'scalar_readout' (preserving the existing terminal path from block5).",
+        "Set the 'aux' input of graph_pool to 'block2' (selecting the mid-depth block2 node-carried representation).",
+        "Reroute the output of graph_pool to 'output:prediction', preserving the existing graph-carried 1x0 scalar type.",
+        "Verify that block0 through block4 and scalar_readout remain structurally unmodified."
+      ],
+      "evidence_refs": [
+        "openevolve:d9159c8c-4c6a-458f-85a6-8d9c16a2f81a"
+      ],
+      "mechanism": "Polarizability is a smooth, volume-like global property that depends on charge distribution at multiple radial scales. The terminal block5 captures the deepest transformed representation, while block2 provides a complementary mid-depth scalar view. The certified hybrid backend internally extracts scalar irreps from block2, applies a trainable auxiliary head, and combines it with the terminal prediction via a trainable combiner, allowing the model to correct depth-biased errors in the terminal-only readout.",
+      "preserved_invariants": [
+        "All V1 embedding and attention blocks (block0-block4) remain structurally identical.",
+        "scalar_readout still consumes block5 as the terminal official V1 feature block.",
+        "The auxiliary branch consumes scalar irreps from exactly one earlier block (block2).",
+        "The task output remains exactly one graph-carried 1x0 scalar.",
+        "The hybrid backend adds a trainable auxiliary scalar head and a trainable two-input combiner.",
+        "No new AST nodes are introduced beyond the selected motif expansion."
+      ],
+      "region_id": "v1_readout",
+      "risk": "The auxiliary head and combiner increase parameter count, raising overfitting risk on the 8k-sample training subset. If block2's scalar features are highly redundant with terminal features, the combiner may provide negligible signal and the extra parameters could degrade generalization.",
+      "uncertainty": "It is unknown whether mid-depth (block2) or shallower (block0/block1) scalar features carry the most complementary information for alpha prediction, and no validation MAE has been measured yet (fidelity_steps=0) to establish a baseline."
+    },
+    "generation_search_dir": "/home/20262202788/equivariant-nas/runs/dsl_showcase_llm_smoke_v2_seed201_20260725/search",
+    "iteration": 1,
+    "patch": {
+      "edits": [
+        {
+          "kind": "replace_node",
+          "payload": {
+            "node": {
+              "annotations": {},
+              "attrs": {},
+              "declared_types": {
+                "out": {
+                  "axes": [],
+                  "carrier": "graph",
+                  "dtype": "float32",
+                  "equivariance_level": 2,
+                  "frame": {
+                    "kind": "global",
+                    "reference": ""
+                  },
+                  "group": {
+                    "dimension": 3,
+                    "family": "SO3",
+                    "order": 0,
+                    "periodicity": "none",
+                    "permutation": "node_set",
+                    "translation": "relative_coordinates"
+                  },
+                  "irreps": "1x0",
+                  "measure": "dimensionless"
+                }
+              },
+              "id": "graph_pool",
+              "inputs": {
+                "aux": "block2",
+                "terminal": "scalar_readout"
+              },
+              "op": "motif.v1_multilevel_readout@1",
+              "outputs": [
+                "out"
+              ]
+            }
+          },
+          "target": "graph_pool"
+        },
+        {
+          "kind": "rewire_output",
+          "payload": {
+            "reference": "graph_pool"
+          },
+          "target": "output:prediction"
+        }
+      ],
+      "expected_effects": {
+        "accuracy": "hypothesis: validation alpha MAE strictly lower than single-pool baseline under identical training budget",
+        "output_type": "unchanged: graph-carried 1x0 scalar",
+        "parameter_delta": "increase attributable solely to auxiliary head and combiner inside motif.v1_multilevel_readout@1"
+      },
+      "hypothesis": {
+        "claim": "Replacing the terminal-only global pool with motif.v1_multilevel_readout@1, binding block2 as the auxiliary tap, yields lower validation alpha MAE by fusing mid-depth and terminal scalar representations without altering any V1 embedding block.",
+        "mechanism": "Polarizability is a smooth, volume-like global property that depends on charge distribution at multiple radial scales. The terminal block5 captures the deepest transformed representation, while block2 provides a complementary mid-depth scalar view. The certified hybrid backend internally extracts scalar irreps from block2, applies a trainable auxiliary head, and combines it with the terminal prediction via a trainable combiner, allowing the model to correct depth-biased errors in the terminal-only readout.",
+        "risk": "The auxiliary head and combiner increase parameter count, raising overfitting risk on the 8k-sample training subset. If block2's scalar features are highly redundant with terminal features, the combiner may provide negligible signal and the extra parameters could degrade generalization.",
+        "uncertainty": "It is unknown whether mid-depth (block2) or shallower (block0/block1) scalar features carry the most complementary information for alpha prediction, and no validation MAE has been measured yet (fidelity_steps=0) to establish a baseline."
+      },
+      "language_version": "1.0.0",
+      "parent_architecture_id": "7dd9fec5cc6af301",
+      "patch_version": "1.0",
+      "postconditions": [
+        {
+          "kind": "node_op_is",
+          "node_id": "graph_pool",
+          "op": "motif.v1_multilevel_readout@1"
+        },
+        {
+          "kind": "node_input_equals",
+          "node_id": "graph_pool",
+          "port": "terminal",
+          "references": "scalar_readout"
+        },
+        {
+          "kind": "node_input_equals",
+          "node_id": "graph_pool",
+          "port": "aux",
+          "references": "block2"
+        },
+        {
+          "kind": "output_source_is",
+          "output": "prediction",
+          "reference": "graph_pool"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "scalar_readout",
+          "op": "core.select_scalars@1"
+        },
+        {
+          "kind": "node_input_equals",
+          "node_id": "scalar_readout",
+          "port": "x",
+          "references": "block5"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "block0",
+          "op": "motif.v1_initial_message@1"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "block1",
+          "op": "motif.v1_residual_message@1"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "block2",
+          "op": "motif.v1_residual_message@1"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "block3",
+          "op": "motif.v1_residual_message@1"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "block4",
+          "op": "motif.v1_residual_message@1"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "node_op_is",
+          "node_id": "graph_pool",
+          "op": "core.global_pool@1"
+        },
+        {
+          "kind": "node_input_equals",
+          "node_id": "graph_pool",
+          "port": "x",
+          "references": "scalar_readout"
+        },
+        {
+          "kind": "node_exists",
+          "node_id": "scalar_readout"
+        },
+        {
+          "kind": "node_exists",
+          "node_id": "block2"
+        },
+        {
+          "kind": "node_op_is",
+          "node_id": "scalar_readout",
+          "op": "core.select_scalars@1"
+        },
+        {
+          "kind": "node_input_equals",
+          "node_id": "scalar_readout",
+          "port": "x",
+          "references": "block5"
+        },
+        {
+          "kind": "output_source_is",
+          "output": "prediction",
+          "reference": "graph_pool"
+        }
+      ],
+      "scope": [
+        "graph_pool",
+        "output:prediction"
+      ]
+    },
+    "program_id": "equiformer_v1_8639c8a64dad5d25",
+    "prompt_role_counts": {
+      "patch_synthesizer": 1,
+      "region_critic": 1,
+      "region_router": 1
+    },
+    "region_audit": {
+      "deleted_node_ids": [],
+      "edited_target_ids": [
+        "graph_pool"
+      ],
+      "frozen_complement_hash": "f6ef9962d908e9227d24e74297b7ca961a70a5bd5466641e6cc0b68f526e9fa8",
+      "inserted_node_ids": [],
+      "lowering_plan": {
+        "backend_family": "equiformer_v1",
+        "backend_semantics_version": "equiformer-v1-readout-hybrid-v1",
+        "details": {
+          "auxiliary_block": 2,
+          "kind": "v1_multilevel_readout"
+        },
+        "mode": "exact_hybrid",
+        "reference_model_identity": "official_equiformer_v1_graph_attention_transformer",
+        "supported_regions": [
+          "v1_readout"
+        ],
+        "unsupported_nodes": []
+      },
+      "region_id": "v1_readout"
+    },
+    "router_response": {
+      "evidence_refs": [
+        "openevolve:d9159c8c-4c6a-458f-85a6-8d9c16a2f81a"
+      ],
+      "expected_value": "A multi-level readout tapping an earlier V1 block provides complementary scalar features at lower effective depth, improving polarizability prediction by combining terminal and mid-level representations; falsifiable by comparing validation alpha MAE against the single-pool baseline.",
+      "rationale": "Only one region is registered (v1_readout). The measured evidence shows the parent architecture is valid but untrained (fidelity_steps=0, no MAE), so the highest-value action is to explore the single available structural variant. Polarizability (alpha) is a smooth global property sensitive to multi-scale representations, making an auxiliary mid-level scalar branch a plausible improvement over terminal-only pooling.",
+      "region_id": "v1_readout",
+      "risk": "Adding a trainable auxiliary head and combiner increases parameter count and may introduce overfitting on the 8k-sample training subset; the mid-level block tap may carry redundant information with the terminal features, yielding no benefit."
+    }
+  },
+  "parent": {
+    "architecture_id": "7dd9fec5cc6af301",
+    "backend_family": "equiformer_v1",
+    "backend_semantics": "equiformer-v1-official-constructor-v1",
+    "batch_size": 32,
+    "best_step": 8000,
+    "best_validation_alpha_mae": 0.8173525859832763,
+    "cache_hit": false,
+    "candidate_format": "evoequilang",
+    "charged_gpu_seconds": 1426.0506837293506,
+    "checkpoint_last": "/home/20262202788/equivariant-nas/runs/dsl_candidates/7dd9fec5cc6af301/seed201_steps8000_2ab9202c78/training/checkpoint_last.pth",
+    "combined_score": -0.8173525859832763,
+    "compiler_obligations": [
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block0__couple:paths",
+        "source_node": "block0__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block0__couple:parity",
+        "source_node": "block0__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block0__aggregate:permutation",
+        "source_node": "block0__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block1__couple:paths",
+        "source_node": "block1__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block1__couple:parity",
+        "source_node": "block1__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block1__aggregate:permutation",
+        "source_node": "block1__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block2__couple:paths",
+        "source_node": "block2__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block2__couple:parity",
+        "source_node": "block2__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block2__aggregate:permutation",
+        "source_node": "block2__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block3__couple:paths",
+        "source_node": "block3__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block3__couple:parity",
+        "source_node": "block3__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block3__aggregate:permutation",
+        "source_node": "block3__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block4__couple:paths",
+        "source_node": "block4__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block4__couple:parity",
+        "source_node": "block4__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block4__aggregate:permutation",
+        "source_node": "block4__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "IRREP_PATH_EXISTS",
+        "obligation_id": "block5__couple:paths",
+        "source_node": "block5__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.tensor_product@1",
+        "kind": "PARITY_MATCH",
+        "obligation_id": "block5__couple:parity",
+        "source_node": "block5__couple",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "core.segment_sum@1",
+        "kind": "PERMUTATION_SAFE_AGGREGATION",
+        "obligation_id": "block5__aggregate:permutation",
+        "source_node": "block5__aggregate",
+        "status": "discharged"
+      },
+      {
+        "details": {},
+        "discharged_by": "type-checker",
+        "kind": "OUTPUT_CONTRACT_MATCH",
+        "obligation_id": "output:prediction",
+        "source_node": "graph_pool",
+        "status": "discharged"
+      }
+    ],
+    "completed_data_epochs": 9.31315483119907,
+    "data_epoch_origin_step": 0,
+    "endpoint_step": 8000,
+    "eval_interval_epochs": 10,
+    "evaluation_wall_time_sec": 1452.3539677150548,
+    "failure_stage": "",
+    "fidelity_steps": 8000,
+    "gradient_health": {
+      "all_finite": true,
+      "global_l2_norm": 46.544299128081335,
+      "gradients_present": true,
+      "loss": 7.931872844696045,
+      "maximum_absolute_gradient": 4.783209323883057
+    },
+    "higher_order_fraction": 0.7328675486844062,
+    "language_version": "1.0.0",
+    "lmax": 2,
+    "lowering_mode": "exact_reference",
+    "lowering_plan": {
+      "backend_family": "equiformer_v1",
+      "backend_semantics_version": "equiformer-v1-official-constructor-v1",
+      "details": {
+        "legacy_lock_architecture_id": "801f75814e47e35c"
+      },
+      "mode": "exact_reference",
+      "reference_model_identity": "official_equiformer_v1_graph_attention_transformer",
+      "supported_regions": [
+        "reference_model"
+      ],
+      "unsupported_nodes": []
+    },
+    "lowering_plan_hash": "ece1f81adb2777e5848f4bb1aca2b632eb8b7d88883a9ecf30e4e47b3e6980bd",
+    "max_symmetry_error": 0.0004864851738916728,
+    "num_layers": 31,
+    "parameter_count": 3531715,
+    "parameter_ratio": 1.0,
+    "posttrain_symmetry_report": {
+      "errors": {
+        "permutation_invariance": 3.10857961803895e-05,
+        "rotation_invariance": 0.0004864851738916728,
+        "translation_invariance": 9.43212008325945e-06
+      },
+      "maximum": 0.0004864851738916728
+    },
+    "pretrain_max_symmetry_error": 0.0005817623042894889,
+    "pretrain_numerical_health": {
+      "all_finite": true,
+      "limits": {
+        "prediction_max_abs": 100.0,
+        "prediction_rms": 50.0,
+        "standardized_batch_mae": 100.0
+      },
+      "prediction_max_abs": 1.138098955154419,
+      "prediction_mean": 0.864943265914917,
+      "prediction_rms": 0.9070506691932678,
+      "prediction_std": 0.27315568923950195,
+      "standardized_batch_mae": 7.932767391204834
+    },
+    "pretrain_symmetry_report": {
+      "errors": {
+        "permutation_invariance": 0.00026459235093661925,
+        "rotation_invariance": 0.0005817623042894889,
+        "translation_invariance": 0.0002642036966069232
+      },
+      "maximum": 0.0005817623042894889
+    },
+    "pretrain_symmetry_warning": false,
+    "resumed_from": "",
+    "run_dir": "/home/20262202788/equivariant-nas/runs/dsl_candidates/7dd9fec5cc6af301/seed201_steps8000_2ab9202c78",
+    "seed": 201,
+    "steps_per_data_epoch": 859,
+    "symmetry_warning": false,
+    "test_evaluated": false,
+    "train_subset": {
+      "path": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
+      "sha256": "d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+      "size": 27500,
+      "source_train_size": 110000
+    },
+    "training_dataset_id": "qm9_train_subset:d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+    "training_dataset_size": 27500,
+    "training_time_sec": 1332.9456604234874,
+    "training_wall_time_sec": 1371.4817411080003,
+    "used_gpu_hours": 0.3961251899248196,
+    "valid": true,
+    "validation_alpha_mae": 0.8173525859832763
+  },
+  "protocol": {
+    "batch_size": 32,
+    "candidates": [
+      "official_v1_parent",
+      "llm_v1_readout_child"
+    ],
+    "created_at": "2026-07-25T07:31:47.779706+00:00",
+    "dataset": "QM9",
+    "experiment_id": "dsl_showcase_pair8k_seed201_20260725",
+    "generation_architecture_id": "3cebdda4b3529ea4",
+    "max_optimizer_steps": 8000,
+    "seed": 201,
+    "selection_split": "validation",
+    "target": "alpha",
+    "test_evaluated": false,
+    "training_subset": "/home/20262202788/equivariant-nas/data_splits/qm9_train_quarter_seed201.npz",
+    "validation_interval_data_epochs": 10
+  },
+  "status": "completed",
+  "test_evaluated": false
+}

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from openevolve_adapter import evaluator
 from scripts.run_dsl_evolution import _ensure_compiler_manifest, _lineage_root, get_parser
 
 
@@ -46,3 +47,17 @@ def test_language_lineage_prefers_the_openevolve_island_identity():
     root = SimpleNamespace(id="root", parent_id=None, metadata={"island": 0})
     child = SimpleNamespace(id="child", parent_id="root", metadata={"island": 2})
     assert _lineage_root(child, {"root": root, "child": child}) == "island:2"
+
+
+def test_evaluator_forwards_the_preregistered_seed(monkeypatch):
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        return SimpleNamespace(returncode=0, stdout='{"valid": true}', stderr="")
+
+    monkeypatch.setenv("NAS_SEED", "201")
+    monkeypatch.setattr(evaluator.subprocess, "run", fake_run)
+    assert evaluator.evaluate("candidate.dsl.json")["valid"] is True
+    seed_index = captured["command"].index("--seed")
+    assert captured["command"][seed_index + 1] == "201"

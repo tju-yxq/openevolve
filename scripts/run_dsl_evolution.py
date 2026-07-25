@@ -25,6 +25,7 @@ from equivariant_nas.dsl import (
     reference_motif_registry,
     select_active_vocabulary,
     strict_rewrite_registry_hash,
+    v1_region_registry,
 )
 from equivariant_nas.dsl.serialization import (
     dumps_program,
@@ -272,6 +273,8 @@ async def run(args):
         "language_registry_hash": language.registry_hash(),
         "task_contract_hash": task.content_hash(),
         "language_preregistration_hash": language_preregistration.content_hash() if language_preregistration else "",
+        "initial_lowering_plan": compiler.plan_lowering(initial_program, task).to_dict(),
+        "region_registry": [item.to_dict() for item in v1_region_registry(initial_program)],
     }
     _ensure_compiler_manifest(output, compiler_manifest, database_has_programs=bool(database.programs))
     ensemble = LLMEnsemble(config.llm.models)
@@ -287,6 +290,7 @@ async def run(args):
     os.environ["DSL_TASK_CONTRACT"] = str(task_path)
     os.environ["NAS_MAX_STEPS"] = str(args.max_steps)
     os.environ["NAS_BATCH_SIZE"] = str(args.batch_size)
+    os.environ["NAS_SEED"] = str(args.seed)
     os.environ["NAS_SKIP_SYMMETRY"] = "1" if args.skip_symmetry else "0"
     if args.equiformer_v2_root:
         os.environ["EQUIFORMER_V2_ROOT"] = args.equiformer_v2_root
@@ -348,9 +352,7 @@ async def run(args):
         database.set_current_island(island_index)
         parent, inspirations = database.sample(num_inspirations=args.inspirations)
         parent_program = loads_program(parent.code)
-        scope = tuple(node.id for node in parent_program.nodes) + tuple(
-            "output:{}".format(output.name) for output in parent_program.outputs
-        )
+        regions = v1_region_registry(parent_program)
         record = {
             "iteration": iteration,
             "parent_program_id": parent.id,
@@ -359,11 +361,11 @@ async def run(args):
             "target_island": island_index,
         }
         try:
-            generated = await engine.generate(
+            generated = await engine.generate_region_candidate(
                 ensemble,
                 parent_program,
                 _measured_evidence(parent, inspirations),
-                scope,
+                regions,
             )
             child_id = generated.child.architecture_id
             child_path = candidates / "iteration_{:04d}_{}.dsl.json".format(iteration, child_id)
@@ -380,6 +382,9 @@ async def run(args):
                 "architecture_id": child_id,
                 "patch": generated.patch.to_dict(),
                 "planner_response": dict(generated.planner_response),
+                "router_response": dict(generated.router_response),
+                "critic_response": dict(generated.critic_response),
+                "region_audit": dict(generated.region_audit),
                 "repair_count": generated.repair_count,
                 "planner_repair_count": generated.planner_repair_count,
                 "metrics": metrics,
@@ -404,6 +409,9 @@ async def run(args):
                     metadata={
                         "architecture_id": child_id,
                         "patch": generated.patch.to_dict(),
+                        "router_response": dict(generated.router_response),
+                        "critic_response": dict(generated.critic_response),
+                        "region_audit": dict(generated.region_audit),
                         "repair_count": generated.repair_count,
                         "planner_repair_count": generated.planner_repair_count,
                     },

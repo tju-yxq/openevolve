@@ -464,11 +464,16 @@ def main(args):
             dsl_program,
             dsl_compiler,
             radius=args.radius,
+            equiformer_root=args.equiformer_root,
             equiformer_v2_root=args.equiformer_v2_root or None,
+            task_mean=task_mean,
+            task_std=task_std,
+            atomref=None,
             task=dsl_task,
         ).to(device)
         log.info("DSL architecture ID: {}".format(model.dsl_architecture_id))
         log.info("DSL language version: {}".format(model.dsl_language_version))
+        log.info("DSL lowering plan: {}".format(json.dumps(model.lowering_plan, sort_keys=True)))
     elif args.architecture_spec:
         from equivariant_nas.builder import build_equiformer
         from equivariant_nas.spec import ArchitectureSpec
@@ -823,6 +828,17 @@ def main(args):
         "selection_eligible": False if args.inherit_checkpoint else True,
         "final_training_allowed": False if args.inherit_checkpoint else True,
     }
+    if args.dsl_program:
+        final_summary.update(
+            {
+                "dsl_architecture_id": getattr(model, "dsl_architecture_id", ""),
+                "dsl_language_version": getattr(model, "dsl_language_version", ""),
+                "backend_family": getattr(model, "backend_family", ""),
+                "backend_semantics_version": getattr(model, "backend_semantics_version", ""),
+                "lowering_mode": getattr(model, "lowering_mode", ""),
+                "lowering_plan": getattr(model, "lowering_plan", {}),
+            }
+        )
     if args.evaluate_test:
         final_summary["best_test_mae"] = best_test_err
     if is_main_process:

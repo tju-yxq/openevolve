@@ -129,4 +129,36 @@ def reference_motif_registry() -> MotifRegistry:
             ),
         )
     )
+    registry.register(
+        MotifDefinition(
+            name="motif.v1_multilevel_readout",
+            version=1,
+            input_ports=("terminal", "aux"),
+            output_bindings={"out": "project"},
+            template_nodes=(
+                Node("terminal_pool", "core.global_pool", {"x": ("$input:terminal",)}),
+                Node("aux_scalars", "core.select_scalars", {"x": ("$input:aux",)}, {"multiplicity": 1}),
+                Node("aux_pool", "core.global_pool", {"x": ("aux_scalars",)}),
+                Node("concat", "core.irrep_concat", {"xs": ("terminal_pool", "aux_pool")}),
+                Node("project", "core.irrep_linear", {"x": ("concat",)}, {"out_irreps": "1x0"}),
+            ),
+            provenance={
+                "family": "Equiformer V1",
+                "role": "certified hybrid readout region",
+                "backend": "equiformer-v1-readout-hybrid-v1",
+            },
+            semantic_constraints=(
+                "terminal must be the official terminal node-level scalar readout and is pooled inside the motif.",
+                "aux must be a node-carried representation from one nonterminal V1 block.",
+                "Only scalar irreps are exposed to the auxiliary graph readout.",
+                "The output remains one graph-carried scalar.",
+                "The certified runtime backend adds a trainable auxiliary head and combiner, so the parameter count increases slightly.",
+            ),
+            edit_guidance=(
+                "Use this motif only as the graph_pool node in the v1_readout region.",
+                "Bind terminal to scalar_readout and aux to exactly one of block0 through block4.",
+                "Do not edit any attention or embedding block when using this motif.",
+            ),
+        )
+    )
     return registry

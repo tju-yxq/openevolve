@@ -82,7 +82,7 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
     return {"errors": errors, "maximum": max(errors.values())}
 
 
-def _gradient_health(model, batch) -> Dict[str, Any]:
+def _gradient_health(model, batch, target_mean: float, target_std: float) -> Dict[str, Any]:
     import torch
 
     model.train()
@@ -95,7 +95,8 @@ def _gradient_health(model, batch) -> Dict[str, Any]:
         edge_d_index=batch.edge_d_index,
         edge_d_attr=batch.edge_d_attr,
     ).squeeze()
-    loss = torch.nn.functional.l1_loss(prediction, batch.y[:, 1])
+    standardized_target = (batch.y[:, 1] - target_mean) / target_std
+    loss = torch.nn.functional.l1_loss(prediction, standardized_target)
     loss.backward()
     gradients = [
         parameter.grad.detach()
@@ -113,6 +114,52 @@ def _gradient_health(model, batch) -> Dict[str, Any]:
         "gradients_present": bool(gradients),
         "all_finite": finite,
     }
+
+
+def _numerical_health(model, batch, target_mean: float, target_std: float) -> Dict[str, Any]:
+    import torch
+
+    model.eval()
+    with torch.no_grad():
+        prediction = model(
+            f_in=batch.x,
+            pos=batch.pos,
+            batch=batch.batch,
+            node_atom=batch.z,
+            edge_d_index=batch.edge_d_index,
+            edge_d_attr=batch.edge_d_attr,
+        ).squeeze()
+    standardized_target = (batch.y[:, 1] - target_mean) / target_std
+    report = {
+        "all_finite": bool(torch.isfinite(prediction).all()),
+        "prediction_mean": float(prediction.float().mean().cpu()),
+        "prediction_std": float(prediction.float().std(unbiased=False).cpu()),
+        "prediction_rms": float(torch.sqrt(torch.mean(prediction.float() ** 2)).cpu()),
+        "prediction_max_abs": float(torch.max(torch.abs(prediction)).cpu()),
+        "standardized_batch_mae": float(torch.mean(torch.abs(prediction - standardized_target)).cpu()),
+        "limits": {
+            "prediction_rms": 50.0,
+            "prediction_max_abs": 100.0,
+            "standardized_batch_mae": 100.0,
+        },
+    }
+    return report
+
+
+def _assert_numerical_health(report: Dict[str, Any], gradient: Dict[str, Any]) -> None:
+    if not report["all_finite"]:
+        raise ValueError("non-finite predictions in pre-training numerical gate")
+    for name, limit in report["limits"].items():
+        if float(report[name]) > float(limit):
+            raise ValueError(
+                "pre-training numerical health {} {:.6g} exceeds {:.6g}".format(
+                    name, report[name], limit
+                )
+            )
+    if not gradient["all_finite"]:
+        raise ValueError("non-finite or missing gradients in pre-training gate")
+    if float(gradient["global_l2_norm"]) > 1.0e5:
+        raise ValueError("pre-training gradient norm exceeds calibrated safety limit")
 
 
 def evaluate_dsl_candidate_pipeline(
@@ -146,6 +193,7 @@ def evaluate_dsl_candidate_pipeline(
     task = load_task_contract(task_contract_path) if task_contract_path else None
     compiler = Compiler(core_registry(), reference_motif_registry())
     artifact = compiler.analyze(program, task)
+    lowering = compiler.plan_lowering(program, task)
     architecture_id = artifact.architecture_id
     subset_fingerprint = ""
     if train_subset_file:
@@ -171,6 +219,8 @@ def evaluate_dsl_candidate_pipeline(
             "d5ad4be729b56f74012ebb7f097f77c5b00a1004" if equiformer_v2_root else ""
         ),
         "task_contract_hash": task.content_hash() if task is not None else "unresolved-task-contract",
+        "lowering_plan_hash": lowering.content_hash(),
+        "backend_semantics_version": lowering.backend_semantics_version,
     }
     protocol_id = hashlib.sha256(json.dumps(protocol, sort_keys=True).encode("utf-8")).hexdigest()[:10]
     run_dir = project / "runs" / "dsl_candidates" / architecture_id / (
@@ -199,6 +249,8 @@ def evaluate_dsl_candidate_pipeline(
         "cache_hit": False,
         "run_dir": str(run_dir),
         "test_evaluated": False,
+        "lowering_plan": lowering.to_dict(),
+        "lowering_plan_hash": lowering.content_hash(),
     }
     resolved_budget = float(gpu_budget_hours) if gpu_budget_hours is not None else float(
         os.environ.get("NAS_GPU_BUDGET_HOURS", "5.0")
@@ -225,10 +277,13 @@ def evaluate_dsl_candidate_pipeline(
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
+        if lowering.mode == "representation_only":
+            raise ValueError("representation-flow-only V1 programs are not trainable candidates")
         model = build_qm9_dsl_model(
             program,
             compiler,
             radius=float(program.parameters.get("radius", 5.0)),
+            equiformer_root=equiformer_root,
             equiformer_v2_root=equiformer_v2_root or None,
             task=task,
         )
@@ -255,7 +310,9 @@ def evaluate_dsl_candidate_pipeline(
             "num_layers": len(artifact.expanded_program.nodes),
             "higher_order_fraction": higher_order / max(total_width, 1),
             "compiler_obligations": [item.to_dict() for item in artifact.inference.obligations],
-            "backend_semantics": model.graph_model.backend_semantics_version,
+            "backend_family": getattr(model, "backend_family", lowering.backend_family),
+            "backend_semantics": getattr(model, "backend_semantics_version", lowering.backend_semantics_version),
+            "lowering_mode": getattr(model, "lowering_mode", lowering.mode),
         })
         if parameter_ratio > parameter_ratio_limit:
             raise ValueError(
@@ -263,7 +320,7 @@ def evaluate_dsl_candidate_pipeline(
             )
 
         batch = None
-        if run_symmetry:
+        if run_symmetry or max_steps > 0:
             from datasets.pyg.qm9 import QM9
             from torch_geometric.loader import DataLoader
             from torch.utils.data import Subset
@@ -275,13 +332,24 @@ def evaluate_dsl_candidate_pipeline(
             batch = next(iter(DataLoader(dataset, batch_size=2))).to("cuda")
             model = model.to("cuda")
             gpu_started = time.perf_counter()
+            base_dataset = dataset.dataset if isinstance(dataset, Subset) else dataset
+            if isinstance(dataset, Subset):
+                target_indices = torch.as_tensor(dataset.indices, dtype=torch.long)
+                target_values = base_dataset.data.y[target_indices, 1].float()
+            else:
+                target_values = base_dataset.data.y[:, 1].float()
+            target_mean = float(target_values.mean())
+            target_std = float(target_values.std())
+            numerical = _numerical_health(model, batch, target_mean, target_std)
+            gradient = _gradient_health(model, batch, target_mean, target_std)
+            result["pretrain_numerical_health"] = numerical
+            result["gradient_health"] = gradient
+            _assert_numerical_health(numerical, gradient)
+        if run_symmetry:
             symmetry = _observable_symmetry_report(model, batch)
             result["pretrain_symmetry_report"] = symmetry
             result["pretrain_max_symmetry_error"] = symmetry["maximum"]
             result["pretrain_symmetry_warning"] = symmetry["maximum"] > symmetry_warning_threshold
-            result["gradient_health"] = _gradient_health(model, batch)
-            if not result["gradient_health"]["all_finite"]:
-                raise ValueError("non-finite or missing gradients in pre-training gate")
             if symmetry["maximum"] > symmetry_threshold:
                 raise ValueError(
                     "pre-training symmetry error {:.6g} exceeds {:.6g}".format(
@@ -291,6 +359,7 @@ def evaluate_dsl_candidate_pipeline(
             (run_dir / "pretrain_symmetry_report.json").write_text(
                 json.dumps(symmetry, indent=2, sort_keys=True), encoding="utf-8"
             )
+        if batch is not None:
             del model
             torch.cuda.empty_cache()
 
@@ -349,8 +418,14 @@ def evaluate_dsl_candidate_pipeline(
             if equiformer_v2_root:
                 environment["EQUIFORMER_V2_ROOT"] = equiformer_v2_root
             gpu_started = gpu_started or time.perf_counter()
+            requested_timeout = int(
+                os.environ.get(
+                    "NAS_TRAINING_TIMEOUT_SECONDS",
+                    max(1800, int(max_steps * 4.0 + 1800)),
+                )
+            )
             timeout = min(
-                max(1800, int(max_steps * 2.0)),
+                requested_timeout,
                 max(1, int(ledger.remaining_gpu_hours() * 3600.0 - (time.perf_counter() - gpu_started))),
             )
             with (run_dir / "trainer_console.log").open("w", encoding="utf-8") as log:
@@ -391,6 +466,7 @@ def evaluate_dsl_candidate_pipeline(
                     program,
                     compiler,
                     radius=float(program.parameters.get("radius", 5.0)),
+                    equiformer_root=equiformer_root,
                     equiformer_v2_root=equiformer_v2_root or None,
                     task=task,
                 ).to("cuda")

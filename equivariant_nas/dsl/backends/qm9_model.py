@@ -17,11 +17,66 @@ def build_qm9_dsl_model(
     max_num_neighbors: int = 1000,
     graph_backend=None,
     equiformer_v2_root: str = None,
+    equiformer_root: str = None,
+    task_mean=None,
+    task_std=None,
+    atomref=None,
     task=None,
 ):
     """Build a trainable model with the Equiformer QM9 forward signature."""
 
     artifact = compiler.analyze(program, task)
+    lowering = compiler.plan_lowering(program, task)
+    if lowering.mode == "representation_only":
+        raise DSLValidationError([
+            Diagnostic(
+                "E_QM9_BACKEND_005",
+                "DSL program has representation-flow semantics only and cannot enter training",
+                details=lowering.to_dict(),
+            )
+        ])
+    if lowering.mode in ("exact_reference", "exact_hybrid") and not equiformer_root:
+        raise DSLValidationError([
+            Diagnostic("E_QM9_BACKEND_006", "exact V1 lowering requires equiformer_root")
+        ])
+    if lowering.mode == "exact_reference":
+        model = compiler.lower_legacy_equiformer_v1(
+            program,
+            equiformer_root,
+            task_mean=task_mean,
+            task_std=task_std,
+            atomref=atomref,
+        )
+        model.dsl_architecture_id = artifact.architecture_id
+        model.dsl_language_version = program.language_version
+        model.backend_family = lowering.backend_family
+        model.backend_semantics_version = lowering.backend_semantics_version
+        model.lowering_mode = lowering.mode
+        model.reference_model_identity = lowering.reference_model_identity
+        model.lowering_plan = lowering.to_dict()
+        return model
+    if lowering.mode == "exact_hybrid":
+        from ...builder import build_equiformer
+        from ...spec import ArchitectureSpec
+        from .hybrid_v1 import build_v1_readout_hybrid, parse_v1_readout_hybrid
+
+        spec = ArchitectureSpec.from_dict(program.annotations["legacy_architecture_spec"])
+        base = build_equiformer(
+            spec,
+            equiformer_root,
+            task_mean=task_mean,
+            task_std=task_std,
+            atomref=atomref,
+        )
+        hybrid = parse_v1_readout_hybrid(program)
+        model = build_v1_readout_hybrid(
+            base,
+            hybrid,
+            artifact.architecture_id,
+            program.language_version,
+        )
+        model.lowering_plan = lowering.to_dict()
+        return model
     if len(program.outputs) != 1 or program.outputs[0].expected_type.carrier != Carrier.GRAPH:
         raise DSLValidationError([Diagnostic("E_QM9_BACKEND_001", "QM9 adapter requires one graph-carried output")])
     supported_inputs = {"node_features", "positions", "edge_sh"}
@@ -62,6 +117,11 @@ def build_qm9_dsl_model(
             self.max_num_neighbors = int(max_num_neighbors)
             self.dsl_architecture_id = artifact.architecture_id
             self.dsl_language_version = program.language_version
+            self.backend_family = lowering.backend_family
+            self.backend_semantics_version = lowering.backend_semantics_version
+            self.lowering_mode = lowering.mode
+            self.reference_model_identity = lowering.reference_model_identity
+            self.lowering_plan = lowering.to_dict()
 
         def forward(self, f_in, pos, batch, node_atom=None, edge_d_index=None, edge_d_attr=None):
             edge_index = radius_graph(pos, r=self.max_radius, batch=batch, max_num_neighbors=self.max_num_neighbors)

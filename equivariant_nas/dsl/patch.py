@@ -156,7 +156,12 @@ def patch_protocol_schema(
             "insert_after": {"node": "complete Node object with a new unique id"},
             "delete_if_bypassed": {"replacement_reference": "existing source reference"},
             "instantiate_motif": {"op": "visible motif name", "attrs": "motif attrs object"},
-            "change_parameters": {"updates": "mapping from authorized flat parameter path to JSON value"},
+            "change_parameters": {
+                "value": (
+                    "one JSON value for the exact constructor.* target; "
+                    "the value must be admitted by the capability profile"
+                )
+            },
         },
         "node_contract": {
             "required": ["id", "op", "inputs"],

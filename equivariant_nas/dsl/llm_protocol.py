@@ -342,7 +342,11 @@ def synthesizer_prompt(
         "program output targets MUST use output:<name>. "
         "never invent canonical n0000-style aliases. Every edit MUST contain exactly kind, "
         "target, and payload. Return one JSON object matching authoritative_patch_schema and no prose. "
-        "The compiler, task contract, and trusted kernel are immutable. Expected accuracy "
+        "Condition kind MUST be one of node_exists, node_absent, node_op_is, "
+        "node_attr_equals, node_input_equals, or output_source_is; an operator or motif name "
+        "is never a condition kind. For constructor-factor patches, prefer empty preconditions "
+        "and postconditions because the compiler independently validates the capability value "
+        "and frozen complement. The compiler, task contract, and trusted kernel are immutable. Expected accuracy "
         "effects are hypotheses, never measurements."
     )
     parameter_scope = [item for item in plan["scope"] if str(item).startswith("constructor.")]
@@ -382,6 +386,16 @@ def synthesizer_prompt(
             ],
         }
     )
+    if parameter_scope:
+        worked_example.update({
+            "preconditions": [],
+            "postconditions": [],
+            "explanation": (
+                "For constructor-factor regions, emit only change_parameters edits on exact "
+                "scoped paths with payload.value. Keep preconditions and postconditions empty; "
+                "the compiler enforces admitted values and frozen-complement invariants."
+            ),
+        })
     payload = {
         "task_id": task.task_id,
         "parent_architecture_id": parent_architecture_id,
@@ -428,10 +442,14 @@ def repair_prompt(
 ) -> Dict[str, str]:
     system = (
         "Repair a typed patch using only the compiler diagnostics. Preserve its scientific "
-        "hypothesis, parent, language version, and scope. Do not weaken postconditions or "
+        "hypothesis, parent, language version, and scope. Preserve every valid executable "
+        "postcondition, but remove or rewrite malformed conditions that caused a protocol error. Do not "
         "change the task. Use ONLY edits shaped as {kind,target,payload}; anchor, mode, "
         "new_subgraph, insert_node, and rewire are not valid fields or edit kinds. Existing "
-        "target ids MUST be copied exactly from parent_program. Return one strict JSON object only."
+        "target ids MUST be copied exactly from parent_program. Condition kind MUST be exactly one "
+        "of node_exists, node_absent, node_op_is, node_attr_equals, node_input_equals, or "
+        "output_source_is; never use node, output, an operator name, or a motif name as condition kind. "
+        "Return one strict JSON object only."
     )
     resolved_parent_id = parent_architecture_id or failed_patch.parent_architecture_id
     language_version = parent.language_version if parent is not None else failed_patch.language_version
@@ -457,6 +475,9 @@ def repair_prompt(
             "All edit targets must be existing source node ids or output:<name> capabilities within scope.",
             "The scope array is immutable and must exactly equal authoritative_patch_schema.properties.scope.const.",
             "preconditions and postconditions must be empty or use only authoritative_patch_schema.condition_contracts; never place natural-language condition fields in them.",
+            "For change_parameters constructor patches, use payload with exactly one key named value; never use updates.",
+            "For change_parameters constructor patches, set preconditions and postconditions to empty arrays when rejected conditions are malformed; compiler capability and frozen-complement checks remain mandatory.",
+            "A condition kind is a condition-contract name, never node, output, a core.* operator, or a motif.* operator.",
             "Every inserted node must contribute to a declared program output; dead subgraphs are rejected.",
             "Inserted node ids must be new and references must use parent_program source ids.",
             "Trusted completion suggestions come from compiler type rules, not measurements; use only scope-compatible reachable paths.",

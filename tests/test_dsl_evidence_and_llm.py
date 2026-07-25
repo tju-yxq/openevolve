@@ -221,6 +221,12 @@ def test_llm_patch_prompts_expose_source_ids_and_the_exact_edit_wire_contract():
     assert set(edit_schema["required"]) == {"kind", "target", "payload"}
     assert "insert_node" not in edit_schema["properties"]["kind"]["enum"]
     assert "rewire" not in edit_schema["properties"]["kind"]["enum"]
+    assert payload["authoritative_patch_schema"]["edit_payload_contracts"]["change_parameters"] == {
+        "value": (
+            "one JSON value for the exact constructor.* target; "
+            "the value must be admitted by the capability profile"
+        )
+    }
     v1_residual = next(
         item for item in payload["vocabulary_contracts"]
         if item["name"] == "motif.v1_residual_message@1"
@@ -242,7 +248,47 @@ def test_llm_patch_prompts_expose_source_ids_and_the_exact_edit_wire_contract():
     repair_payload = json.loads(repaired["user"])
     assert repair_payload["parent_program"]["nodes"][0]["id"] == "pool"
     assert "anchor, mode, new_subgraph" in repaired["system"]
+    assert "never use node, output, an operator name, or a motif name" in repaired["system"]
+    assert any(
+        "payload with exactly one key named value" in item
+        for item in repair_payload["repair_rules"]
+    )
     assert repair_payload["rejected_response"].startswith('{"edits"')
+
+
+def test_constructor_patch_prompt_uses_value_and_empty_condition_example():
+    program, task, primitives, _, vocabulary = setup_objects()
+    compiler = Compiler(primitives, reference_motif_registry())
+    parent_id = compiler.analyze(program, task).architecture_id
+    plan = {
+        "claim": "change one certified constructor factor",
+        "scope": ["constructor.operator.num_heads"],
+        "abstract_goals": ["measure one attention-head alternative"],
+        "evidence_refs": [],
+        "uncertainty": "untrained",
+        "risk": "optimization",
+    }
+    prompt = synthesizer_prompt(
+        task,
+        program,
+        plan,
+        vocabulary,
+        parent_id,
+        primitives,
+        reference_motif_registry(),
+    )
+    payload = json.loads(prompt["user"])
+    example = payload["worked_edit_example"]
+    assert example["edits"] == [
+        {
+            "kind": "change_parameters",
+            "target": "constructor.operator.num_heads",
+            "payload": {"value": "choose one capability-admitted value with the correct JSON type"},
+        }
+    ]
+    assert example["preconditions"] == []
+    assert example["postconditions"] == []
+    assert "an operator or motif name is never a condition kind" in prompt["system"]
 
 
 def test_patch_parser_rejects_alternate_edit_dialects_with_actionable_fields():

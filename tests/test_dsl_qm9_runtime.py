@@ -34,6 +34,7 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
     model.eval()
     from e3nn import o3
 
+    reference = model(features, positions, batch, node_atom)
     rotation = o3.rand_matrix(dtype=torch.float32)
     rotated = model(features, positions @ rotation.transpose(0, 1), batch, node_atom)
     translated = model(
@@ -49,6 +50,6 @@ def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients()
         batch[permutation],
         node_atom[permutation],
     )
-    assert torch.allclose(rotated, prediction.detach(), atol=1e-5, rtol=1e-5)
-    assert torch.allclose(translated, prediction.detach(), atol=1e-5, rtol=1e-5)
-    assert torch.allclose(permuted, prediction.detach(), atol=1e-5, rtol=1e-5)
+    assert torch.allclose(rotated, reference, atol=1e-5, rtol=1e-5)
+    assert torch.allclose(translated, reference, atol=1e-5, rtol=1e-5)
+    assert torch.allclose(permuted, reference, atol=1e-5, rtol=1e-5)

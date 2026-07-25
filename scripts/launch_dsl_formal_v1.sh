@@ -42,3 +42,14 @@ fi
   --quarter-subset-file "$PROJECT/data_splits/qm9_train_quarter_seed201.npz" \
   --python "$EQUIFORMER_PY" \
   --seed 201
+
+"$EQUIFORMER_PY" "$PROJECT/scripts/finalize_dsl_formal_v1.py" \
+  --root "$RUN_ROOT" \
+  --search-dir "$RUN_ROOT/search" \
+  --multifidelity-root "$RUN_ROOT/multifidelity" \
+  --project-root "$PROJECT" \
+  --equiformer-root /home/20262202788/equiformer \
+  --data-path /home/20262202788/equiformer/datasets/qm9 \
+  --task-contract "$PROJECT/configs/qm9_alpha_formal_v1_task.json" \
+  --python "$EQUIFORMER_PY" \
+  --seed 201

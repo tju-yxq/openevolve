@@ -134,6 +134,12 @@ def get_parser():
         help="Evaluate the locked test set. Forbidden during search; final runs only.",
     )
     parser.add_argument(
+        "--evaluation-only",
+        action="store_true",
+        default=False,
+        help="Load a completed checkpoint and evaluate validation/test without optimizer steps.",
+    )
+    parser.add_argument(
         "--architecture-spec",
         type=str,
         default=None,
@@ -642,6 +648,17 @@ def main(args):
         raise ValueError("data epoch origin cannot be greater than the current global step")
     if args.lr_schedule_origin_step > global_step:
         raise ValueError("LR schedule origin cannot be greater than the current global step")
+    if args.evaluation_only:
+        if not args.evaluate_test:
+            raise ValueError("evaluation-only mode requires --evaluate-test")
+        if not args.resume_step:
+            raise ValueError("evaluation-only mode requires --resume-step")
+        if global_step != args.max_steps:
+            raise ValueError(
+                "evaluation-only checkpoint step {} must equal max_steps {}".format(
+                    global_step, args.max_steps
+                )
+            )
     job_start_global_step = global_step
     data_stream = cycling_batches(
         train_dataset,
@@ -802,6 +819,46 @@ def main(args):
                     best_test_err,
                 )
 
+    endpoint_val_err = None
+    endpoint_test_err = None
+    if args.evaluation_only:
+        endpoint_val_err, _ = evaluate(
+            model,
+            norm_factor,
+            args.target,
+            val_loader,
+            device,
+            amp_autocast=amp_autocast,
+            print_freq=args.print_freq,
+            logger=log,
+        )
+        endpoint_test_err, _ = evaluate(
+            model,
+            norm_factor,
+            args.target,
+            test_loader,
+            device,
+            amp_autocast=amp_autocast,
+            print_freq=args.print_freq,
+            logger=log,
+        )
+        best_test_err = endpoint_test_err
+        evaluation_progress = {
+            "global_step": global_step,
+            "start_global_step": job_start_global_step,
+            "steps_executed_current_job": 0,
+            "val_mae": endpoint_val_err,
+            "test_mae": endpoint_test_err,
+            "test_evaluated": True,
+            "evaluation_only": True,
+        }
+        if is_main_process:
+            (Path(args.output_dir) / "progress.json").write_text(
+                json.dumps(evaluation_progress, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            with metrics_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(evaluation_progress, sort_keys=True) + "\n")
+
     final_summary = {
         "status": "completed",
         "batch_size": args.batch_size,
@@ -824,6 +881,7 @@ def main(args):
         "best_step": best_step,
         "best_val_mae": best_val_err,
         "test_evaluated": bool(args.evaluate_test),
+        "evaluation_only": bool(args.evaluation_only),
         "inherited_initialization": bool(args.inherit_checkpoint),
         "selection_eligible": False if args.inherit_checkpoint else True,
         "final_training_allowed": False if args.inherit_checkpoint else True,
@@ -841,6 +899,9 @@ def main(args):
         )
     if args.evaluate_test:
         final_summary["best_test_mae"] = best_test_err
+    if args.evaluation_only:
+        final_summary["endpoint_validation_mae"] = endpoint_val_err
+        final_summary["endpoint_test_mae"] = endpoint_test_err
     if is_main_process:
         with (Path(args.output_dir) / "training_summary.json").open(
             "w", encoding="utf-8"

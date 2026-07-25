@@ -23,7 +23,7 @@ try:
     state = json.load(open(sys.argv[1], encoding="utf-8"))
 except Exception:
     raise SystemExit(1)
-raise SystemExit(0 if state.get("stage") == "completed_validation_selection" else 1)
+raise SystemExit(0 if state.get("stage") == "final_completed" else 1)
 PY
 }
 

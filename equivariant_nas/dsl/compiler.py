@@ -13,6 +13,7 @@ from .diagnostics import DSLValidationError, Diagnostic
 from .inference import InferenceResult, TypeChecker
 from .motifs import MotifRegistry, expand_motifs
 from .registry import PrimitiveRegistry
+from .rewrites import RewriteStep, apply_strict_rewrites
 from .task import TaskContract
 
 
@@ -23,6 +24,8 @@ class CompilationArtifact:
     inference: InferenceResult
     backend: str
     architecture_id: str
+    rewrite_trace: Tuple[RewriteStep, ...] = ()
+    rewrite_registry_hash: str = ""
 
 
 class Compiler:
@@ -31,7 +34,9 @@ class Compiler:
         self.motifs = motifs or MotifRegistry()
 
     def analyze(self, program: ArchitectureProgram, task: Optional[TaskContract] = None) -> CompilationArtifact:
-        expanded = expand_motifs(program, self.motifs)
+        expanded_source = expand_motifs(program, self.motifs)
+        rewrite_result = apply_strict_rewrites(expanded_source)
+        expanded = rewrite_result.program
         inference = TypeChecker(self.primitives).check(expanded)
         task_hash = "unresolved-task-contract"
         if task is not None:
@@ -48,6 +53,8 @@ class Compiler:
             inference=inference,
             backend="backend-neutral",
             architecture_id=architecture_id(expanded, self.primitives, task_contract_hash=task_hash),
+            rewrite_trace=rewrite_result.trace,
+            rewrite_registry_hash=rewrite_result.registry_hash,
         )
 
     def lower_legacy_equiformer_v1(

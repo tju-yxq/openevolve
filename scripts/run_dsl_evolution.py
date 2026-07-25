@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from equivariant_nas.dsl import (
+    BACKEND_SEMANTICS_VERSION,
+    COMPILER_SEMANTICS_VERSION,
     Compiler,
     DSLGenerationEngine,
     EvidenceItem,
@@ -19,6 +21,7 @@ from equivariant_nas.dsl import (
     core_registry,
     reference_motif_registry,
     select_active_vocabulary,
+    strict_rewrite_registry_hash,
 )
 from equivariant_nas.dsl.serialization import (
     dumps_program,
@@ -42,6 +45,23 @@ def _write_json(path, payload):
 def _append_jsonl(path, payload):
     with Path(path).open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _ensure_compiler_manifest(output, payload, *, database_has_programs):
+    path = Path(output) / "compiler_manifest.json"
+    if path.exists():
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if existing != payload:
+            raise RuntimeError(
+                "compiler manifest mismatch; resume requires the exact task, language, rewrite registry, compiler, and backend semantics"
+            )
+        return path
+    if database_has_programs:
+        raise RuntimeError(
+            "existing OpenEvolve database has no compiler_manifest.json; refuse to reinterpret a legacy search under new semantics"
+        )
+    _write_json(path, payload)
+    return path
 
 
 def _measured_evidence(program, inspirations):
@@ -132,6 +152,14 @@ async def run(args):
     for model in config.llm.models:
         model.random_seed = args.seed
     database = ProgramDatabase(config.database)
+    compiler_manifest = {
+        "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
+        "backend_semantics_version": BACKEND_SEMANTICS_VERSION,
+        "rewrite_registry_hash": strict_rewrite_registry_hash(),
+        "language_registry_hash": language.registry_hash(),
+        "task_contract_hash": task.content_hash(),
+    }
+    _ensure_compiler_manifest(output, compiler_manifest, database_has_programs=bool(database.programs))
     ensemble = LLMEnsemble(config.llm.models)
     engine = DSLGenerationEngine(
         compiler,
@@ -152,7 +180,14 @@ async def run(args):
     if not database.programs:
         artifact = compiler.analyze(initial_program, task)
         store.add_compiled_candidate(artifact, task)
-        store.add_compiler_run(artifact.architecture_id, "evoequilang-1", "success", inference=artifact.inference)
+        store.add_compiler_run(
+            artifact.architecture_id,
+            COMPILER_SEMANTICS_VERSION,
+            "success",
+            inference=artifact.inference,
+            rewrite_trace=artifact.rewrite_trace,
+            rewrite_registry_hash=artifact.rewrite_registry_hash,
+        )
         initial_path = candidates / "iteration_0000.dsl.json"
         initial_path.write_text(dumps_program(initial_program), encoding="utf-8")
         metrics = (
@@ -272,6 +307,8 @@ async def run(args):
             "best_metrics": best.metrics if best else None,
             "task_contract_hash": task.content_hash(),
             "language_registry_hash": language.registry_hash(),
+            "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
+            "rewrite_registry_hash": strict_rewrite_registry_hash(),
             "updated_at": _now(),
         }
         _write_json(output / "summary.json", summary)
@@ -286,6 +323,8 @@ async def run(args):
         "best_metrics": best.metrics if best else None,
         "task_contract_hash": task.content_hash(),
         "language_registry_hash": language.registry_hash(),
+        "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
+        "rewrite_registry_hash": strict_rewrite_registry_hash(),
         "status": "stopped" if stop_file.exists() else "completed",
         "updated_at": _now(),
     }

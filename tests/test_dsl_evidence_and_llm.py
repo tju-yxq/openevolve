@@ -146,6 +146,39 @@ def test_completion_runs_are_content_addressed_and_recoverable(tmp_path):
     assert restored["materialized_patch"]["expected_effects"]["test_evaluated"] is False
 
 
+def test_rewrite_proof_trace_is_persisted_with_the_compiler_run(tmp_path):
+    program, task, primitives, _, _ = setup_objects()
+    identity = Node("identity", "core.identity", {"x": ("input:x",)})
+    rewritten_source = ArchitectureProgram(
+        program.language_version,
+        program.task_contract,
+        program.inputs,
+        (identity, Node("pool", "core.global_pool", {"x": ("identity",)})),
+        program.outputs,
+    )
+    compiler = Compiler(primitives, reference_motif_registry())
+    artifact = compiler.analyze(rewritten_source, task)
+    store = EvidenceStore(str(tmp_path / "rewrite.sqlite"))
+    candidate_id = store.add_compiled_candidate(artifact, task)
+    store.add_compiler_run(
+        candidate_id,
+        "evoequilang-2",
+        "success",
+        inference=artifact.inference,
+        rewrite_trace=artifact.rewrite_trace,
+        rewrite_registry_hash=artifact.rewrite_registry_hash,
+    )
+    import sqlite3
+    with sqlite3.connect(str(tmp_path / "rewrite.sqlite")) as connection:
+        registry_hash, trace_json = connection.execute(
+            "SELECT rewrite_registry_hash, trace_json FROM rewrite_runs"
+        ).fetchone()
+    trace = json.loads(trace_json)
+    assert registry_hash == artifact.rewrite_registry_hash
+    assert trace[0]["rule_id"] == "core.eliminate_identity"
+    assert trace[0]["before_fingerprint"] != trace[0]["after_fingerprint"]
+
+
 def test_task_contract_roundtrip_preserves_the_cross_process_architecture_id(tmp_path):
     program, task, primitives, _, _ = setup_objects()
     path = tmp_path / "task.json"

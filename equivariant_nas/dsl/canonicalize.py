@@ -10,12 +10,11 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 from .ast import ArchitectureProgram, Node
 from .inference import TypeChecker
 from .registry import PrimitiveRegistry
+from .rewrites import apply_strict_rewrites, strict_rewrite_registry_hash
 
 
-_COMMUTATIVE_PORTS = {
-    "core.residual_add@1": ("left", "right"),
-    "core.irrep_concat@1": ("xs",),
-}
+COMPILER_SEMANTICS_VERSION = "evoequilang-2"
+BACKEND_SEMANTICS_VERSION = "backend-neutral-v1"
 
 
 def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegistry] = None) -> ArchitectureProgram:
@@ -26,15 +25,13 @@ def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegis
     from changing a candidate fingerprint.
     """
 
+    strictly_rewritten = apply_strict_rewrites(program).program
     normalized = []
-    for node in program.nodes:
+    for node in strictly_rewritten.nodes:
         qualified = node.op if "@" in node.op else "{}@1".format(node.op)
         inputs = {name: tuple(refs) for name, refs in node.inputs.items()}
-        for port in _COMMUTATIVE_PORTS.get(qualified, ()):
-            if port in inputs:
-                inputs[port] = tuple(sorted(inputs[port]))
         normalized.append(replace(node, op=qualified, inputs=inputs))
-    candidate = replace(program, nodes=tuple(normalized))
+    candidate = replace(strictly_rewritten, nodes=tuple(normalized))
     if registry is not None:
         TypeChecker(registry, require_closed_obligations=False)._topological_order(candidate, {node.id: node for node in candidate.nodes})
 
@@ -112,15 +109,17 @@ def architecture_id(
     registry: Optional[PrimitiveRegistry] = None,
     *,
     kernel_registry_hash: str = "builtin-core-v1",
-    compiler_version: str = "evoequilang-1",
+    compiler_version: str = COMPILER_SEMANTICS_VERSION,
     task_contract_hash: str = "unresolved-task-contract",
-    backend_semantics_version: str = "backend-neutral-v1",
+    backend_semantics_version: str = BACKEND_SEMANTICS_VERSION,
+    rewrite_registry_hash: str = "",
 ) -> str:
     payload = {
         "canonical_ast": canonical_json(program, registry),
         "language_version": program.language_version,
         "kernel_registry_hash": kernel_registry_hash,
         "compiler_version": compiler_version,
+        "rewrite_registry_hash": rewrite_registry_hash or strict_rewrite_registry_hash(),
         "task_contract_hash": task_contract_hash,
         "backend_semantics_version": backend_semantics_version,
     }

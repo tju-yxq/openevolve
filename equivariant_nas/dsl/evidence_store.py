@@ -18,6 +18,7 @@ from .inference import InferenceResult
 from .language import LanguageVersion, VocabularyDecision
 from .patch import TypedPatch
 from .registry import PrimitiveRegistry
+from .rewrites import RewriteStep
 from .task import TaskContract
 
 
@@ -94,9 +95,18 @@ CREATE TABLE IF NOT EXISTS completion_runs (
     status TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS rewrite_runs (
+    rewrite_run_id TEXT PRIMARY KEY,
+    architecture_id TEXT NOT NULL REFERENCES candidate_programs(architecture_id),
+    compiler_version TEXT NOT NULL,
+    rewrite_registry_hash TEXT NOT NULL,
+    trace_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_eval_architecture ON evaluations(architecture_id, split, fidelity_steps);
 CREATE INDEX IF NOT EXISTS idx_prompt_architecture ON prompt_runs(architecture_id, role);
 CREATE INDEX IF NOT EXISTS idx_completion_architecture ON completion_runs(architecture_id, status);
+CREATE INDEX IF NOT EXISTS idx_rewrite_architecture ON rewrite_runs(architecture_id, compiler_version);
 """
 
 
@@ -210,6 +220,8 @@ class EvidenceStore:
         *,
         diagnostics: Sequence[Diagnostic] = (),
         inference: Optional[InferenceResult] = None,
+        rewrite_trace: Sequence[RewriteStep] = (),
+        rewrite_registry_hash: str = "",
     ) -> str:
         payload = {
             "architecture_id": architecture_id_value,
@@ -225,7 +237,43 @@ class EvidenceStore:
                 "INSERT INTO compiler_runs VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (run_id, architecture_id_value, compiler_version, status, _json(payload["diagnostics"]), _json(payload["obligations"]), payload["nonce"]),
             )
+        if rewrite_registry_hash:
+            self.add_rewrite_run(
+                architecture_id_value,
+                compiler_version,
+                rewrite_registry_hash,
+                rewrite_trace,
+            )
         return run_id
+
+    def add_rewrite_run(
+        self,
+        architecture_id_value: str,
+        compiler_version: str,
+        rewrite_registry_hash: str,
+        trace: Sequence[RewriteStep],
+    ) -> str:
+        trace_payload = [item.to_dict() for item in trace]
+        identity = {
+            "architecture_id": architecture_id_value,
+            "compiler_version": compiler_version,
+            "rewrite_registry_hash": rewrite_registry_hash,
+            "trace": trace_payload,
+        }
+        rewrite_run_id = _content_id("rewrite", identity)
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO rewrite_runs VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    rewrite_run_id,
+                    architecture_id_value,
+                    compiler_version,
+                    rewrite_registry_hash,
+                    _json(trace_payload),
+                    _now(),
+                ),
+            )
+        return rewrite_run_id
 
     def add_completion_run(
         self,

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 from .compiler import CompilationArtifact, Compiler
+from .canonicalize import COMPILER_SEMANTICS_VERSION
 from .diagnostics import DSLValidationError, Diagnostic
 from .evidence_store import EvidenceStore
 from .language import VocabularyDecision
@@ -72,7 +73,7 @@ class DSLGenerationEngine:
                 break
             except DSLValidationError as exc:
                 if plan_attempt >= self.repair_attempts:
-                    self.store.add_compiler_run(parent_id, "evoequilang-1", "planner_protocol_failed", diagnostics=exc.diagnostics)
+                    self.store.add_compiler_run(parent_id, COMPILER_SEMANTICS_VERSION, "planner_protocol_failed", diagnostics=exc.diagnostics)
                     raise
                 current_plan_prompt = planner_repair_prompt(plan_prompt, plan_text, exc.diagnostics)
                 plan_text = await self._call(ensemble, current_plan_prompt)
@@ -131,12 +132,19 @@ class DSLGenerationEngine:
                     ])
                 child_id = self.store.add_compiled_candidate(child, self.task)
                 self.store.add_patch(patch, child_architecture_id=child_id)
-                self.store.add_compiler_run(child_id, "evoequilang-1", "success", inference=child.inference)
+                self.store.add_compiler_run(
+                    child_id,
+                    COMPILER_SEMANTICS_VERSION,
+                    "success",
+                    inference=child.inference,
+                    rewrite_trace=child.rewrite_trace,
+                    rewrite_registry_hash=child.rewrite_registry_hash,
+                )
                 return GenerationResult(parent, child, patch, plan, attempt, planner_repair_count)
             except (DSLValidationError, ValueError) as exc:
                 diagnostics = exc.diagnostics if isinstance(exc, DSLValidationError) else ()
                 if attempt >= self.repair_attempts:
-                    self.store.add_compiler_run(parent_id, "evoequilang-1", "generation_failed", diagnostics=diagnostics)
+                    self.store.add_compiler_run(parent_id, COMPILER_SEMANTICS_VERSION, "generation_failed", diagnostics=diagnostics)
                     raise
                 if failed_patch is None:
                     failed_patch = TypedPatch("1.0", parent_id, parent_program.language_version, dict(plan), tuple(plan["scope"]), ())

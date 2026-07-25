@@ -1238,3 +1238,13 @@ EvoEquiLang不是Equiformer超参数表，也不是让LLM自由生成Python的�
 第三，completion必须成为可恢复证据而不是瞬时提示。`completion_id`由父代架构ID、语言registry哈希、TypedHole、sink和允许原语共同决定；SQLite记录请求、可达或不可达结果、物化patch与状态。重复遇到相同部分状态时可以复用确定性结果，同时语言版本变化会自然产生不同ID，避免复用过期类型规则。
 
 当前实现支持`input_port`与`program_output`两类sink，把可信completion action转换为带`declared_types`的节点，自动产生机器可执行precondition与postcondition，并再次经过typed patch事务、图liveness和TypeChecker。诊断适配层还能对`E_TYPE_004`、carrier、frame和输出类型错误恢复失败节点之前的可信类型状态，构造局部TypedHole，并把scope兼容的确定性路径加入Repairer提示；路径属于类型规则证据，不是性能测量，也不授权扩大scope。它仍不等于完整Syno式合成器：尚缺分支回溯、跨候选状态调度、motif级动作、资源联合剪枝、motif内部源位置映射和更多诊断类别。
+
+## 二十五、严格语义重写与身份版本修订
+
+第一版canonicalization曾把`irrep_concat`输入排序作为交换规范化。源码审计表明这一假设过强：虽然当前Irreps类型会把同类项整理成相同multiplicity，实际拼接仍改变通道坐标顺序，只有在显式构造后续参数置换同构时才能证明搜索对象等价。因此严格规则库不再把concat视为交换操作；两个反序concat候选保留不同architecture ID。近似等价或参数重命名等价必须进入单独的启发式层，不能污染严格语义ID。
+
+当前严格规则库只准入两条可直接辩护的规则：无属性、单输入单输出`core.identity@1`消除，以及相同类型二元`core.residual_add@1`的操作数规范化。每个`RewriteStep`记录规则ID、版本、等价等级、证明依据、前后程序指纹、受影响节点和局部替换细节；规则重复执行到固定点，规则描述内容再形成rewrite registry哈希。
+
+Compiler先展开motif，再执行严格重写，随后运行TypeChecker和后端lowering。architecture ID从`evoequilang-2`开始同时绑定canonical AST、任务契约、核心registry、rewrite registry、compiler和backend语义版本。OpenEvolve运行目录新增不可变`compiler_manifest.json`；已有数据库缺少manifest或任一哈希不一致时拒绝恢复，防止把旧谱系静默重解释为新语言。
+
+当前proof trace已经写入独立`rewrite_runs`证据表，并具有identity固定点、残差交换、concat非交换负例和真实e3nn数值回归。它仍不是完整e-graph系统：尚未实现等价类饱和、条件重写、类型化pattern matching、成本提取、证明组合压缩和资源受限饱和调度。

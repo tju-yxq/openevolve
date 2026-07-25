@@ -9,7 +9,7 @@
 
 当前系统已经形成一条可执行的三维等变架构生成主链：任务契约→带群表示类型的架构AST→motif展开→静态类型推导与证明义务→typed patch→Planner、Synthesizer、Repairer→OpenEvolve程序数据库→DSL原生编译评估→SQLite证据库。真实GLM-5.2运行已经从Equiformer V1父代生成不同语义ID的合法子代，并完成零训练步编译评估。系统还具备第一版`TypedHole`与多维completion distance，能够从现有typed values确定性搜索合法原语路径，将路径物化为带声明类型、机器条件、输出重连和失活路径裁剪的typed patch，并把部分编译错误转换成scope受限的Repairer可信补全建议。
 
-这不等于完整研究目标已经完成。当前completion只覆盖由目标类型引导的一元和二元核心原语最短路；虽然已经支持输入端口和程序输出两类sink的确定性物化及SQLite记录，但尚未形成带分支回溯、跨候选状态共享、motif级动作和资源联合剪枝的完整部分程序搜索器。其他主要缺口是严格语义重写系统、二维SO(2)/O(2)数值后端、V1精确节点级后端、完整V2 block表达能力、语言自身双时间尺度进化以及论文级多任务实验。现阶段可以称为“论文级设计下的可运行三维核心原型”，不能称为“一般有效性已经验证”。
+这不等于完整研究目标已经完成。当前completion只覆盖由目标类型引导的一元和二元核心原语最短路；虽然已经支持输入端口和程序输出两类sink的确定性物化及SQLite记录，但尚未形成带分支回溯、跨候选状态共享、motif级动作和资源联合剪枝的完整部分程序搜索器。严格语义重写也只有第一批identity消除与残差交换规则及proof trace，尚无e-graph、通用等价证明和最低代价提取。其他主要缺口是二维SO(2)/O(2)数值后端、V1精确节点级后端、完整V2 block表达能力、语言自身双时间尺度进化以及论文级多任务实验。现阶段可以称为“论文级设计下的可运行三维核心原型”，不能称为“一般有效性已经验证”。
 
 ## 二、当前端到端工作流
 
@@ -72,6 +72,7 @@ flowchart TD
 | 可执行patch条件 | `patch.py` | 5类结构前后置条件、事务失败回滚测试 | 已实现结构条件子集 |
 | 图liveness | `inference.py` | 输出祖先闭包和死代码负例测试 | 已实现 |
 | TypedHole补全 | `completion.py` | 一元/二元可信原语超图搜索、多维距离、输入/输出sink物化和失活路径裁剪测试 | 已实现第一版闭环 |
+| 严格语义重写 | `rewrites.py`、`canonicalize.py` | identity消除、残差交换、concat非交换负例、固定点和proof trace测试 | 已实现第一批保守规则 |
 | canonical ID | `canonicalize.py` | 重命名、字典顺序和交换输入稳定性测试 | 已实现基础规范化 |
 | 任务绑定ID | `task.py`、`compiler.py` | 同一图绑定不同任务契约得到不同ID | 已实现 |
 | 语言内容快照 | `language.py` | 原语和motif内容哈希、运行时漂移拒绝测试 | 已实现 |
@@ -190,7 +191,7 @@ $env:PYTHONPATH=(Get-Location).Path
 pytest -q
 ```
 
-结果：`109 passed,6 skipped`。跳过项来自本地缺少e3nn、timm或官方Equiformer V2运行依赖，不是测试失败。
+结果：`115 passed,6 skipped`。跳过项来自本地缺少e3nn、timm或官方Equiformer V2运行依赖，不是测试失败。
 
 ### 6.2 A100服务器
 
@@ -203,13 +204,13 @@ PYTHONPATH=. \
   tests/test_dsl*.py tests/test_semantics.py
 ```
 
-结果：`76 passed`。覆盖官方V2 SO(2)路径、S²激活、完整DSL融合图、非线性数值等变、completion distance与物化、图liveness、可执行patch条件、诊断驱动Repairer建议、LLM协议、证据库、pipeline和训练入口。测试产生8条旧版NumPy别名弃用警告，没有失败。
+结果：`83 passed`。覆盖官方V2 SO(2)路径、S²激活、完整DSL融合图、非线性数值等变、completion distance与物化、图liveness、可执行patch条件、诊断驱动Repairer建议、严格重写数值等价、LLM协议、证据库、pipeline和训练入口。测试产生8条旧版NumPy别名弃用警告，没有失败。
 
 ## 七、部分实现而非完成的能力
 
 | 能力 | 已有部分 | 尚缺内容 |
 | --- | --- | --- |
-| 规范化 | 稳定排序、节点重命名和交换输入规范化 | 带证明的代数重写、e-graph和最低代价提取 |
+| 规范化 | 稳定排序、节点重命名、两条严格规则、逐步proof trace、rewrite registry哈希和编译器语义版本 | 更多已证明规则、e-graph等价类和最低代价提取 |
 | V1后端 | 未修改参考图可调用官方构造器；一般图可走e3nn表示流后端 | 对V1 attention、radial网络和权重语义的精确节点级往返 |
 | V2后端 | 封闭SO(2)+S²路径可融合到官方实现 | 完整Equiformer V2 block、attention、归一化和多分辨率配置 |
 | 成本模型 | 静态参数、FLOPs和资源门控接口 | 经实测校准的保守显存上界和逐原语时延模型 |
@@ -225,7 +226,7 @@ PYTHONPATH=. \
 
 1. 把当前可物化TypedHole最短路扩展为可分支回溯、跨候选共享状态并支持motif级动作的完整部分程序搜索器。
 2. 把当前分量距离提升为对剩余编辑预算严格可证明的下界，并与资源上界联合剪枝。
-3. 严格语义重写证明、e-graph等价类和canonical proof trace。
+3. 在现有proof trace与两条严格规则上增加更多已证明重写、e-graph等价类和最低代价提取。
 4. 从成功谱系执行anti-unification并提出新motif的完整算法。
 5. 语言版本在慢时间尺度上的自动提案、准入、回滚和跨任务回放。
 6. 二维SO(2)/O(2)数值后端与至少一个图像或平面物理任务。
@@ -250,7 +251,7 @@ PYTHONPATH=. \
 ## 十、下一阶段实现顺序
 
 1. 把当前保守诊断映射扩展到motif内部和更多错误类别，并实现跨候选部分状态共享、分支回溯和资源联合剪枝。
-2. 实现严格语义重写和proof trace，确保去重不依赖未经证明的近似规则。
+2. 扩展严格语义重写为e-graph等价类和代价提取，同时维持“未经证明不合并”的准入门。
 3. 扩展V1/V2后端能力矩阵并建立逐节点unsupported诊断。
 4. 实现motif反统一、准入证据和语言慢时间尺度进化。
 5. 增加SO(2)/O(2)数值后端和二维任务，验证群抽象不是三维硬编码。

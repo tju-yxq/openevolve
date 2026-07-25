@@ -88,7 +88,7 @@ Syno把搜索态的维度变换图、lowering后的张量IR和最终代码生成
 
 Syno不是等候完整候选生成后才去重，而是在每次扩展部分图时拒绝非规范路径。这样既减少完整候选重复，也减少无效搜索分支。其规则同时包含严格语义等价规则和较激进的近似规则。
 
-我们的当前canonicalization主要解决节点重命名、稳定序列化和motif展开后的语义ID，还需要增加**类型保持的等变重写规则**，例如：
+当前canonicalization除节点重命名、稳定序列化和motif展开后的语义ID外，已经加入第一批带proof trace的严格规则：identity消除和二元残差操作数规范化。源码审计同时撤销了把`irrep_concat`反序直接视为严格等价的旧假设，因为通道拼接顺序改变参数坐标。后续仍需要增加更多**类型保持且语义可证明的等变重写规则**，例如：
 
 - 连续同类型`irrep_linear`在无非线性与共享约束时的组合；
 - `identity`消除；
@@ -213,7 +213,7 @@ $$
 |---|---|---|---|
 | pGraph/IR | `ast.py`、`compiler.py` | 表面AST与规范IR边界还不够强 | `ir/normalized.py`与显式lowering pass |
 | Primitive interface | `registry.py` | 已有类型规则，但缺少结构化代价、逆操作和完成距离元数据 | 为原语增加effect、cost、repair和lowering contract |
-| Canonicalization | `canonicalize.py` | 主要是稳定命名与序列化 | 类型保持重写系统和等价证明记录 |
+| Canonicalization | `canonicalize.py`、`rewrites.py` | 已有稳定命名、identity消除、残差交换、规则registry哈希和逐步proof trace | 更多条件规则、e-graph等价类和最低代价提取 |
 | Shape distance | `completion.py`中的`TypedHole`、`CompletionDistance`、`program_completion_frontier`和`materialize_completion_patch` | 已能计算表示、frame、carrier、不变量、后端和证明缺口，返回合法原语路径，并物化到输入端口或程序输出；结果写入completion证据表 | 增加分支回溯、跨候选状态共享、motif级动作和资源联合剪枝 |
 | Partial-program tree | `patch.py`、`search.py` | 当前以一次LLM patch事务为主 | 部分程序状态、合法动作枚举和状态共享 |
 | MCTS/session | 外部OpenEvolve流程 | DSL生成器尚未完整接入主循环 | 搜索适配层、archive checkpoint和恢复协议 |

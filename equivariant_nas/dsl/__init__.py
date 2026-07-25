@@ -1,7 +1,7 @@
 """EvoEquiLang: a typed DSL for equivariant neural architectures."""
 
 from .ast import ArchitectureProgram, InputPort, Node, OutputPort
-from .canonicalize import architecture_id, canonicalize
+from .canonicalize import BACKEND_SEMANTICS_VERSION, COMPILER_SEMANTICS_VERSION, architecture_id, canonicalize
 from .compiler import Compiler
 from .completion import AvailableValue, CompletionAction, CompletionDistance, HoleSink, TypedHole, complete_typed_hole, materialize_completion_patch, program_completion_frontier
 from .cost import CostEstimate, enforce_static_resource_contract, estimate_static_cost
@@ -17,6 +17,7 @@ from .patch import PatchEdit, TypedPatch, apply_typed_patch, patch_protocol_sche
 from .reference_motifs import reference_motif_registry
 from .reference_programs import import_equiformer_v1
 from .repair_completion import completion_repair_suggestions
+from .rewrites import RewriteRuleDescriptor, RewriteStep, StrictRewriteResult, apply_strict_rewrites, strict_rewrite_registry_hash
 from .registry import PrimitiveRegistry, core_registry
 from .task import ResourceContract, TaskContract, task_reasoning_context, validate_task_reasoning
 from .search import DSLGenerationEngine, GenerationResult
@@ -24,12 +25,14 @@ from .types import Carrier, EquivarianceLevel, EquivariantType, Frame
 
 __all__ = [
     "ArchitectureProgram",
+    "BACKEND_SEMANTICS_VERSION",
     "Carrier",
     "AvailableValue",
     "CompletionAction",
     "CompletionDistance",
     "CostEstimate",
     "Compiler",
+    "COMPILER_SEMANTICS_VERSION",
     "DSLValidationError",
     "DSLGenerationEngine",
     "Diagnostic",
@@ -56,11 +59,15 @@ __all__ = [
     "TypedHole",
     "TypeChecker",
     "ResourceContract",
+    "RewriteRuleDescriptor",
+    "RewriteStep",
+    "StrictRewriteResult",
     "TaskContract",
     "task_reasoning_context",
     "validate_task_reasoning",
     "architecture_id",
     "apply_typed_patch",
+    "apply_strict_rewrites",
     "patch_protocol_schema",
     "canonicalize",
     "complete_typed_hole",
@@ -79,6 +86,7 @@ __all__ = [
     "planner_prompt",
     "repair_prompt",
     "select_active_vocabulary",
+    "strict_rewrite_registry_hash",
     "synthesizer_prompt",
     "VocabularyDecision",
 ]

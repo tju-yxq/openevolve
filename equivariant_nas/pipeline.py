@@ -26,8 +26,8 @@ def evaluate_candidate_pipeline(
     max_steps: int = 0,
     seed: int = 0,
     parameter_ratio_limit: float = 1.2,
-    symmetry_threshold: float = 2.5e-1,
-    symmetry_warning_threshold: float = 1.0e-2,
+    symmetry_threshold: Optional[float] = None,
+    symmetry_warning_threshold: Optional[float] = None,
     run_symmetry: bool = True,
     gpu_budget_hours: Optional[float] = None,
     resume_checkpoint: str = "",
@@ -64,8 +64,10 @@ def evaluate_candidate_pipeline(
             max_steps=max_steps,
             seed=seed,
             parameter_ratio_limit=parameter_ratio_limit,
-            symmetry_threshold=symmetry_threshold,
-            symmetry_warning_threshold=symmetry_warning_threshold,
+            symmetry_threshold=1.0e-4 if symmetry_threshold is None else symmetry_threshold,
+            symmetry_warning_threshold=(
+                1.0e-5 if symmetry_warning_threshold is None else symmetry_warning_threshold
+            ),
             run_symmetry=run_symmetry,
             gpu_budget_hours=gpu_budget_hours,
             resume_checkpoint=resume_checkpoint,
@@ -80,6 +82,10 @@ def evaluate_candidate_pipeline(
             task_contract_path=dsl_task_contract,
         )
 
+    symmetry_threshold = 2.5e-1 if symmetry_threshold is None else symmetry_threshold
+    symmetry_warning_threshold = (
+        1.0e-2 if symmetry_warning_threshold is None else symmetry_warning_threshold
+    )
     project = Path(project_root)
     subset_fingerprint = ""
     if train_subset_file:

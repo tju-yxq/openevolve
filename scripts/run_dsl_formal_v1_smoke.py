@@ -173,7 +173,10 @@ def _report(output: Path, summary):
                 "{:.6f}".format(float(result["validation_alpha_mae"]))
                 if "validation_alpha_mae" in result
                 else "未训练",
-                "{:.3e}".format(float(result.get("pretrain_max_symmetry_error", float("nan")))),
+                "{:.3e}/{:.3e}".format(
+                    float(result.get("pretrain_max_symmetry_error", float("nan"))),
+                    float(result.get("pretrain_max_absolute_symmetry_error", float("nan"))),
+                ),
                 str(result.get("test_evaluated", False)).lower(),
             )
         )
@@ -191,7 +194,7 @@ def _report(output: Path, summary):
 
 ## 候选验证结果
 
-|候选|因子|Lowering模式|门禁|训练终点Validation MAE|等变最大相对误差|Test参与|
+|候选|因子|Lowering模式|门禁|训练终点Validation MAE|等变最大误差（相对/绝对）|Test参与|
 |---|---|---|---|---:|---:|---|
 {rows}
 
@@ -230,9 +233,6 @@ def run(args):
     }
     for candidate in candidates:
         key = candidate["key"]
-        cached = results.get(key)
-        if cached and cached.get("valid") and int(cached.get("fidelity_steps", -1)) == args.max_steps:
-            continue
         _write_json(
             state_path,
             {

@@ -32,6 +32,19 @@ def _relative_error(actual, expected) -> float:
     return float((actual - expected).norm().detach().cpu()) / stable_scale
 
 
+def _maximum_absolute_error(actual, expected) -> float:
+    return float((actual - expected).abs().max().detach().cpu())
+
+
+def _symmetry_gate_failed(report, relative_threshold: float, absolute_threshold: float) -> bool:
+    """Reject material violations while tolerating float32 noise near zero outputs."""
+
+    return (
+        float(report["maximum"]) > float(relative_threshold)
+        and float(report["maximum_absolute"]) > float(absolute_threshold)
+    )
+
+
 def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
     import torch
     from e3nn import o3
@@ -47,6 +60,7 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
             edge_d_attr=batch.edge_d_attr,
         )
         errors = {}
+        absolute_errors = {}
         for index in range(4):
             rotation = o3.rand_matrix(dtype=batch.pos.dtype, device=batch.pos.device)
             rotated = model(
@@ -57,7 +71,9 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
                 edge_d_index=batch.edge_d_index,
                 edge_d_attr=batch.edge_d_attr,
             )
-            errors["rotation_{:02d}".format(index)] = _relative_error(rotated, reference)
+            key = "rotation_{:02d}".format(index)
+            errors[key] = _relative_error(rotated, reference)
+            absolute_errors[key] = _maximum_absolute_error(rotated, reference)
         for index, translation in enumerate(((1.25, -0.75, 0.5), (-0.4, 0.9, 1.1))):
             translated = model(
                 f_in=batch.x,
@@ -67,7 +83,9 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
                 edge_d_index=batch.edge_d_index,
                 edge_d_attr=batch.edge_d_attr,
             )
-            errors["translation_{:02d}".format(index)] = _relative_error(translated, reference)
+            key = "translation_{:02d}".format(index)
+            errors[key] = _relative_error(translated, reference)
+            absolute_errors[key] = _maximum_absolute_error(translated, reference)
         graph_nodes = [torch.nonzero(batch.batch == graph_id, as_tuple=False).flatten() for graph_id in torch.unique(batch.batch, sorted=True)]
         permutations = (
             torch.cat([nodes.flip(0) for nodes in graph_nodes]),
@@ -82,12 +100,17 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
                 edge_d_index=None,
                 edge_d_attr=None,
             )
-            errors["permutation_{:02d}".format(index)] = _relative_error(permuted, reference)
+            key = "permutation_{:02d}".format(index)
+            errors[key] = _relative_error(permuted, reference)
+            absolute_errors[key] = _maximum_absolute_error(permuted, reference)
     return {
         "protocol_version": "formal-v1-symmetry@1",
         "molecule_count": int(reference.shape[0]),
         "errors": errors,
+        "absolute_errors": absolute_errors,
         "maximum": max(errors.values()),
+        "maximum_absolute": max(absolute_errors.values()),
+        "reference_rms": float(reference.float().square().mean().sqrt().cpu()),
     }
 
 
@@ -181,6 +204,8 @@ def evaluate_dsl_candidate_pipeline(
     parameter_ratio_limit: float = 1.2,
     symmetry_threshold: float = 1.0e-4,
     symmetry_warning_threshold: float = 1.0e-5,
+    symmetry_absolute_threshold: float = 1.0e-5,
+    symmetry_absolute_warning_threshold: float = 1.0e-6,
     run_symmetry: bool = True,
     gpu_budget_hours: Optional[float] = None,
     resume_checkpoint: str = "",
@@ -241,6 +266,7 @@ def evaluate_dsl_candidate_pipeline(
         "max_steps": int(max_steps),
         "run_symmetry": bool(run_symmetry),
         "symmetry_threshold": float(symmetry_threshold),
+        "symmetry_absolute_threshold": float(symmetry_absolute_threshold),
         "parameter_ratio_limit": float(parameter_ratio_limit),
         "batch_size": int(batch_size),
         "train_subset_sha256": subset_fingerprint,
@@ -395,11 +421,20 @@ def evaluate_dsl_candidate_pipeline(
             symmetry = _observable_symmetry_report(model, batch)
             result["pretrain_symmetry_report"] = symmetry
             result["pretrain_max_symmetry_error"] = symmetry["maximum"]
-            result["pretrain_symmetry_warning"] = symmetry["maximum"] > symmetry_warning_threshold
-            if symmetry["maximum"] > symmetry_threshold:
+            result["pretrain_max_absolute_symmetry_error"] = symmetry["maximum_absolute"]
+            result["pretrain_symmetry_warning"] = _symmetry_gate_failed(
+                symmetry,
+                symmetry_warning_threshold,
+                symmetry_absolute_warning_threshold,
+            )
+            if _symmetry_gate_failed(symmetry, symmetry_threshold, symmetry_absolute_threshold):
                 raise ValueError(
-                    "pre-training symmetry error {:.6g} exceeds {:.6g}".format(
-                        symmetry["maximum"], symmetry_threshold
+                    "pre-training symmetry errors relative={:.6g}, absolute={:.6g} "
+                    "exceed thresholds relative={:.6g}, absolute={:.6g}".format(
+                        symmetry["maximum"],
+                        symmetry["maximum_absolute"],
+                        symmetry_threshold,
+                        symmetry_absolute_threshold,
                     )
                 )
             (run_dir / "pretrain_symmetry_report.json").write_text(
@@ -524,14 +559,23 @@ def evaluate_dsl_candidate_pipeline(
                 post = _observable_symmetry_report(audited, batch)
                 result["posttrain_symmetry_report"] = post
                 result["max_symmetry_error"] = post["maximum"]
-                result["symmetry_warning"] = post["maximum"] > symmetry_warning_threshold
+                result["max_absolute_symmetry_error"] = post["maximum_absolute"]
+                result["symmetry_warning"] = _symmetry_gate_failed(
+                    post,
+                    symmetry_warning_threshold,
+                    symmetry_absolute_warning_threshold,
+                )
                 (run_dir / "posttrain_symmetry_report.json").write_text(
                     json.dumps(post, indent=2, sort_keys=True), encoding="utf-8"
                 )
-                if post["maximum"] > symmetry_threshold:
+                if _symmetry_gate_failed(post, symmetry_threshold, symmetry_absolute_threshold):
                     raise ValueError(
-                        "post-training symmetry error {:.6g} exceeds {:.6g}".format(
-                            post["maximum"], symmetry_threshold
+                        "post-training symmetry errors relative={:.6g}, absolute={:.6g} "
+                        "exceed thresholds relative={:.6g}, absolute={:.6g}".format(
+                            post["maximum"],
+                            post["maximum_absolute"],
+                            symmetry_threshold,
+                            symmetry_absolute_threshold,
                         )
                     )
         else:

@@ -11,6 +11,8 @@
     "cyclic_shift_within_graph"
   ],
   "relative_error_threshold": 0.0001,
+  "absolute_error_threshold": 0.00001,
   "warning_threshold": 0.00001,
-  "selection_policy": "hard reject before training and after checkpoint load"
+  "absolute_warning_threshold": 0.000001,
+  "selection_policy": "hard reject before training and after checkpoint load when both relative and absolute thresholds are exceeded"
 }

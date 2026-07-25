@@ -7,6 +7,11 @@ SUPERVISOR_ONCE="${SUPERVISOR_ONCE:-0}"
 LAUNCH_MODE="${LAUNCH_MODE:-}"
 PYTHON="${EQUIFORMER_PYTHON:-/home/20262202788/conda-envs/equiformer/bin/python}"
 mkdir -p "$RUN_ROOT"
+exec 9>"$RUN_ROOT/supervisor.lock"
+if ! flock -n 9; then
+  printf '[%s] another supervisor holds the run lock; exiting\n' "$(date -Iseconds)" >>"$RUN_ROOT/supervisor.log"
+  exit 2
+fi
 
 is_completed() {
   local state="$RUN_ROOT/multifidelity/state.json"
@@ -28,21 +33,19 @@ while [ ! -f "$RUN_ROOT/STOP" ]; do
     touch "$RUN_ROOT/COMPLETED"
     break
   fi
-  if ! pgrep -af "launch_dsl_formal_v1.sh.*$RUN_ROOT" >/dev/null 2>&1; then
-    launch_args=("$RUN_ROOT")
-    if [ -n "$LAUNCH_MODE" ]; then
-      launch_args+=("$LAUNCH_MODE")
-    fi
-    bash "$PROJECT/scripts/launch_dsl_formal_v1.sh" "${launch_args[@]}" >>"$RUN_ROOT/supervisor.log" 2>&1
-    code=$?
-    printf '[%s] launcher exited %s\n' "$(date -Iseconds)" "$code" >>"$RUN_ROOT/supervisor.log"
-    if [ "$code" -eq 0 ] && is_completed; then
-      touch "$RUN_ROOT/COMPLETED"
-      break
-    fi
-    if [ "$SUPERVISOR_ONCE" = "1" ]; then
-      break
-    fi
+  launch_args=("$RUN_ROOT")
+  if [ -n "$LAUNCH_MODE" ]; then
+    launch_args+=("$LAUNCH_MODE")
+  fi
+  bash "$PROJECT/scripts/launch_dsl_formal_v1.sh" "${launch_args[@]}" >>"$RUN_ROOT/supervisor.log" 2>&1
+  code=$?
+  printf '[%s] launcher exited %s\n' "$(date -Iseconds)" "$code" >>"$RUN_ROOT/supervisor.log"
+  if [ "$code" -eq 0 ] && is_completed; then
+    touch "$RUN_ROOT/COMPLETED"
+    break
+  fi
+  if [ "$SUPERVISOR_ONCE" = "1" ]; then
+    break
   fi
   sleep 30
 done

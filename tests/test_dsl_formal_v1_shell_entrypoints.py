@@ -16,3 +16,5 @@ def test_formal_v1_supervisor_stops_after_completion_and_supports_one_shot_valid
     assert 'SUPERVISOR_ONCE="${SUPERVISOR_ONCE:-0}"' in content
     assert 'LAUNCH_MODE="${LAUNCH_MODE:-}"' in content
     assert 'touch "$RUN_ROOT/COMPLETED"' in content
+    assert 'flock -n 9' in content
+    assert "pgrep" not in content

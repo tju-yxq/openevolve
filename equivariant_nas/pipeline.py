@@ -64,9 +64,9 @@ def evaluate_candidate_pipeline(
             max_steps=max_steps,
             seed=seed,
             parameter_ratio_limit=parameter_ratio_limit,
-            symmetry_threshold=1.0e-4 if symmetry_threshold is None else symmetry_threshold,
+            symmetry_threshold=1.0e-2 if symmetry_threshold is None else symmetry_threshold,
             symmetry_warning_threshold=(
-                1.0e-5 if symmetry_warning_threshold is None else symmetry_warning_threshold
+                5.0e-3 if symmetry_warning_threshold is None else symmetry_warning_threshold
             ),
             run_symmetry=run_symmetry,
             gpu_budget_hours=gpu_budget_hours,

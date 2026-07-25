@@ -104,7 +104,7 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
             errors[key] = _relative_error(permuted, reference)
             absolute_errors[key] = _maximum_absolute_error(permuted, reference)
     return {
-        "protocol_version": "formal-v1-symmetry@1",
+        "protocol_version": "formal-v1-symmetry@2",
         "molecule_count": int(reference.shape[0]),
         "errors": errors,
         "absolute_errors": absolute_errors,
@@ -202,10 +202,10 @@ def evaluate_dsl_candidate_pipeline(
     max_steps: int = 0,
     seed: int = 0,
     parameter_ratio_limit: float = 1.2,
-    symmetry_threshold: float = 1.0e-4,
-    symmetry_warning_threshold: float = 1.0e-5,
-    symmetry_absolute_threshold: float = 1.0e-5,
-    symmetry_absolute_warning_threshold: float = 1.0e-6,
+    symmetry_threshold: float = 1.0e-2,
+    symmetry_warning_threshold: float = 5.0e-3,
+    symmetry_absolute_threshold: float = 1.5e-2,
+    symmetry_absolute_warning_threshold: float = 8.0e-3,
     run_symmetry: bool = True,
     gpu_budget_hours: Optional[float] = None,
     resume_checkpoint: str = "",

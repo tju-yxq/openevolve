@@ -257,6 +257,8 @@ def run(args):
         if result.get("test_evaluated"):
             raise RuntimeError("Smoke验证访问了锁定的Test集")
         if not result.get("valid"):
+            if args.allow_gate_rejections:
+                continue
             raise RuntimeError("{}验证失败：{}".format(key, result.get("error", "未知错误")))
         if args.max_steps > 0:
             if int(result.get("endpoint_step", -1)) != args.max_steps:
@@ -268,21 +270,23 @@ def run(args):
         ["git", "-C", args.project_root, "rev-parse", "HEAD"], text=True
     ).strip()
     combined = [dict(candidate, result=results[candidate["key"]]) for candidate in candidates]
+    rejected = [item["key"] for item in combined if not item["result"].get("valid")]
     summary = {
-        "status": "completed",
+        "status": "completed_with_rejections" if rejected else "completed",
         "completed_at": _now(),
         "project_commit": commit,
         "max_steps": args.max_steps,
         "batch_size": args.batch_size,
         "seed": args.seed,
         "test_evaluated": False,
+        "rejected_candidates": rejected,
         "candidates": combined,
     }
     _write_json(output / "summary.json", summary)
     _write_json(
         state_path,
         {
-            "status": "completed",
+            "status": summary["status"],
             "current_candidate": "",
             "updated_at": _now(),
             "results": results,
@@ -315,6 +319,11 @@ def get_parser():
         "--candidate-keys",
         default="",
         help="Optional comma-separated subset of parent,factor_F2_2,factor_F4_4,factor_F5_3,factor_F6_3.",
+    )
+    parser.add_argument(
+        "--allow-gate-rejections",
+        action="store_true",
+        help="Record rejected candidates and finish the matrix instead of stopping at the first hard-gate failure.",
     )
     return parser
 

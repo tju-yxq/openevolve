@@ -1,5 +1,5 @@
 {
-  "protocol_version": "formal-v1-symmetry@1",
+  "protocol_version": "formal-v1-symmetry@2",
   "molecule_count": 16,
   "random_rotations": 4,
   "translations": [
@@ -10,9 +10,17 @@
     "reverse_within_graph",
     "cyclic_shift_within_graph"
   ],
-  "relative_error_threshold": 0.0001,
-  "absolute_error_threshold": 0.00001,
-  "warning_threshold": 0.00001,
-  "absolute_warning_threshold": 0.000001,
+  "relative_error_threshold": 0.01,
+  "absolute_error_threshold": 0.015,
+  "warning_threshold": 0.005,
+  "absolute_warning_threshold": 0.008,
+  "calibration": {
+    "architecture": "official Equiformer V1 parent",
+    "hardware": "NVIDIA A100-SXM4-80GB",
+    "seeds": [201, 202, 203, 204, 205],
+    "observed_max_relative_error": 0.00453571014907851,
+    "observed_max_absolute_error": 0.007137298583984375,
+    "safety_rule": "round upward to at least twice the observed parent maximum"
+  },
   "selection_policy": "hard reject before training and after checkpoint load when both relative and absolute thresholds are exceeded"
 }

@@ -13,7 +13,7 @@ from .inference import InferenceResult, TypeChecker
 from .irreps import Irrep, Irreps
 from .language import LanguageVersion, VocabularyDecision, describe_active_vocabulary, select_active_vocabulary
 from .language_evolution import LanguageEvolutionBoundary, LanguageEvolutionPreregistration, LanguageEvolutionResult, MotifAdmissionRecord, run_language_evolution_boundary
-from .llm_protocol import EvidenceItem, parse_patch_response, parse_planner_response, parse_region_critic_response, parse_region_router_response, planner_prompt, region_critic_prompt, region_router_prompt, repair_prompt, synthesizer_prompt
+from .llm_protocol import EvidenceItem, parse_patch_response, parse_planner_response, parse_region_critic_response, parse_region_router_response, planner_prompt, region_critic_prompt, region_critic_repair_prompt, region_router_prompt, repair_prompt, synthesizer_prompt
 from .motifs import MotifDefinition, MotifRegistry, expand_motifs
 from .motif_discovery import CandidateLineageEvidence, LanguageReplayResult, MotifDiscoveryPolicy, MotifDiscoveryReport, MotifProposal, TypedSubgraphOccurrence, discover_motif_proposals, enumerate_typed_subgraphs, fold_occurrence, replay_motif_proposal
 from .patch import PatchEdit, TypedPatch, apply_typed_patch, patch_protocol_schema
@@ -111,6 +111,7 @@ __all__ = [
     "parse_region_router_response",
     "planner_prompt",
     "region_critic_prompt",
+    "region_critic_repair_prompt",
     "region_router_prompt",
     "repair_prompt",
     "select_active_vocabulary",

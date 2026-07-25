@@ -10,7 +10,7 @@ from .canonicalize import COMPILER_SEMANTICS_VERSION
 from .diagnostics import DSLValidationError, Diagnostic
 from .evidence_store import EvidenceStore
 from .language import VocabularyDecision
-from .llm_protocol import EvidenceItem, parse_patch_response, parse_planner_response, parse_region_critic_response, parse_region_router_response, planner_prompt, planner_repair_prompt, region_critic_prompt, region_router_prompt, repair_prompt, synthesizer_prompt
+from .llm_protocol import EvidenceItem, parse_patch_response, parse_planner_response, parse_region_critic_response, parse_region_router_response, planner_prompt, planner_repair_prompt, region_critic_prompt, region_critic_repair_prompt, region_router_prompt, repair_prompt, synthesizer_prompt
 from .patch import TypedPatch, apply_typed_patch
 from .repair_completion import completion_repair_suggestions
 from .regions import RegionDefinition, region_by_id, validate_region_transition
@@ -29,6 +29,7 @@ class GenerationResult:
     router_response: Mapping[str, Any] = field(default_factory=dict)
     critic_response: Mapping[str, Any] = field(default_factory=dict)
     region_audit: Mapping[str, Any] = field(default_factory=dict)
+    critic_repair_count: int = 0
 
 
 class DSLGenerationEngine:
@@ -236,19 +237,42 @@ class DSLGenerationEngine:
             self.compiler.primitives,
             self.compiler.motifs,
         )
+        current_critic_request = critic_request
         critic_text = await self._call(ensemble, critic_request)
-        self.store.add_prompt_run(
-            parent_id,
-            role="region_critic",
-            model=self.model_name,
-            prompt=critic_request,
-            response_text=critic_text,
-            vocabulary=self.vocabulary,
-            evidence_ids=[item.evidence_id for item in evidence],
-            visible_splits=[item.split for item in evidence],
-            token_usage={},
-        )
-        critic = parse_region_critic_response(critic_text, region)
+        critic = None
+        critic_repair_count = 0
+        for critic_attempt in range(self.repair_attempts + 1):
+            self.store.add_prompt_run(
+                parent_id,
+                role="region_critic" if critic_attempt == 0 else "region_critic_repairer",
+                model=self.model_name,
+                prompt=current_critic_request,
+                response_text=critic_text,
+                vocabulary=self.vocabulary,
+                evidence_ids=[item.evidence_id for item in evidence],
+                visible_splits=[item.split for item in evidence],
+                token_usage={},
+            )
+            try:
+                critic = parse_region_critic_response(critic_text, region)
+                critic_repair_count = critic_attempt
+                break
+            except DSLValidationError as exc:
+                if critic_attempt >= self.repair_attempts:
+                    self.store.add_compiler_run(
+                        parent_id,
+                        COMPILER_SEMANTICS_VERSION,
+                        "region_critic_protocol_failed",
+                        diagnostics=exc.diagnostics,
+                    )
+                    raise
+                current_critic_request = region_critic_repair_prompt(
+                    critic_request,
+                    critic_text,
+                    exc.diagnostics,
+                    region,
+                )
+                critic_text = await self._call(ensemble, current_critic_request)
         plan = {
             "claim": critic["claim"],
             "scope": list(region.editable_targets),
@@ -344,15 +368,16 @@ class DSLGenerationEngine:
                     rewrite_registry_hash=child.rewrite_registry_hash,
                 )
                 return GenerationResult(
-                    parent,
-                    child,
-                    patch,
-                    plan,
-                    attempt,
-                    0,
-                    router,
-                    critic,
-                    dict(region_audit, lowering_plan=lowering.to_dict()),
+                    parent=parent,
+                    child=child,
+                    patch=patch,
+                    planner_response=plan,
+                    repair_count=attempt,
+                    planner_repair_count=0,
+                    router_response=router,
+                    critic_response=critic,
+                    region_audit=dict(region_audit, lowering_plan=lowering.to_dict()),
+                    critic_repair_count=critic_repair_count,
                 )
             except (DSLValidationError, ValueError) as exc:
                 diagnostics = exc.diagnostics if isinstance(exc, DSLValidationError) else ()

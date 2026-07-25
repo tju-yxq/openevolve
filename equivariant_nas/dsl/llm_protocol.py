@@ -279,6 +279,37 @@ def parse_region_critic_response(text: str, region: RegionDefinition) -> Dict[st
     return value
 
 
+def region_critic_repair_prompt(
+    original_prompt: Mapping[str, str],
+    response_text: str,
+    diagnostics: Sequence[Diagnostic],
+    region: RegionDefinition,
+) -> Dict[str, str]:
+    """Repair only the critic protocol envelope without changing its routed factor."""
+
+    original_request = json.loads(original_prompt["user"])
+    payload = {
+        "instruction": (
+            "Rewrite the rejected region critic response as exactly one JSON object matching "
+            "response_schema. Preserve the original scientific claim and evidence. Do not change "
+            "factor_id, region_id, mechanism, or proposed intervention. Do not add Markdown, code "
+            "fences, source code, new evidence, or extra keys."
+        ),
+        "immutable_factor_id": region.factor_id,
+        "immutable_region_id": region.region_id,
+        "response_schema": original_request["response_schema"],
+        "rejected_response": response_text[:12000],
+        "parser_diagnostics": [item.to_dict() for item in diagnostics],
+    }
+    return {
+        "system": (
+            "You are a strict region-critic JSON protocol repairer. Output one JSON object and "
+            "nothing else. The routed factor and region are immutable."
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
 def planner_repair_prompt(
     original_prompt: Mapping[str, str],
     response_text: str,

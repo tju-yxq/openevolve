@@ -832,6 +832,7 @@ async def run(args):
                     "region_audit": dict(generated.region_audit),
                     "repair_count": generated.repair_count,
                     "planner_repair_count": generated.planner_repair_count,
+                    "critic_repair_count": generated.critic_repair_count,
                 }
                 record.update(dict(generation_metadata, planner_response=dict(generated.planner_response)))
                 _write_json(current_path, {

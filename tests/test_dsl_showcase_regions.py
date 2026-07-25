@@ -142,3 +142,71 @@ def test_fixed_router_critic_synthesizer_flow_produces_certified_hybrid(tmp_path
     assert result.region_audit["lowering_plan"]["mode"] == "exact_hybrid"
     assert result.router_response["region_id"] == "v1_readout"
     assert result.critic_response["region_id"] == "v1_readout"
+
+
+def test_region_critic_schema_failure_is_repaired_without_changing_factor(tmp_path):
+    parent, compiler, task, vocabulary, store = _objects(tmp_path)
+    parent_id = compiler.analyze(parent, task).architecture_id
+    router = json.dumps({
+        "factor_id": "F6.3",
+        "region_id": "v1_readout",
+        "rationale": "readout intervention",
+        "evidence_refs": [],
+        "expected_value": "measure a local readout change",
+        "risk": "no improvement",
+    })
+    malformed_critic = json.dumps({
+        "factor_id": "F6.3",
+        "region_id": "v1_readout",
+        "claim": "tap block3",
+        "mechanism": "intermediate invariants may help",
+        "edit_plan": ["replace readout"],
+        "preserved_invariants": ["keep output scalar"],
+        "evidence_refs": [],
+        "uncertainty": "high",
+        "risk": "overfit",
+        "acceptance_metrics": ["validation MAE"],
+        "commentary": "extra key",
+    })
+    repaired_critic = json.dumps({
+        "factor_id": "F6.3",
+        "region_id": "v1_readout",
+        "claim": "tap block3",
+        "mechanism": "intermediate invariants may help",
+        "edit_plan": ["replace readout"],
+        "preserved_invariants": ["keep output scalar"],
+        "evidence_refs": [],
+        "uncertainty": "high",
+        "risk": "overfit",
+        "acceptance_metrics": ["validation MAE"],
+    })
+    replacement = replace(
+        parent.nodes[-1],
+        op="motif.v1_multilevel_readout",
+        inputs={"terminal": ("scalar_readout",), "aux": ("block3",)},
+        attrs={},
+    )
+    patch = json.dumps({
+        "patch_version": "1.0",
+        "parent_architecture_id": parent_id,
+        "language_version": parent.language_version,
+        "hypothesis": {"factor_id": "F6.3", "claim": "tap block3"},
+        "scope": ["graph_pool", "output:prediction"],
+        "edits": [{"kind": "replace_node", "target": "graph_pool", "payload": {"node": replacement.to_dict()}}],
+        "preconditions": [],
+        "postconditions": [],
+        "expected_effects": {"accuracy": "hypothesis_only"},
+    })
+    ensemble = FakeEnsemble([router, malformed_critic, repaired_critic, patch])
+    engine = DSLGenerationEngine(compiler, task, vocabulary, store, model_name="fake", repair_attempts=1)
+    result = asyncio.run(engine.generate_region_candidate(ensemble, parent, (), v1_region_registry(parent)))
+    assert result.critic_repair_count == 1
+    assert result.critic_response["factor_id"] == "F6.3"
+    repair_payload = json.loads(ensemble.calls[2]["messages"][0]["content"])
+    assert repair_payload["immutable_factor_id"] == "F6.3"
+    assert repair_payload["immutable_region_id"] == "v1_readout"
+
+    import sqlite3
+    with sqlite3.connect(str(tmp_path / "evidence.sqlite")) as connection:
+        roles = [row[0] for row in connection.execute("SELECT role FROM prompt_runs ORDER BY created_at")]
+    assert roles == ["factor_router", "region_critic", "region_critic_repairer", "patch_synthesizer"]

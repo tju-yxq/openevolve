@@ -98,6 +98,7 @@ def run_pipeline(args, candidate, *, max_steps, checkpoint, subset_file, transit
     environment = os.environ.copy()
     environment["PYTHONPATH"] = args.project_root
     environment["EQUIFORMER_PYTHON"] = args.python
+    environment["NAS_GPU_BUDGET_HOURS"] = str(args.gpu_budget_hours)
     completed = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment, check=False)
     if completed.returncode != 0:
         raise RuntimeError("pipeline exited {}: {}".format(completed.returncode, completed.stderr[-2000:]))
@@ -192,6 +193,7 @@ def main():
     parser.add_argument("--task-contract", required=True)
     parser.add_argument("--quarter-subset-file", required=True)
     parser.add_argument("--python", default=os.environ.get("EQUIFORMER_PYTHON", "/home/20262202788/conda-envs/equiformer/bin/python"))
+    parser.add_argument("--gpu-budget-hours", type=float, default=float(os.environ.get("NAS_GPU_BUDGET_HOURS", "80.0")))
     parser.add_argument("--seed", type=int, default=201)
     parser.add_argument("--cohort", type=int, default=8)
     parser.add_argument("--promote-80k", type=int, default=4)
@@ -213,6 +215,7 @@ def main():
         "full_transition": "model_only_optimizer_restart",
         "parent_baseline": "same_seed_same_data_schedule_to_250000",
         "parent_program_sha256": hashlib.sha256(Path(args.parent_program).read_bytes()).hexdigest(),
+        "gpu_budget_hours": float(args.gpu_budget_hours),
     }
     state_path = root / "state.json"
     state = read_json(state_path, {"stage": "collect_8k", "protocol": protocol, "created_at": now()})

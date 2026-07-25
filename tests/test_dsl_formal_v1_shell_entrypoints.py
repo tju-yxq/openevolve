@@ -8,10 +8,12 @@ def test_formal_v1_launcher_exposes_safe_preflight_only_mode():
     assert 'if [ "$MODE" = "--preflight-only" ]' in content
     assert content.index("preflight_dsl_formal_v1.py") < content.index("--preflight-only")
     assert 'NAS_BUDGET_LEDGER="${NAS_BUDGET_LEDGER:-$RUN_ROOT/budget_ledger.jsonl}"' in content
+    assert 'NAS_GPU_BUDGET_HOURS="${NAS_GPU_BUDGET_HOURS:-80.0}"' in content
     assert "--valid-per-factor-target 2" in content
     assert '--parent-program "$RUN_ROOT/initial_program.dsl.json"' in content
     assert '--train-subset-file "$PROJECT/data_splits/qm9_train_quarter_seed201.npz"' in content
     assert "--eval-interval-epochs 10" in content
+    assert '--gpu-budget-hours "$NAS_GPU_BUDGET_HOURS"' in content
 
 
 def test_formal_v1_supervisor_stops_after_completion_and_supports_one_shot_validation():

@@ -14,7 +14,7 @@ exec > >(tee -a "$RUN_ROOT/controller.log") 2>&1
 
 export PYTHONPATH="$PROJECT"
 export EQUIFORMER_PYTHON="$EQUIFORMER_PY"
-export NAS_GPU_BUDGET_HOURS="${NAS_GPU_BUDGET_HOURS:-40.0}"
+export NAS_GPU_BUDGET_HOURS="${NAS_GPU_BUDGET_HOURS:-80.0}"
 export NAS_FALLBACK_SECONDS_PER_STEP="${NAS_FALLBACK_SECONDS_PER_STEP:-0.12}"
 export NAS_BUDGET_LEDGER="${NAS_BUDGET_LEDGER:-$RUN_ROOT/budget_ledger.jsonl}"
 
@@ -52,6 +52,7 @@ fi
   --task-contract "$PROJECT/configs/qm9_alpha_formal_v1_task.json" \
   --quarter-subset-file "$PROJECT/data_splits/qm9_train_quarter_seed201.npz" \
   --python "$EQUIFORMER_PY" \
+  --gpu-budget-hours "$NAS_GPU_BUDGET_HOURS" \
   --seed 201
 
 "$EQUIFORMER_PY" "$PROJECT/scripts/finalize_dsl_formal_v1.py" \

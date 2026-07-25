@@ -81,29 +81,42 @@ def main():
         if not factor.parameter_paths:
             factor_results.append({"factor_id": factor.factor_id, "region_id": factor.region_id, "mode": "exact_hybrid", "status": "existing-certified-region"})
             continue
-        path = factor.parameter_paths[0]
-        field = path.rsplit(".", 1)[1]
-        option = factor.alternative_options[0]
-        patch = TypedPatch(
-            "1.0",
-            parent_id,
-            parent.language_version,
-            {"factor_id": factor.factor_id, "claim": "preflight constructor mutation"},
-            (path,),
-            (PatchEdit("change_parameters", path, {"value": option[field]}),),
-        )
-        child = apply_typed_patch(
-            parent,
-            patch,
-            compiler.primitives,
-            expected_parent_id=parent_id,
-            validate_child_with_core_registry=False,
-        )
-        region = next(item for item in regions if item.region_id == factor.region_id)
-        audit = validate_region_transition(parent, child, region)
-        plan = compiler.plan_lowering(child)
-        check("factor:{}".format(factor.factor_id), plan.mode == "exact_constructor", plan.to_dict())
-        factor_results.append({"factor_id": factor.factor_id, "region_id": factor.region_id, "mode": plan.mode, "audit": audit})
+        for option_index, option in enumerate(factor.alternative_options):
+            edits = tuple(
+                PatchEdit("change_parameters", path, {"value": option[path.rsplit(".", 1)[1]]})
+                for path in factor.parameter_paths
+            )
+            patch = TypedPatch(
+                "1.0",
+                parent_id,
+                parent.language_version,
+                {"factor_id": factor.factor_id, "claim": "preflight constructor mutation"},
+                factor.parameter_paths,
+                edits,
+            )
+            child = apply_typed_patch(
+                parent,
+                patch,
+                compiler.primitives,
+                expected_parent_id=parent_id,
+                validate_child_with_core_registry=False,
+            )
+            region = next(item for item in regions if item.region_id == factor.region_id)
+            audit = validate_region_transition(parent, child, region)
+            plan = compiler.plan_lowering(child)
+            check(
+                "factor:{}:option{}".format(factor.factor_id, option_index),
+                plan.mode == "exact_constructor",
+                plan.to_dict(),
+            )
+            factor_results.append({
+                "factor_id": factor.factor_id,
+                "region_id": factor.region_id,
+                "option_index": option_index,
+                "option": dict(option),
+                "mode": plan.mode,
+                "audit": audit,
+            })
 
     initial_program = run_root / "initial_program.dsl.json"
     initial_program.write_text(dumps_program(parent), encoding="utf-8")

@@ -1,5 +1,15 @@
 # Equivariant Architecture Self-Evolution
 
+## 正式V1
+
+当前`codex/equivariant-dsl`分支已经实现可运行的等变DSL正式V1，并正在A100服务器执行预注册的QM9极化率`8→4→2`实验。
+
+- [正式V1总入口](./正式V1入口.md)
+- [正式V1可运行实验实现计划](./设计文档/正式V1可运行实验实现计划.md)
+- [正式V1实现状态与运行证据](./设计文档/正式V1实现状态与运行证据.md)
+
+正式V1采用四个认证叶子因子、单因子Scope冻结、三阶段LLM生成、编译与等变门禁、多保真Validation晋级、父代同协议对照和冻结后一次Evaluation-only Test。下文保留早期阶段一研究假设和原型历史，不应将其中旧预算或旧候选协议误认为当前正式V1协议。
+
 Research prototype for symmetry-preserving, LLM-driven neural architecture
 search on Equiformer and QM9 polarizability (`target=1`).
 

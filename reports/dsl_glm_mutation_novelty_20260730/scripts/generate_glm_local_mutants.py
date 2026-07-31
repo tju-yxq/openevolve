@@ -72,6 +72,8 @@ def parse_args():
     parser.add_argument("--epsilon-decay-attempts", type=float, default=24.0)
     parser.add_argument("--stagnation-patience", type=int, default=6)
     parser.add_argument("--stagnation-boost", type=float, default=0.20)
+    parser.add_argument("--maximum-factor-share", type=float, default=0.50)
+    parser.add_argument("--repeat-factor-penalty", type=float, default=0.35)
     parser.add_argument(
         "--experience-file",
         default="",
@@ -79,8 +81,14 @@ def parse_args():
     )
     parser.add_argument("--audit-script", default="")
     parser.add_argument("--audit-seed", type=int, default=201)
+    parser.add_argument(
+        "--audit-seeds",
+        default="",
+        help="Optional comma-separated robust-admission seeds; defaults to audit-seed only.",
+    )
     parser.add_argument("--audit-dtype", choices=("float32", "float64"), default="float64")
     parser.add_argument("--audit-timeout", type=float, default=300.0)
+    parser.add_argument("--minimum-output-norm-ratio", type=float, default=0.0)
     parser.add_argument("--maximum-output-norm-ratio", type=float, default=100.0)
     parser.add_argument("--maximum-inserted-gradient", type=float, default=1.0e8)
     return parser.parse_args()
@@ -1211,7 +1219,15 @@ def load_experience_file(path: str) -> list:
     return [dict(item) for item in payload]
 
 
-def run_numerical_audit(args, project_root: Path, parent_path: Path, candidate_path: Path, output_path: Path):
+def run_numerical_audit(
+    args,
+    project_root: Path,
+    parent_path: Path,
+    candidate_path: Path,
+    output_path: Path,
+    *,
+    seed: int = None,
+):
     if not args.audit_script:
         return None
     command = [
@@ -1228,7 +1244,7 @@ def run_numerical_audit(args, project_root: Path, parent_path: Path, candidate_p
         "--translations", "2",
         "--permutations", "3",
         "--joint", "2",
-        "--seed", str(args.audit_seed),
+        "--seed", str(args.audit_seed if seed is None else int(seed)),
     ]
     completed = subprocess.run(
         command,
@@ -1257,6 +1273,17 @@ def maximum_inserted_gradient(audit: Mapping[str, Any]) -> float:
         if item.get("gradient_norm") is not None
     ]
     return max(values, default=0.0)
+
+
+def configured_audit_seeds(args) -> Tuple[int, ...]:
+    values = [
+        int(item.strip())
+        for item in str(args.audit_seeds).split(",")
+        if item.strip()
+    ]
+    if not values:
+        values = [int(args.audit_seed)]
+    return tuple(dict.fromkeys(values))
 
 
 def experience_row(
@@ -1418,12 +1445,24 @@ def select_annealed_epsilon_factor(
     epsilon_decay_attempts: float,
     stagnation_patience: int,
     stagnation_boost: float,
+    total_candidate_count: int,
+    maximum_factor_share: float,
+    repeat_factor_penalty: float,
 ) -> Tuple[str, Dict[str, Any]]:
     ordered = tuple(dict.fromkeys(str(item) for item in sequence if str(item)))
     if not ordered:
         return "", {}
     statistics = factor_policy_statistics(ordered, experience, accepted)
     counts = accepted_factor_counts(accepted)
+    maximum_count = max(
+        max([int(value) for value in targets.values()] or [0]),
+        int(math.ceil(max(0.0, float(maximum_factor_share)) * int(total_candidate_count))),
+    )
+    share_eligible = [
+        factor_id for factor_id in ordered if counts.get(factor_id, 0) < maximum_count
+    ]
+    if not share_eligible:
+        share_eligible = list(ordered)
     undercovered = [
         factor_id
         for factor_id in ordered
@@ -1456,20 +1495,27 @@ def select_annealed_epsilon_factor(
             rng,
         )
     elif rng.random() < epsilon:
-        pool = list(ordered)
+        pool = list(share_eligible)
         mode = "curiosity_explore"
+        last_factor = str(experience[-1].get("factor_id", "")) if experience else ""
         selected = weighted_factor_choice(
             pool,
-            [statistics[item]["exploration_score"] for item in pool],
+            [
+                statistics[item]["exploration_score"]
+                * (float(repeat_factor_penalty) if item == last_factor else 1.0)
+                for item in pool
+            ],
             rng,
         )
     else:
-        pool = list(ordered)
+        pool = list(share_eligible)
         mode = "reward_exploit"
+        last_factor = str(experience[-1].get("factor_id", "")) if experience else ""
         selected = max(
             pool,
             key=lambda item: (
-                statistics[item]["exploitation_score"],
+                statistics[item]["exploitation_score"]
+                * (float(repeat_factor_penalty) if item == last_factor else 1.0),
                 -ordered.index(item),
             ),
         )
@@ -1485,6 +1531,10 @@ def select_annealed_epsilon_factor(
         "selection_mode": mode,
         "selected_factor_id": selected,
         "minimum_targets": {str(key): int(value) for key, value in targets.items()},
+        "maximum_factor_share": float(maximum_factor_share),
+        "maximum_factor_count": int(maximum_count),
+        "share_eligible_factors": list(share_eligible),
+        "repeat_factor_penalty": float(repeat_factor_penalty),
         "factor_statistics": statistics,
         "curiosity_semantics": (
             "explore uncertain or under-covered factors while keeping each candidate single-factor"
@@ -1646,6 +1696,8 @@ async def run(args):
                 "epsilon_decay_attempts": float(args.epsilon_decay_attempts),
                 "stagnation_patience": int(args.stagnation_patience),
                 "stagnation_boost": float(args.stagnation_boost),
+                "maximum_factor_share": float(args.maximum_factor_share),
+                "repeat_factor_penalty": float(args.repeat_factor_penalty),
                 "rule": (
                     "epsilon controls factor/topology exploration; every candidate remains single-factor"
                 ),
@@ -1656,7 +1708,9 @@ async def run(args):
             "numerical_admission": {
                 "audit_script": str(Path(args.audit_script).resolve()) if args.audit_script else "",
                 "audit_seed": int(args.audit_seed),
+                "audit_seeds": list(configured_audit_seeds(args)),
                 "audit_dtype": str(args.audit_dtype),
+                "minimum_output_norm_ratio": float(args.minimum_output_norm_ratio),
                 "maximum_output_norm_ratio": float(args.maximum_output_norm_ratio),
                 "maximum_inserted_gradient": float(args.maximum_inserted_gradient),
                 "enforced": args.protocol == "factor_isolated_experience",
@@ -1675,24 +1729,32 @@ async def run(args):
         },
     )
 
+    audit_seeds = configured_audit_seeds(args)
     parent_numerical = None
     parent_reference_norm = None
+    parent_numerical_by_seed: Dict[int, Mapping[str, Any]] = {}
+    parent_reference_norms: Dict[int, float] = {}
     if args.audit_script:
-        parent_audit_path = output / "numerical_audit" / "parent_seed{}.json".format(args.audit_seed)
-        parent_numerical = (
-            json.loads(parent_audit_path.read_text(encoding="utf-8"))
-            if parent_audit_path.is_file()
-            else run_numerical_audit(
-                args,
-                project_root,
-                output / "audit_parent.dsl.json",
-                output / "audit_parent.dsl.json",
-                parent_audit_path,
+        for seed in audit_seeds:
+            parent_audit_path = output / "numerical_audit" / "parent_seed{}.json".format(seed)
+            numerical = (
+                json.loads(parent_audit_path.read_text(encoding="utf-8"))
+                if parent_audit_path.is_file()
+                else run_numerical_audit(
+                    args,
+                    project_root,
+                    output / "audit_parent.dsl.json",
+                    output / "audit_parent.dsl.json",
+                    parent_audit_path,
+                    seed=seed,
+                )
             )
-        )
-        parent_reference_norm = float(
-            (parent_numerical.get("reference_output") or {}).get("norm", 0.0)
-        )
+            parent_numerical_by_seed[int(seed)] = numerical
+            parent_reference_norms[int(seed)] = float(
+                (numerical.get("reference_output") or {}).get("norm", 0.0)
+            )
+        parent_numerical = parent_numerical_by_seed[int(audit_seeds[0])]
+        parent_reference_norm = parent_reference_norms[int(audit_seeds[0])]
 
     accepted = load_jsonl(output / "generation.jsonl")
     failures = load_jsonl(output / "failures.jsonl")
@@ -1748,6 +1810,9 @@ async def run(args):
                 epsilon_decay_attempts=float(args.epsilon_decay_attempts),
                 stagnation_patience=int(args.stagnation_patience),
                 stagnation_boost=float(args.stagnation_boost),
+                total_candidate_count=int(args.count),
+                maximum_factor_share=float(args.maximum_factor_share),
+                repeat_factor_penalty=float(args.repeat_factor_penalty),
             )
         regions = build_regions(args.protocol, experience)
         selected_lessons = compact_factor_experience(experience, forced_factor_id) if forced_factor_id else ()
@@ -1775,6 +1840,10 @@ async def run(args):
                     ],
                     "stability_contract": {
                         "bounded_gate_functions": ["tanh", "sigmoid"],
+                        "robust_audit_seeds": list(audit_seeds),
+                        "minimum_random_weight_output_norm_ratio": float(
+                            args.minimum_output_norm_ratio
+                        ),
                         "maximum_random_weight_output_norm_ratio": float(args.maximum_output_norm_ratio),
                         "maximum_inserted_gradient_norm": float(args.maximum_inserted_gradient),
                         "no_training_evidence_available": True,
@@ -1869,27 +1938,68 @@ async def run(args):
                 )
                 raw_path.parent.mkdir(parents=True, exist_ok=True)
                 raw_path.write_text(dumps_program(raw_child_program), encoding="utf-8")
-            numerical = run_numerical_audit(
-                args,
-                project_root,
-                output / "audit_parent.dsl.json",
-                candidate_path,
-                output / "numerical_audit" / (stem + "_seed{}.json".format(args.audit_seed)),
-            )
-            output_norm_ratio = None
-            if numerical is not None and parent_reference_norm is not None:
-                candidate_norm = float((numerical.get("reference_output") or {}).get("norm", 0.0))
-                output_norm_ratio = candidate_norm / max(parent_reference_norm, 1.0e-30)
-            gradient_maximum = maximum_inserted_gradient(numerical or {})
-            numerical_passed = bool(
-                numerical is None
-                or (
-                    numerical.get("equivariance_passed") is True
-                    and (numerical.get("inserted_computation_path_activity") or {}).get("status") == "active"
-                    and output_norm_ratio is not None
-                    and output_norm_ratio <= float(args.maximum_output_norm_ratio)
-                    and gradient_maximum <= float(args.maximum_inserted_gradient)
+            numerical_by_seed: Dict[int, Mapping[str, Any]] = {}
+            seed_admission = []
+            for audit_seed in audit_seeds:
+                numerical_item = run_numerical_audit(
+                    args,
+                    project_root,
+                    output / "audit_parent.dsl.json",
+                    candidate_path,
+                    output / "numerical_audit" / (stem + "_seed{}.json".format(audit_seed)),
+                    seed=audit_seed,
                 )
+                numerical_by_seed[int(audit_seed)] = numerical_item
+                output_norm_ratio_item = None
+                if numerical_item is not None and int(audit_seed) in parent_reference_norms:
+                    candidate_norm = float(
+                        (numerical_item.get("reference_output") or {}).get("norm", 0.0)
+                    )
+                    output_norm_ratio_item = candidate_norm / max(
+                        parent_reference_norms[int(audit_seed)], 1.0e-30
+                    )
+                gradient_item = maximum_inserted_gradient(numerical_item or {})
+                path_status = (
+                    "unknown"
+                    if numerical_item is None
+                    else (numerical_item.get("inserted_computation_path_activity") or {}).get(
+                        "status", "unknown"
+                    )
+                )
+                passed_item = bool(
+                    numerical_item is not None
+                    and numerical_item.get("equivariance_passed") is True
+                    and path_status == "active"
+                    and output_norm_ratio_item is not None
+                    and output_norm_ratio_item >= float(args.minimum_output_norm_ratio)
+                    and output_norm_ratio_item <= float(args.maximum_output_norm_ratio)
+                    and gradient_item <= float(args.maximum_inserted_gradient)
+                )
+                seed_admission.append(
+                    {
+                        "seed": int(audit_seed),
+                        "equivariance_passed": None
+                        if numerical_item is None
+                        else numerical_item.get("equivariance_passed"),
+                        "path_activity": path_status,
+                        "output_norm_ratio_to_parent": output_norm_ratio_item,
+                        "maximum_inserted_gradient": gradient_item,
+                        "passed": passed_item,
+                    }
+                )
+            numerical = numerical_by_seed.get(int(audit_seeds[0]))
+            output_norm_ratios = [
+                item["output_norm_ratio_to_parent"]
+                for item in seed_admission
+                if item["output_norm_ratio_to_parent"] is not None
+            ]
+            output_norm_ratio = output_norm_ratios[0] if output_norm_ratios else None
+            gradient_maximum = max(
+                [float(item["maximum_inserted_gradient"]) for item in seed_admission]
+                or [0.0]
+            )
+            numerical_passed = bool(
+                not args.audit_script or (seed_admission and all(item["passed"] for item in seed_admission))
             )
             admission_passed = bool(
                 factor_audit["passed"]
@@ -1897,14 +2007,26 @@ async def run(args):
                 and numerical_passed
             )
             audit["numerical"] = {
-                "available": numerical is not None,
-                "equivariance_passed": None if numerical is None else numerical.get("equivariance_passed"),
+                "available": bool(numerical_by_seed),
+                "audit_seeds": list(audit_seeds),
+                "equivariance_passed": bool(
+                    seed_admission
+                    and all(item["equivariance_passed"] is True for item in seed_admission)
+                ),
                 "path_activity": (
-                    "unknown" if numerical is None
-                    else (numerical.get("inserted_computation_path_activity") or {}).get("status", "unknown")
+                    "active"
+                    if seed_admission and all(item["path_activity"] == "active" for item in seed_admission)
+                    else "unknown"
                 ),
                 "output_norm_ratio_to_parent": output_norm_ratio,
+                "minimum_output_norm_ratio_to_parent": min(output_norm_ratios)
+                if output_norm_ratios
+                else None,
+                "maximum_output_norm_ratio_to_parent": max(output_norm_ratios)
+                if output_norm_ratios
+                else None,
                 "maximum_inserted_gradient": gradient_maximum,
+                "per_seed": seed_admission,
                 "passed": numerical_passed,
             }
             audit["admission_passed"] = admission_passed
@@ -1928,6 +2050,16 @@ async def run(args):
                 numerical=numerical,
                 output_norm_ratio=output_norm_ratio,
             )
+            memory["equivariance_passed"] = audit["numerical"]["equivariance_passed"]
+            memory["path_activity"] = audit["numerical"]["path_activity"]
+            memory["output_norm_ratio"] = audit["numerical"].get(
+                "maximum_output_norm_ratio_to_parent"
+            )
+            memory["minimum_output_norm_ratio"] = audit["numerical"].get(
+                "minimum_output_norm_ratio_to_parent"
+            )
+            memory["maximum_inserted_gradient"] = gradient_maximum
+            memory["audit_seeds"] = list(audit_seeds)
             experience.append(memory)
             if args.protocol == "factor_isolated_experience" and not admission_passed:
                 rejection = {
@@ -1985,9 +2117,15 @@ async def run(args):
                 "factor_policy_snapshot": dict(factor_policy_snapshot),
                 "audit": audit,
                 "numerical_audit_path": (
-                    str(output / "numerical_audit" / (stem + "_seed{}.json".format(args.audit_seed)))
+                    str(output / "numerical_audit" / (stem + "_seed{}.json".format(audit_seeds[0])))
                     if numerical is not None else ""
                 ),
+                "numerical_audit_paths": {
+                    str(seed): str(
+                        output / "numerical_audit" / (stem + "_seed{}.json".format(seed))
+                    )
+                    for seed in audit_seeds
+                },
                 "training_started": False,
                 "test_split_loaded": False,
             }
@@ -2057,6 +2195,8 @@ async def run(args):
             "epsilon_decay_attempts": float(args.epsilon_decay_attempts),
             "stagnation_patience": int(args.stagnation_patience),
             "stagnation_boost": float(args.stagnation_boost),
+            "maximum_factor_share": float(args.maximum_factor_share),
+            "repeat_factor_penalty": float(args.repeat_factor_penalty),
         },
         "accepted_candidate_count": len(accepted),
         "requested_candidate_count": int(args.count),
@@ -2105,6 +2245,8 @@ async def run(args):
                 "equivariance_passed": item["audit"].get("numerical", {}).get("equivariance_passed"),
                 "path_activity": item["audit"].get("numerical", {}).get("path_activity"),
                 "output_norm_ratio_to_parent": item["audit"].get("numerical", {}).get("output_norm_ratio_to_parent"),
+                "minimum_output_norm_ratio_to_parent": item["audit"].get("numerical", {}).get("minimum_output_norm_ratio_to_parent"),
+                "maximum_output_norm_ratio_to_parent": item["audit"].get("numerical", {}).get("maximum_output_norm_ratio_to_parent"),
                 "maximum_inserted_gradient": item["audit"].get("numerical", {}).get("maximum_inserted_gradient"),
             }
             for item in accepted

@@ -37,6 +37,9 @@ def test_minimum_coverage_precedes_epsilon_exploitation():
         epsilon_decay_attempts=24.0,
         stagnation_patience=6,
         stagnation_boost=0.20,
+        total_candidate_count=4,
+        maximum_factor_share=0.50,
+        repeat_factor_penalty=0.35,
     )
     assert selected == "E6.2"
     assert snapshot["selection_mode"] == "minimum_coverage"
@@ -54,6 +57,9 @@ def test_epsilon_anneals_but_keeps_nonzero_floor():
         epsilon_decay_attempts=24.0,
         stagnation_patience=0,
         stagnation_boost=0.20,
+        total_candidate_count=4,
+        maximum_factor_share=0.50,
+        repeat_factor_penalty=0.35,
     )
     _, early = MODULE.select_annealed_epsilon_factor(attempt=1, **common)
     _, late = MODULE.select_annealed_epsilon_factor(attempt=200, **common)
@@ -77,3 +83,30 @@ def test_multiseed_acceptance_has_more_exploitation_weight():
     stats = MODULE.factor_policy_statistics(("E6.1", "E6.2"), experience, ())
     assert stats["E6.1"]["exploitation_score"] > stats["E6.2"]["exploitation_score"]
 
+
+def test_factor_share_cap_blocks_overrepresented_factor():
+    accepted = (
+        {"factor_id": "E6.1"},
+        {"factor_id": "E6.1"},
+        {"factor_id": "E6.2"},
+        {"factor_id": "E6.3"},
+        {"factor_id": "E6.4"},
+    )
+    selected, snapshot = MODULE.select_annealed_epsilon_factor(
+        sequence=("E6.1", "E6.2", "E6.3", "E6.4"),
+        targets={"E6.1": 1, "E6.2": 1, "E6.3": 1, "E6.4": 1},
+        accepted=accepted,
+        experience=(),
+        attempt=8,
+        seed=201,
+        epsilon_start=0.0,
+        epsilon_end=0.0,
+        epsilon_decay_attempts=8.0,
+        stagnation_patience=0,
+        stagnation_boost=0.0,
+        total_candidate_count=6,
+        maximum_factor_share=0.25,
+        repeat_factor_penalty=0.35,
+    )
+    assert selected != "E6.1"
+    assert "E6.1" not in snapshot["share_eligible_factors"]

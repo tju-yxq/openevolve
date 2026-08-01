@@ -52,6 +52,20 @@ def _representation_statistics(value_types: Iterable[Any]) -> Dict[str, Any]:
     }
 
 
+def _v3_reference_parameter_count(program, equiformer_v3_root: str) -> int:
+    """Build the frozen official-spec parent used as the V3 parameter baseline."""
+
+    from equivariant_nas.training.v3_qm9_runtime import build_lowered_v3_qm9_model
+    from .v3_evolution import v3_program_from_spec, v3_program_spec
+
+    reference_program = v3_program_from_spec(v3_program_spec(program))
+    reference_model = build_lowered_v3_qm9_model(
+        reference_program,
+        equiformer_v3_root=equiformer_v3_root,
+    )
+    return _count_parameters(reference_model)
+
+
 def _relative_error(actual, expected) -> float:
     import math
 
@@ -437,12 +451,18 @@ def evaluate_dsl_candidate_pipeline(
 
         model = build_candidate_model()
         parameter_count = _count_parameters(model)
-        parameter_ratio = parameter_count / BASELINE_PARAMETERS
+        reference_parameter_count = (
+            _v3_reference_parameter_count(program, equiformer_v3_root)
+            if is_v3_program
+            else BASELINE_PARAMETERS
+        )
+        parameter_ratio = parameter_count / reference_parameter_count
         representation_statistics = _representation_statistics(
             artifact.inference.value_types.values()
         )
         result.update({
             "parameter_count": parameter_count,
+            "reference_parameter_count": reference_parameter_count,
             "parameter_ratio": parameter_ratio,
             "lmax": representation_statistics["lmax"],
             "num_layers": len(artifact.expanded_program.nodes),

@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from equivariant_nas.dsl import V3MultiFidelityProtocol, v3_program_from_spec, rank_v3_stage_records
+from equivariant_nas.dsl import TypeChecker, V3MultiFidelityProtocol, core_registry, v3_program_from_spec, rank_v3_stage_records
 from equivariant_nas.dsl.backends import EquiformerV3Spec
-from equivariant_nas.dsl.pipeline import _observable_symmetry_report
+from equivariant_nas.dsl.pipeline import _observable_symmetry_report, _representation_statistics
 from equivariant_nas.training.v3_qm9_runtime import build_lowered_v3_qm9_model
 from scripts.run_dsl_v3_cohort import load_frozen_protocol
 from scripts import run_dsl_v3_cycles, run_dsl_v3_multifidelity
@@ -140,6 +140,33 @@ def test_energy_only_v3_generic_lowering_accepts_a_pyg_qm9_batch():
     symmetry = _observable_symmetry_report(model, batch)
     assert symmetry["maximum"] < 1.0e-5
     assert symmetry["maximum_absolute"] < 1.0e-6
+
+
+def test_v3_pipeline_representation_statistics_ignore_categorical_and_topology_values():
+    inference = TypeChecker(core_registry()).check(v3_program_from_spec(EquiformerV3Spec(
+        num_layers=1,
+        num_channels=4,
+        attn_hidden_channels=4,
+        num_heads=1,
+        attn_alpha_channels=2,
+        attn_value_channels=2,
+        ffn_hidden_channels=8,
+        lmax=1,
+        mmax=1,
+        attn_grid_resolution=(4, 4),
+        ffn_grid_resolution=(4, 4),
+        edge_channels=4,
+        num_radial_basis=4,
+        max_num_elements=10,
+        use_pbc=False,
+        otf_graph=False,
+        regress_forces=False,
+        regress_stress=False,
+    )))
+    assert any(not hasattr(value_type, "irreps") for value_type in inference.value_types.values())
+    statistics = _representation_statistics(inference.value_types.values())
+    assert statistics["lmax"] == 1
+    assert 0.0 < statistics["higher_order_fraction"] < 1.0
 
 
 def _write_json(path, payload):

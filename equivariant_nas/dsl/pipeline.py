@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from ..budget import BudgetLedger
 from .constants import BASELINE_PARAMETERS
@@ -23,6 +23,33 @@ from .backends.qm9_model import build_qm9_dsl_model
 
 def _count_parameters(model) -> int:
     return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+
+
+def _representation_statistics(value_types: Iterable[Any]) -> Dict[str, Any]:
+    """Summarize only values carrying an explicit irrep decomposition.
+
+    V3 programs also contain categorical species, topology, index, lattice and
+    grid values.  Those values are part of the typed graph but do not expose an
+    ``irreps`` field and must not be treated as representation tensors.
+    """
+
+    irrep_sets = [
+        value_type.irreps
+        for value_type in value_types
+        if getattr(value_type, "irreps", None) is not None
+    ]
+    degrees = [irrep.degree for irreps in irrep_sets for _, irrep in irreps]
+    higher_order = sum(
+        multiplicity * irrep.dimension
+        for irreps in irrep_sets
+        for multiplicity, irrep in irreps
+        if irrep.degree > 0
+    )
+    total_width = sum(irreps.dimension for irreps in irrep_sets)
+    return {
+        "lmax": max(degrees, default=0),
+        "higher_order_fraction": higher_order / max(total_width, 1),
+    }
 
 
 def _relative_error(actual, expected) -> float:
@@ -411,26 +438,15 @@ def evaluate_dsl_candidate_pipeline(
         model = build_candidate_model()
         parameter_count = _count_parameters(model)
         parameter_ratio = parameter_count / BASELINE_PARAMETERS
-        degrees = [
-            irrep.degree
-            for value_type in artifact.inference.value_types.values()
-            for _, irrep in value_type.irreps
-        ]
-        higher_order = sum(
-            multiplicity * irrep.dimension
-            for value_type in artifact.inference.value_types.values()
-            for multiplicity, irrep in value_type.irreps
-            if irrep.degree > 0
-        )
-        total_width = sum(
-            value_type.irreps.dimension for value_type in artifact.inference.value_types.values()
+        representation_statistics = _representation_statistics(
+            artifact.inference.value_types.values()
         )
         result.update({
             "parameter_count": parameter_count,
             "parameter_ratio": parameter_ratio,
-            "lmax": max(degrees, default=0),
+            "lmax": representation_statistics["lmax"],
             "num_layers": len(artifact.expanded_program.nodes),
-            "higher_order_fraction": higher_order / max(total_width, 1),
+            "higher_order_fraction": representation_statistics["higher_order_fraction"],
             "compiler_obligations": [item.to_dict() for item in artifact.inference.obligations],
             "backend_family": getattr(model, "backend_family", lowering.backend_family),
             "backend_semantics": getattr(model, "backend_semantics_version", lowering.backend_semantics_version),

@@ -225,15 +225,13 @@ def export(
             "generic_primitive_lowering_used": True,
             "official_constructor_bypass_used": False,
             "official_small_attention_initialization_forward_and_gradients_aligned": True,
-            "official_v3_ffn_complete": False,
-            "official_v3_transblock_complete": False,
-            "official_v3_full_model_trainable": False,
+            "scope_is_single_attention": True,
         },
         "next_required_work": [
-            "decompose and reproduce the official V3 feed-forward path",
-            "compose Attention + FFN + norm/drop-path into TransBlockV3",
-            "implement energy, direct-force, and stress heads",
-            "implement checkpoint import and short training alignment",
+            "validate a multi-layer backbone against the official constructor",
+            "validate the energy head and the full energy-force model",
+            "align nonzero stochastic paths and train/eval RNG",
+            "implement checkpoint import, stress output, and short training alignment",
         ],
     }
 

@@ -137,7 +137,7 @@ def export(repo: Path, v3_root: Path, config: Path, output: Path):
             "target segment sum and average-degree rescale",
             "atom plus edge-degree node initialization",
         ],
-        "not_yet_in_scope": [
+        "outside_this_evidence_scope": [
             "EquivariantGraphAttention",
             "FeedForwardNetwork",
             "TransBlockV3",

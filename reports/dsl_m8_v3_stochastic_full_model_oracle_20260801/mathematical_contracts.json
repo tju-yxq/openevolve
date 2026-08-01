@@ -1,0 +1,51 @@
+{
+  "energy_unit_axis": {
+    "equivariance": "identity isomorphism on one trivial representation; group action and certification level are unchanged",
+    "map": "V tensor R^1 -> V",
+    "negative_diagnostics": [
+      "E_UNIT_AXIS_001",
+      "E_UNIT_AXIS_003",
+      "E_UNIT_AXIS_004",
+      "runtime shape [carrier, 1] rejection"
+    ],
+    "output_layout": "carrier_scalar",
+    "precondition": "one statically known invariant energy_channel axis of size one",
+    "runtime": "[graph, 1] -> [graph]"
+  },
+  "shared_edge_frame": {
+    "cache": [
+      "v3_model_edge"
+    ],
+    "contract": "one official random auxiliary edge frame is shared across input, both blocks and force head while every to/from proof pair keeps a unique frame_id",
+    "typed_entries": [
+      "block0_v3_attention_edge",
+      "block1_v3_attention_edge",
+      "force_v3_force_head_edge"
+    ]
+  },
+  "shared_final_norm": {
+    "consumers": [
+      "energy_scalar_input",
+      "force_source_features",
+      "force_target_features"
+    ],
+    "node": "final_norm"
+  },
+  "stochastic_paths": {
+    "alpha_drop": "independent inverted-dropout mask on invariant alpha channels",
+    "attention_weight_drop": "independent inverted-dropout mask after envelope weighting",
+    "eval": "all stochastic primitives are identity maps and consume no mask RNG",
+    "ffn_drop": "ordered scalar-path and S2-grid masks inside the explicit FFN",
+    "graph_drop_path": "one graph-shared mask for the attention residual branch and a separately sampled graph-shared mask for the FFN residual branch",
+    "projection_drop": "one irrep-instance mask shared across all m components of each type-l channel",
+    "rates": {
+      "alpha_drop": 0.13,
+      "attn_weights_drop": 0.17,
+      "drop_path_rate": 0.23,
+      "ffn_drop": 0.31,
+      "proj_drop": 0.29,
+      "value_drop": 0.19
+    },
+    "value_drop": "two ordered inverted-dropout masks: scalar SwiGLU output, then S2-grid product"
+  }
+}

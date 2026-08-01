@@ -1,0 +1,87 @@
+{
+  "backend_neutral_semantics": "backend-neutral-v22",
+  "backend_semantics": "e3nn-graph-lowering-registry-v24",
+  "block_count": 2,
+  "canonical_architecture_id": "66fb85cad134b70b",
+  "compiler_semantics": "evoequilang-24",
+  "dsl_repository": {
+    "branch": "codex/v3-mapping",
+    "head": "3e7ab39fdca06652f01f3447ab2a671ca41e5934",
+    "worktree_dirty": true,
+    "worktree_status_sha256": "99341ea7688ac0f811185214267a37134298cef56bf07dfcad6d9ac0b9edb3e1"
+  },
+  "frame_contract": {
+    "shared_cache_count": 1,
+    "shared_frame_cache_ids": [
+      "v3_model_edge"
+    ],
+    "typed_entry_count": 3,
+    "typed_entry_frame_ids": [
+      "block0_v3_attention_edge",
+      "block1_v3_attention_edge",
+      "force_v3_force_head_edge"
+    ]
+  },
+  "lowering_rules": 103,
+  "normalized_node_count": 190,
+  "official_v3_repository": {
+    "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "origin": "https://github.com/atomicarchitects/equiformer_v3.git",
+    "reference_class": "experimental.models.equiformer_v3.equiformer_v3.EquiformerV3_OC"
+  },
+  "oracle_pytest_result": "2 passed",
+  "oracle_test": "tests/test_dsl_v3_official_direct_model.py",
+  "oracle_test_selection": "test_v3_two_layer_direct_model_matches_all_official_stochastic_paths",
+  "output_contract": {
+    "energy_runtime_shape": "[graph]",
+    "energy_storage": "carrier_scalar",
+    "forces_runtime_shape": "[node, 3]"
+  },
+  "pending": [
+    "official checkpoint loader and state-dict round trip",
+    "stress head",
+    "optimizer update and short training trajectory",
+    "real production-width configuration numerical oracle"
+  ],
+  "proved": [
+    "the official EquiformerV3_OC constructor and generic Typed DSL Lowering consume identical initialization RNG under one seed",
+    "all 116 trainable parameter tensors form a bijection with the official two-layer direct model",
+    "the actual lowered model contains no official EquiformerV3_OC, TransBlockV3, EquivariantGraphAttention or ScalarFeedForwardNetwork constructor instance",
+    "one random auxiliary edge frame is shared by input, both blocks and the direct-force head",
+    "the final equivariant normalization is instantiated once and shared by the energy and force heads",
+    "two-graph energy output has the exact official [graph] task layout and carrier_scalar type",
+    "energy, direct forces and forward RNG numerically align with the official model",
+    "position gradients and all 116 parameter gradients numerically align with the official model",
+    "all six nonzero stochastic rates align in both train and eval modes",
+    "alpha, attention-weight, value, graph-drop-path, projection and FFN dropout calls consume the same forward RNG as the official model",
+    "official value dropout is represented at both scalar SwiGLU and S2-grid product mask sites"
+  ],
+  "registry_entries": 103,
+  "search_surface_hash": "dfbdfde1ee66694efe921ada6eae47f836ce7ed11b40d0bb89ad9f0a09f9df92",
+  "spec_architecture_id": "c907d8c7ab62b9a3",
+  "status": "official_v3_two_layer_stochastic_direct_energy_force_model_oracle_passed",
+  "stochastic_contract": {
+    "enabled": true,
+    "graph_drop_path_sharing": "one mask per graph per invocation",
+    "rates": {
+      "alpha_drop": 0.13,
+      "attn_weights_drop": 0.17,
+      "drop_path_rate": 0.23,
+      "ffn_drop": 0.31,
+      "proj_drop": 0.29,
+      "value_drop": 0.19
+    },
+    "train_eval_covered": true,
+    "two_drop_path_invocations_per_block": true,
+    "value_drop_mask_sites_per_block": [
+      "scalar_swiglu",
+      "s2_grid_product"
+    ]
+  },
+  "supporting_contract_tests": [
+    "tests/test_dsl_v3_official_energy_head.py",
+    "tests/test_dsl_invariant_unit_axis.py"
+  ],
+  "trainable_parameter_count": 4482,
+  "trainable_parameter_tensor_count": 116
+}

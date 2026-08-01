@@ -1,0 +1,658 @@
+{
+  "architecture_id": "66fb85cad134b70b",
+  "class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
+  "constructor_bypass": false,
+  "output_types": {
+    "energy": {
+      "axes": [],
+      "axis_specs": [],
+      "carrier": "graph",
+      "dtype": "float32",
+      "equivariance_level": 1,
+      "feature_role": "channel",
+      "frame": {
+        "kind": "invariant",
+        "reference": ""
+      },
+      "group": {
+        "dimension": 3,
+        "family": "SO3",
+        "order": 0,
+        "periodicity": "none",
+        "permutation": "node_set",
+        "translation": "relative_coordinates"
+      },
+      "irreps": "1x0",
+      "kind": "invariant_tensor",
+      "layout": {
+        "channel_order": [],
+        "coefficient_order": "canonical",
+        "parity_convention": "group_native",
+        "resolution_specs": [],
+        "storage": "carrier_scalar",
+        "truncation_state": "full"
+      },
+      "measure": "dimensionless",
+      "schema_version": "evoequilang-value-types-v2@1"
+    },
+    "forces": {
+      "axes": [],
+      "axis_specs": [],
+      "carrier": "node",
+      "dtype": "float32",
+      "equivariance_level": 1,
+      "frame": {
+        "kind": "global",
+        "reference": ""
+      },
+      "group": {
+        "dimension": 3,
+        "family": "SO3",
+        "order": 0,
+        "periodicity": "none",
+        "permutation": "node_set",
+        "translation": "relative_coordinates"
+      },
+      "irreps": "1x1",
+      "kind": "equivariant_tensor",
+      "layout": {
+        "channel_order": [],
+        "coefficient_order": "canonical",
+        "parity_convention": "group_native",
+        "resolution_specs": [],
+        "storage": "irrep_major",
+        "truncation_state": "full"
+      },
+      "measure": "dimensionless",
+      "schema_version": "evoequilang-value-types-v2@1"
+    }
+  },
+  "parameter_mapping_contract": {
+    "backbone": {
+      "blocks": {
+        "block0": {
+          "attention": {
+            "node_modules.alpha_dot.weight": "alpha_dot",
+            "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+            "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+            "node_modules.projection.bias": "proj.bias",
+            "node_modules.projection.weight": "proj.weight",
+            "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+            "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+            "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+            "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+            "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+            "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+            "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+            "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+            "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+            "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+            "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+            "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+            "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+            "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+            "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+            "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+            "node_modules.source_embedding.weight": "source_embedding.weight",
+            "node_modules.target_embedding.weight": "target_embedding.weight"
+          },
+          "drop_path": "attn_drop_path/ffn_drop_path",
+          "feed_forward": {
+            "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+            "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+            "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+            "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+            "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+            "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+            "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+            "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+            "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+            "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+          },
+          "norm_1": "norm1",
+          "norm_2": "norm2",
+          "proj_drop": "attn_proj_drop/ffn_proj_drop"
+        },
+        "block1": {
+          "attention": {
+            "node_modules.alpha_dot.weight": "alpha_dot",
+            "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+            "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+            "node_modules.projection.bias": "proj.bias",
+            "node_modules.projection.weight": "proj.weight",
+            "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+            "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+            "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+            "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+            "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+            "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+            "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+            "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+            "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+            "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+            "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+            "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+            "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+            "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+            "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+            "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+            "node_modules.source_embedding.weight": "source_embedding.weight",
+            "node_modules.target_embedding.weight": "target_embedding.weight"
+          },
+          "drop_path": "attn_drop_path/ffn_drop_path",
+          "feed_forward": {
+            "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+            "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+            "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+            "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+            "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+            "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+            "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+            "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+            "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+            "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+          },
+          "norm_1": "norm1",
+          "norm_2": "norm2",
+          "proj_drop": "attn_proj_drop/ffn_proj_drop"
+        }
+      },
+      "input": {
+        "node_modules.atom_embedding.weight": "sphere_embedding.weight",
+        "node_modules.radial_linear0.linear.bias": "edge_degree_embedding.rad_func.net.0.bias",
+        "node_modules.radial_linear0.linear.weight": "edge_degree_embedding.rad_func.net.0.weight",
+        "node_modules.radial_linear1.linear.bias": "edge_degree_embedding.rad_func.net.3.bias",
+        "node_modules.radial_linear1.linear.weight": "edge_degree_embedding.rad_func.net.3.weight",
+        "node_modules.radial_linear2.linear.bias": "edge_degree_embedding.rad_func.net.6.bias",
+        "node_modules.radial_linear2.linear.weight": "edge_degree_embedding.rad_func.net.6.weight",
+        "node_modules.radial_norm0.layer_norm.bias": "edge_degree_embedding.rad_func.net.1.bias",
+        "node_modules.radial_norm0.layer_norm.weight": "edge_degree_embedding.rad_func.net.1.weight",
+        "node_modules.radial_norm1.layer_norm.bias": "edge_degree_embedding.rad_func.net.4.bias",
+        "node_modules.radial_norm1.layer_norm.weight": "edge_degree_embedding.rad_func.net.4.weight",
+        "node_modules.source_edge_embedding.weight": "edge_degree_embedding.source_embedding.weight",
+        "node_modules.target_edge_embedding.weight": "edge_degree_embedding.target_embedding.weight"
+      }
+    },
+    "energy_head": {
+      "node_modules.energy_linear1.linear.bias": "energy_block.linear_1.bias",
+      "node_modules.energy_linear1.linear.weight": "energy_block.linear_1.weight",
+      "node_modules.energy_linear2.linear.bias": "energy_block.linear_2.bias",
+      "node_modules.energy_linear2.linear.weight": "energy_block.linear_2.weight"
+    },
+    "force_head": {
+      "node_modules.alpha_dot.weight": "alpha_dot",
+      "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+      "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+      "node_modules.projection.bias": "proj.bias",
+      "node_modules.projection.weight": "proj.weight",
+      "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+      "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+      "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+      "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+      "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+      "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+      "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+      "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+      "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+      "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+      "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+      "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+      "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+      "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+      "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+      "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+      "node_modules.source_embedding.weight": "source_embedding.weight",
+      "node_modules.target_embedding.weight": "target_embedding.weight"
+    },
+    "shared_final_norm": {
+      "node_modules.final_norm.norm.affine_bias": "norm.affine_bias",
+      "node_modules.final_norm.norm.affine_weight": "norm.affine_weight"
+    }
+  },
+  "parameter_shapes": {
+    "node_modules.block0_attn_alpha_dot.weight": [
+      1,
+      2
+    ],
+    "node_modules.block0_attn_alpha_norm.layer_norm.bias": [
+      2
+    ],
+    "node_modules.block0_attn_alpha_norm.layer_norm.weight": [
+      2
+    ],
+    "node_modules.block0_attn_projection.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.block0_attn_projection.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.block0_attn_radial_linear0.linear.bias": [
+      5
+    ],
+    "node_modules.block0_attn_radial_linear0.linear.weight": [
+      5,
+      16
+    ],
+    "node_modules.block0_attn_radial_linear1.linear.bias": [
+      5
+    ],
+    "node_modules.block0_attn_radial_linear1.linear.weight": [
+      5,
+      5
+    ],
+    "node_modules.block0_attn_radial_linear2.linear.bias": [
+      18
+    ],
+    "node_modules.block0_attn_radial_linear2.linear.weight": [
+      18,
+      5
+    ],
+    "node_modules.block0_attn_radial_norm0.layer_norm.bias": [
+      5
+    ],
+    "node_modules.block0_attn_radial_norm0.layer_norm.weight": [
+      5
+    ],
+    "node_modules.block0_attn_radial_norm1.layer_norm.bias": [
+      5
+    ],
+    "node_modules.block0_attn_radial_norm1.layer_norm.weight": [
+      5
+    ],
+    "node_modules.block0_attn_so2_linear1.fc_m0.bias": [
+      20
+    ],
+    "node_modules.block0_attn_so2_linear1.fc_m0.weight": [
+      20,
+      18
+    ],
+    "node_modules.block0_attn_so2_linear1.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.block0_attn_so2_linear2.fc_m0.bias": [
+      6
+    ],
+    "node_modules.block0_attn_so2_linear2.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.block0_attn_so2_linear2.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.block0_attn_source_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.block0_attn_target_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.block0_ffn_gate_linear.linear.bias": [
+      4
+    ],
+    "node_modules.block0_ffn_gate_linear.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.block0_ffn_grid_linear1.weight": [
+      8,
+      4
+    ],
+    "node_modules.block0_ffn_grid_linear2.weight": [
+      4,
+      4
+    ],
+    "node_modules.block0_ffn_scalar_linear.linear.bias": [
+      8
+    ],
+    "node_modules.block0_ffn_scalar_linear.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.block0_ffn_so3_linear1.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.block0_ffn_so3_linear1.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.block0_ffn_so3_linear2.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.block0_ffn_so3_linear2.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.block0_norm1.norm.affine_bias": [
+      3
+    ],
+    "node_modules.block0_norm1.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.block0_norm2.norm.affine_bias": [
+      3
+    ],
+    "node_modules.block0_norm2.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.block1_attn_alpha_dot.weight": [
+      1,
+      2
+    ],
+    "node_modules.block1_attn_alpha_norm.layer_norm.bias": [
+      2
+    ],
+    "node_modules.block1_attn_alpha_norm.layer_norm.weight": [
+      2
+    ],
+    "node_modules.block1_attn_projection.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.block1_attn_projection.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.block1_attn_radial_linear0.linear.bias": [
+      5
+    ],
+    "node_modules.block1_attn_radial_linear0.linear.weight": [
+      5,
+      16
+    ],
+    "node_modules.block1_attn_radial_linear1.linear.bias": [
+      5
+    ],
+    "node_modules.block1_attn_radial_linear1.linear.weight": [
+      5,
+      5
+    ],
+    "node_modules.block1_attn_radial_linear2.linear.bias": [
+      18
+    ],
+    "node_modules.block1_attn_radial_linear2.linear.weight": [
+      18,
+      5
+    ],
+    "node_modules.block1_attn_radial_norm0.layer_norm.bias": [
+      5
+    ],
+    "node_modules.block1_attn_radial_norm0.layer_norm.weight": [
+      5
+    ],
+    "node_modules.block1_attn_radial_norm1.layer_norm.bias": [
+      5
+    ],
+    "node_modules.block1_attn_radial_norm1.layer_norm.weight": [
+      5
+    ],
+    "node_modules.block1_attn_so2_linear1.fc_m0.bias": [
+      20
+    ],
+    "node_modules.block1_attn_so2_linear1.fc_m0.weight": [
+      20,
+      18
+    ],
+    "node_modules.block1_attn_so2_linear1.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.block1_attn_so2_linear2.fc_m0.bias": [
+      6
+    ],
+    "node_modules.block1_attn_so2_linear2.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.block1_attn_so2_linear2.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.block1_attn_source_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.block1_attn_target_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.block1_ffn_gate_linear.linear.bias": [
+      4
+    ],
+    "node_modules.block1_ffn_gate_linear.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.block1_ffn_grid_linear1.weight": [
+      8,
+      4
+    ],
+    "node_modules.block1_ffn_grid_linear2.weight": [
+      4,
+      4
+    ],
+    "node_modules.block1_ffn_scalar_linear.linear.bias": [
+      8
+    ],
+    "node_modules.block1_ffn_scalar_linear.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.block1_ffn_so3_linear1.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.block1_ffn_so3_linear1.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.block1_ffn_so3_linear2.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.block1_ffn_so3_linear2.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.block1_norm1.norm.affine_bias": [
+      3
+    ],
+    "node_modules.block1_norm1.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.block1_norm2.norm.affine_bias": [
+      3
+    ],
+    "node_modules.block1_norm2.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.energy_energy_linear1.linear.bias": [
+      4
+    ],
+    "node_modules.energy_energy_linear1.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.energy_energy_linear2.linear.bias": [
+      1
+    ],
+    "node_modules.energy_energy_linear2.linear.weight": [
+      1,
+      4
+    ],
+    "node_modules.final_norm.norm.affine_bias": [
+      3
+    ],
+    "node_modules.final_norm.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.force_alpha_dot.weight": [
+      1,
+      2
+    ],
+    "node_modules.force_alpha_norm.layer_norm.bias": [
+      2
+    ],
+    "node_modules.force_alpha_norm.layer_norm.weight": [
+      2
+    ],
+    "node_modules.force_projection.bias": [
+      1,
+      1,
+      1
+    ],
+    "node_modules.force_projection.weight": [
+      3,
+      1,
+      2
+    ],
+    "node_modules.force_radial_linear0.linear.bias": [
+      5
+    ],
+    "node_modules.force_radial_linear0.linear.weight": [
+      5,
+      16
+    ],
+    "node_modules.force_radial_linear1.linear.bias": [
+      5
+    ],
+    "node_modules.force_radial_linear1.linear.weight": [
+      5,
+      5
+    ],
+    "node_modules.force_radial_linear2.linear.bias": [
+      18
+    ],
+    "node_modules.force_radial_linear2.linear.weight": [
+      18,
+      5
+    ],
+    "node_modules.force_radial_norm0.layer_norm.bias": [
+      5
+    ],
+    "node_modules.force_radial_norm0.layer_norm.weight": [
+      5
+    ],
+    "node_modules.force_radial_norm1.layer_norm.bias": [
+      5
+    ],
+    "node_modules.force_radial_norm1.layer_norm.weight": [
+      5
+    ],
+    "node_modules.force_so2_linear1.fc_m0.bias": [
+      12
+    ],
+    "node_modules.force_so2_linear1.fc_m0.weight": [
+      12,
+      18
+    ],
+    "node_modules.force_so2_linear1.so2_m_linear.0.fc.weight": [
+      8,
+      12
+    ],
+    "node_modules.force_so2_linear2.fc_m0.bias": [
+      6
+    ],
+    "node_modules.force_so2_linear2.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.force_so2_linear2.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.force_source_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.force_target_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.input_atom_embedding.weight": [
+      32,
+      3
+    ],
+    "node_modules.input_radial_linear0.linear.bias": [
+      5
+    ],
+    "node_modules.input_radial_linear0.linear.weight": [
+      5,
+      16
+    ],
+    "node_modules.input_radial_linear1.linear.bias": [
+      5
+    ],
+    "node_modules.input_radial_linear1.linear.weight": [
+      5,
+      5
+    ],
+    "node_modules.input_radial_linear2.linear.bias": [
+      9
+    ],
+    "node_modules.input_radial_linear2.linear.weight": [
+      9,
+      5
+    ],
+    "node_modules.input_radial_norm0.layer_norm.bias": [
+      5
+    ],
+    "node_modules.input_radial_norm0.layer_norm.weight": [
+      5
+    ],
+    "node_modules.input_radial_norm1.layer_norm.bias": [
+      5
+    ],
+    "node_modules.input_radial_norm1.layer_norm.weight": [
+      5
+    ],
+    "node_modules.input_source_edge_embedding.weight": [
+      32,
+      5
+    ],
+    "node_modules.input_target_edge_embedding.weight": [
+      32,
+      5
+    ]
+  },
+  "shared_final_norm": {
+    "consumers": [
+      "energy_scalar_input",
+      "force_source_features",
+      "force_target_features"
+    ],
+    "node": "final_norm"
+  },
+  "source_program_id": "equiformer_v3_direct_model_c907d8c7ab62b9a3",
+  "stochastic_rates": {
+    "alpha_drop": 0.13,
+    "attn_weights_drop": 0.17,
+    "drop_path_rate": 0.23,
+    "ffn_drop": 0.31,
+    "proj_drop": 0.29,
+    "value_drop": 0.19
+  }
+}

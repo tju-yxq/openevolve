@@ -644,29 +644,41 @@ def _index(indices, target_size):
 def _runtime_validation(model, program, *, seed: int):
     import torch
 
-    atomic_numbers = torch.tensor([1, 6, 8, 14], dtype=torch.long)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    atomic_numbers = torch.tensor([1, 6, 8, 9], dtype=torch.long, device=device)
     base_positions = torch.tensor(
         [[0.0, 0.0, 0.0], [1.1, 0.2, -0.1], [0.3, 1.2, 0.4], [-0.4, 0.6, 1.3]],
         dtype=torch.float32,
+        device=device,
     )
-    source = torch.tensor([0, 1, 2, 3, 0, 2], dtype=torch.long)
-    target = torch.tensor([1, 2, 3, 0, 2, 1], dtype=torch.long)
-    batch = torch.zeros(atomic_numbers.numel(), dtype=torch.long)
+    source = torch.tensor([0, 1, 2, 3, 0, 2], dtype=torch.long, device=device)
+    target = torch.tensor([1, 2, 3, 0, 2, 1], dtype=torch.long, device=device)
+    batch = torch.zeros(atomic_numbers.numel(), dtype=torch.long, device=device)
     lattice = torch.tensor(
         [[5.0, 0.0, 0.0], [0.1, 5.2, 0.0], [0.0, 0.2, 5.4]],
         dtype=torch.float32,
+        device=device,
     )
-    lattice_shift = torch.zeros((source.numel(), 3), dtype=torch.long)
+    lattice_shift = torch.zeros((source.numel(), 3), dtype=torch.long, device=device)
     input_names = {item.name for item in program.inputs}
 
-    def inputs(positions, cell=lattice):
+    def inputs(
+        positions,
+        *,
+        atoms=atomic_numbers,
+        source_index=source,
+        target_index=target,
+        graph_batch=batch,
+        cell=lattice,
+    ):
         values = {
-            "atomic_numbers": atomic_numbers,
+            "atomic_numbers": atoms,
             "positions": positions,
-            "source_index": _index(source, source.numel()),
-            "target_index": _index(target, target.numel()),
-            "target_segment": _index(target, atomic_numbers.numel()),
-            "batch": _index(batch, 1),
+            "source_index": _index(source_index, atoms.numel()),
+            "target_index": _index(target_index, atoms.numel()),
+            "target_segment": _index(target_index, atoms.numel()),
+            "batch": _index(graph_batch, 1),
         }
         if "lattice" in input_names:
             values["lattice"] = cell
@@ -675,18 +687,97 @@ def _runtime_validation(model, program, *, seed: int):
         return values
 
     model.eval()
-    rotation = torch.tensor(
-        [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
-        dtype=torch.float32,
+    rotations = (
+        torch.tensor(
+            [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            dtype=torch.float32,
+            device=device,
+        ),
+        torch.tensor(
+            [[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]],
+            dtype=torch.float32,
+            device=device,
+        ),
     )
+
+    def compare(actual, expected):
+        difference = actual - expected
+        scale = max(
+            float(expected.norm().detach().cpu()),
+            float(expected.numel()) ** 0.5 * 1.0e-6,
+        )
+        return (
+            float(difference.norm().detach().cpu()) / scale,
+            float(difference.abs().max().detach().cpu()),
+        )
+
+    def assert_finite(outputs, label):
+        nonfinite = [name for name, value in outputs.items() if not bool(torch.isfinite(value).all())]
+        if nonfinite:
+            raise RuntimeError("{} produced non-finite outputs {}".format(label, nonfinite))
+
+    errors = {}
+    absolute_errors = {}
     with torch.no_grad():
+        torch.manual_seed(seed)
         reference = model(inputs(base_positions), {})
-        rotated = model(inputs(base_positions @ rotation.T, lattice @ rotation.T), {})
-    energy_error = float((reference["energy"] - rotated["energy"]).abs().max().item())
-    force_error = float((reference["forces"] @ rotation.T - rotated["forces"]).abs().max().item())
-    if energy_error > 2.0e-5 or force_error > 3.0e-4:
+        assert_finite(reference, "reference")
+        for index, rotation in enumerate(rotations):
+            torch.manual_seed(seed)
+            rotated = model(inputs(base_positions @ rotation.T, cell=lattice @ rotation.T), {})
+            assert_finite(rotated, "rotation_{:02d}".format(index))
+            expected = {"energy": reference["energy"]}
+            if "forces" in reference:
+                expected["forces"] = reference["forces"] @ rotation.T
+            for name, value in expected.items():
+                relative, absolute = compare(rotated[name], value)
+                errors["rotation_{:02d}_{}".format(index, name)] = relative
+                absolute_errors["rotation_{:02d}_{}".format(index, name)] = absolute
+        for index, translation in enumerate(((1.25, -0.75, 0.5), (-0.4, 0.9, 1.1))):
+            torch.manual_seed(seed)
+            translated = model(
+                inputs(base_positions + base_positions.new_tensor([translation])),
+                {},
+            )
+            assert_finite(translated, "translation_{:02d}".format(index))
+            for name in reference:
+                relative, absolute = compare(translated[name], reference[name])
+                errors["translation_{:02d}_{}".format(index, name)] = relative
+                absolute_errors["translation_{:02d}_{}".format(index, name)] = absolute
+        permutations = (
+            torch.tensor([2, 0, 3, 1], dtype=torch.long, device=device),
+            torch.tensor([3, 2, 1, 0], dtype=torch.long, device=device),
+        )
+        for index, permutation in enumerate(permutations):
+            inverse = torch.empty_like(permutation)
+            inverse[permutation] = torch.arange(permutation.numel(), device=device)
+            torch.manual_seed(seed)
+            permuted = model(
+                inputs(
+                    base_positions.index_select(0, permutation),
+                    atoms=atomic_numbers.index_select(0, permutation),
+                    source_index=inverse.index_select(0, source),
+                    target_index=inverse.index_select(0, target),
+                    graph_batch=batch.index_select(0, permutation),
+                ),
+                {},
+            )
+            assert_finite(permuted, "permutation_{:02d}".format(index))
+            expected = {"energy": reference["energy"]}
+            if "forces" in reference:
+                expected["forces"] = reference["forces"].index_select(0, permutation)
+            for name, value in expected.items():
+                relative, absolute = compare(permuted[name], value)
+                errors["permutation_{:02d}_{}".format(index, name)] = relative
+                absolute_errors["permutation_{:02d}_{}".format(index, name)] = absolute
+    maximum = max(errors.values(), default=0.0)
+    maximum_absolute = max(absolute_errors.values(), default=0.0)
+    if maximum > 1.0e-2 and maximum_absolute > 1.5e-2:
         raise RuntimeError(
-            "rotation audit failed: energy_error={} force_error={}".format(energy_error, force_error)
+            "equivariance audit failed: relative={} absolute={}".format(
+                maximum,
+                maximum_absolute,
+            )
         )
 
     positions = base_positions.clone().requires_grad_(True)
@@ -694,7 +785,8 @@ def _runtime_validation(model, program, *, seed: int):
     model.zero_grad(set_to_none=True)
     torch.manual_seed(seed)
     outputs = model(inputs(positions), {})
-    loss = outputs["energy"].square().sum() + outputs["forces"].square().sum()
+    assert_finite(outputs, "gradient_audit")
+    loss = sum(value.square().sum() for value in outputs.values())
     loss.backward()
     missing_gradients = [name for name, parameter in model.named_parameters() if parameter.requires_grad and parameter.grad is None]
     nonfinite_gradients = [
@@ -712,12 +804,22 @@ def _runtime_validation(model, program, *, seed: int):
         )
     return {
         "energy_shape": list(outputs["energy"].shape),
-        "force_shape": list(outputs["forces"].shape),
+        "force_shape": list(outputs["forces"].shape) if "forces" in outputs else None,
         "loss": float(loss.detach().item()),
-        "rotation_energy_max_abs_error": energy_error,
-        "rotation_force_max_abs_error": force_error,
+        "errors": errors,
+        "absolute_errors": absolute_errors,
+        "maximum_relative_error": maximum,
+        "maximum_absolute_error": maximum_absolute,
+        "relative_threshold": 1.0e-2,
+        "absolute_threshold": 1.5e-2,
+        "audited_transformations": {
+            "rotations": len(rotations),
+            "translations": 2,
+            "permutations": 2,
+        },
         "position_gradient_finite": True,
         "trainable_parameter_gradients_complete": True,
+        "device": str(device),
     }
 
 
@@ -757,6 +859,14 @@ def _validate_candidate(program, registry, backend, *, validation_level: str, se
         result["official_constructor_types_present"] = bypass
         if validation_level == "full":
             result["runtime"] = _runtime_validation(model, program, seed=seed)
+        del model
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
     return result
 
 

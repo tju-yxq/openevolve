@@ -4,8 +4,21 @@ from types import SimpleNamespace
 
 import pytest
 
-from equivariant_nas.dsl import TypeChecker, V3MultiFidelityProtocol, core_registry, v3_program_from_spec, rank_v3_stage_records
+from equivariant_nas.dsl import (
+    TypeChecker,
+    V3MultiFidelityProtocol,
+    architecture_id,
+    core_registry,
+    rank_v3_stage_records,
+    v3_program_from_spec,
+)
 from equivariant_nas.dsl.backends import EquiformerV3Spec
+from equivariant_nas.dsl.serialization import dumps_program
+from equivariant_nas.dsl.v3_structural_evolution import (
+    apply_v3_structural_patch,
+    build_v3_structural_patch,
+    v3_structural_novelty_report,
+)
 from equivariant_nas.dsl.pipeline import (
     _count_parameters,
     _observable_symmetry_report,
@@ -14,7 +27,7 @@ from equivariant_nas.dsl.pipeline import (
 )
 from equivariant_nas.training.v3_qm9_runtime import build_lowered_v3_qm9_model
 from scripts.run_dsl_v3_cohort import load_frozen_protocol
-from scripts import run_dsl_v3_cycles, run_dsl_v3_multifidelity
+from scripts import run_dsl_v3_cohort, run_dsl_v3_cycles, run_dsl_v3_multifidelity
 
 
 def _record(protocol, stage, index, metric):
@@ -374,6 +387,119 @@ def test_pipeline_commands_encode_exact_resume_and_data_transition():
     assert command250[command250.index("--lr-schedule-origin-step") + 1] == "80000"
 
 
+def test_cohort_replaces_a_failed_full_equivariance_audit_before_training(monkeypatch, tmp_path):
+    registry = core_registry()
+    calls = []
+    seed_program = v3_program_from_spec(EquiformerV3Spec(
+        num_layers=2,
+        num_channels=4,
+        attn_hidden_channels=4,
+        num_heads=1,
+        attn_alpha_channels=2,
+        attn_value_channels=2,
+        ffn_hidden_channels=8,
+        lmax=1,
+        mmax=1,
+        attn_grid_resolution=(4, 4),
+        ffn_grid_resolution=(4, 4),
+        edge_channels=4,
+        num_radial_basis=4,
+        max_num_elements=10,
+        regress_forces=False,
+        regress_stress=False,
+    ))
+    seed_path = tmp_path / "seed.dsl.json"
+    seed_path.write_text(dumps_program(seed_program), encoding="utf-8")
+
+    def fake_attempt(
+        args,
+        *,
+        parent,
+        actions,
+        records,
+        seen_states,
+        candidate_index,
+        attempt_dir,
+        attempt_number,
+        registry,
+        backend,
+        protocol,
+    ):
+        del args, records, seen_states, attempt_dir, backend, protocol
+        action = actions[0]
+        patch = build_v3_structural_patch(parent, action.action_id, registry)
+        child, child_spec = apply_v3_structural_patch(parent, patch, registry)
+        child_id = architecture_id(child, registry)
+        workflow = {
+            "child": child,
+            "child_spec": child_spec,
+            "patch": patch,
+            "action": action,
+            "state": child_id,
+            "router": {"factor_id": "V3.S1", "region_id": "test_region"},
+            "router_response": {},
+            "critic_response": {},
+            "synthesizer_response": patch.to_dict(),
+            "critic_repair_count": 0,
+            "compiler_repair_count": 0,
+        }
+        calls.append((candidate_index, attempt_number, child_id))
+        common = {
+            "workflow": workflow,
+            "child": child,
+            "child_id": child_id,
+            "novelty": v3_structural_novelty_report(parent, child, registry),
+        }
+        if len(calls) == 1:
+            return {
+                **common,
+                "accepted": False,
+                "error_type": "RuntimeError",
+                "error": "equivariance audit failed",
+                "traceback": "audit trace",
+            }
+        return {**common, "accepted": True, "validation": {"status": "passed", "validation_level": "full"}}
+
+    monkeypatch.setattr(run_dsl_v3_cohort, "_generate_candidate_attempt", fake_attempt)
+    monkeypatch.setattr(run_dsl_v3_cohort, "E3NNGraphBackend", lambda *args, **kwargs: object())
+    args = SimpleNamespace(
+        output=str(tmp_path / "cohort"),
+        protocol_config="configs/dsl_v3_qm9_alpha_8_4_2_protocol.json",
+        model_config="",
+        seed_program=str(seed_path),
+        cycle_index=1,
+        cohort_size=8,
+        mutation_mode="structural",
+        selection_mode="deterministic",
+        model="",
+        api_key_env="GLM_API_KEY",
+        validation_level="full",
+        candidate_replacement_attempts=16,
+        architecture_archive="",
+        equiformer_root="v1",
+        data_path="data",
+        train_subset_file=str(Path("data_splits/qm9_train_quarter_seed201.npz").resolve()),
+        equiformer_v3_root="../equiformer_v3_official",
+        resume=False,
+    )
+
+    summary = run_dsl_v3_cohort.run(args)
+
+    assert summary["candidate_count"] == 8
+    assert summary["rejected_candidate_count"] == 1
+    assert len(calls) == 9
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "cohort" / "cohort.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[0]["replacement_attempt"] == 2
+    rejected = json.loads(
+        (tmp_path / "cohort" / "rejected_candidates.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert rejected["error"] == "equivariance audit failed"
+    assert rejected["architecture_id"] not in {item["architecture_id"] for item in records}
+
+
 def test_ten_cycle_controller_chains_each_250k_winner_as_next_parent(monkeypatch, tmp_path):
     protocol_path = Path("configs/dsl_v3_qm9_alpha_8_4_2_protocol.json").resolve()
     protocol = load_frozen_protocol(protocol_path)
@@ -448,7 +574,8 @@ def test_ten_cycle_controller_chains_each_250k_winner_as_next_parent(monkeypatch
         selection_mode="deterministic",
         mutation_mode="structural",
         model="",
-        generation_validation_level="static",
+        generation_validation_level="full",
+        candidate_replacement_attempts=16,
         gpu_budget_hours=1.0,
         eval_interval_epochs=10,
     )

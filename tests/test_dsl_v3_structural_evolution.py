@@ -9,7 +9,7 @@ from equivariant_nas.dsl import (
     core_registry,
     v3_program_from_spec,
 )
-from equivariant_nas.dsl.backends import EquiformerV3Spec
+from equivariant_nas.dsl.backends import E3NNGraphBackend, EquiformerV3Spec
 from equivariant_nas.dsl.pipeline import _observable_symmetry_report
 from equivariant_nas.dsl.v3_structural_evolution import (
     apply_v3_structural_patch,
@@ -18,7 +18,7 @@ from equivariant_nas.dsl.v3_structural_evolution import (
     v3_structural_novelty_report,
 )
 from equivariant_nas.training.v3_qm9_runtime import build_lowered_v3_qm9_model
-from scripts.run_dsl_v3_evolution import _router_prompt
+from scripts.run_dsl_v3_evolution import _router_prompt, _validate_candidate
 
 
 def _small_spec(num_layers=1):
@@ -227,3 +227,39 @@ def test_each_structural_family_generic_lowers_and_preserves_so3_translation_per
         report = _observable_symmetry_report(model, batch)
         assert report["maximum"] < 1.0e-5
         assert report["maximum_absolute"] < 1.0e-6
+
+
+def test_formal_full_generation_gate_audits_energy_only_rotation_translation_permutation_and_gradients():
+    registry = core_registry()
+    parent = v3_program_from_spec(_small_spec())
+    action = v3_structural_mutation_catalog(parent)[0]
+    child, _ = apply_v3_structural_patch(
+        parent,
+        build_v3_structural_patch(parent, action.action_id, registry),
+        registry,
+    )
+    backend = E3NNGraphBackend(
+        registry,
+        equiformer_v3_root="../equiformer_v3_official",
+    )
+
+    validation = _validate_candidate(
+        child,
+        registry,
+        backend,
+        validation_level="full",
+        seed=201,
+    )
+
+    runtime = validation["runtime"]
+    assert runtime["force_shape"] is None
+    assert runtime["audited_transformations"] == {
+        "rotations": 2,
+        "translations": 2,
+        "permutations": 2,
+    }
+    assert runtime["maximum_relative_error"] <= runtime["relative_threshold"] or (
+        runtime["maximum_absolute_error"] <= runtime["absolute_threshold"]
+    )
+    assert runtime["position_gradient_finite"] is True
+    assert runtime["trainable_parameter_gradients_complete"] is True

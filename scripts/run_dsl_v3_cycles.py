@@ -66,6 +66,10 @@ def run(args):
     requested_cycles = args.cycles or protocol.cycle_count
     if requested_cycles != protocol.cycle_count:
         raise ValueError("cycle count is frozen by the protocol and cannot change during the run")
+    if args.mutation_mode == "structural" and args.generation_validation_level != "full":
+        raise ValueError(
+            "formal structural evolution requires full numerical equivariance auditing before training"
+        )
     manifest_path = root / "cycles_manifest.json"
     manifest = {
         "kind": "iterative_v3_best_parent_cycles",
@@ -75,6 +79,8 @@ def run(args):
         "initial_model_config": str(Path(args.model_config).resolve()),
         "selection_mode": args.selection_mode,
         "mutation_mode": args.mutation_mode,
+        "generation_validation_level": args.generation_validation_level,
+        "candidate_replacement_attempts": args.candidate_replacement_attempts,
         "llm_model": args.model if args.selection_mode == "glm" else "",
         "equiformer_root": str(Path(args.equiformer_root).resolve()),
         "equiformer_v3_root": str(Path(args.equiformer_v3_root).resolve()),
@@ -153,8 +159,16 @@ def run(args):
             args.model,
             "--validation-level",
             args.generation_validation_level,
+            "--candidate-replacement-attempts",
+            str(args.candidate_replacement_attempts),
             "--equiformer-v3-root",
             args.equiformer_v3_root,
+            "--equiformer-root",
+            args.equiformer_root,
+            "--data-path",
+            args.data_path,
+            "--train-subset-file",
+            args.quarter_subset_file,
         ]
         if parent_program:
             cohort_command.extend(["--seed-program", parent_program])
@@ -194,7 +208,22 @@ def run(args):
         if generated_ids & forbidden_at_generation:
             raise RuntimeError("cycle {} regenerated an architecture from the global archive".format(cycle_index))
         previous_archive = set(state.get("architecture_archive", ()))
-        state["architecture_archive"] = sorted(previous_archive | generated_ids | {cohort_parent_id})
+        rejected_records = []
+        rejected_path = cycle_root / "cohort" / "rejected_candidates.jsonl"
+        if rejected_path.exists():
+            rejected_records = [
+                json.loads(line)
+                for line in rejected_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        rejected_ids = {
+            str(item.get("architecture_id", ""))
+            for item in rejected_records
+            if str(item.get("architecture_id", ""))
+        }
+        state["architecture_archive"] = sorted(
+            previous_archive | generated_ids | rejected_ids | {cohort_parent_id}
+        )
         _write_json(state_path, state)
 
         training_command = [
@@ -289,7 +318,8 @@ def get_parser():
     parser.add_argument("--selection-mode", choices=("glm", "deterministic"), default="glm")
     parser.add_argument("--mutation-mode", choices=("structural", "probability"), default="structural")
     parser.add_argument("--model", default="glm-5.2")
-    parser.add_argument("--generation-validation-level", choices=("static", "build"), default="static")
+    parser.add_argument("--generation-validation-level", choices=("static", "build", "full"), default="full")
+    parser.add_argument("--candidate-replacement-attempts", type=int, default=16)
     parser.add_argument("--gpu-budget-hours", type=float, default=float(os.environ.get("NAS_GPU_BUDGET_HOURS", "80")))
     parser.add_argument("--eval-interval-epochs", type=int, default=10)
     return parser

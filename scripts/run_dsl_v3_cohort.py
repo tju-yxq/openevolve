@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import sys
+import traceback
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -102,6 +103,115 @@ def _read_records(path: Path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def _generate_candidate_attempt(
+    args,
+    *,
+    parent,
+    actions,
+    records,
+    seen_states,
+    candidate_index,
+    attempt_dir,
+    attempt_number,
+    registry,
+    backend,
+    protocol,
+):
+    workflow = _run_three_stage_round(
+        args,
+        parent,
+        actions,
+        records,
+        seen_states,
+        candidate_index,
+        attempt_dir,
+        registry,
+    )
+    child = workflow["child"]
+    child_id = architecture_id(child, registry)
+    candidate_program_path = attempt_dir / "candidate.dsl.json"
+    candidate_program_path.write_text(dumps_program(child), encoding="utf-8")
+    novelty = (
+        v3_structural_novelty_report(parent, child, registry)
+        if args.mutation_mode == "structural"
+        else {
+            "parent_architecture_id": architecture_id(parent, registry),
+            "child_architecture_id": child_id,
+            "is_structurally_novel": False,
+            "only_attribute_changed": True,
+        }
+    )
+    validation = None
+    qm9_gate = None
+    try:
+        if args.mutation_mode == "structural" and not novelty["is_structurally_novel"]:
+            raise RuntimeError("formal structural mutation changed no operators, nodes, or graph edges")
+        validation = _validate_candidate(
+            child,
+            registry,
+            backend,
+            validation_level=args.validation_level,
+            seed=protocol.seed + args.cycle_index * 1000 + candidate_index * 100 + attempt_number,
+        )
+        if args.validation_level == "full":
+            if not args.equiformer_root or not args.data_path or not args.train_subset_file:
+                raise RuntimeError(
+                    "full cohort validation requires Equiformer root, QM9 path, and frozen train subset"
+                )
+            from equivariant_nas.dsl.pipeline import evaluate_dsl_candidate_pipeline
+
+            qm9_gate = evaluate_dsl_candidate_pipeline(
+                program_path=str(candidate_program_path),
+                project_root=str(PROJECT_ROOT),
+                equiformer_root=args.equiformer_root,
+                equiformer_v3_root=args.equiformer_v3_root,
+                data_path=args.data_path,
+                max_steps=0,
+                seed=protocol.seed,
+                run_symmetry=True,
+                batch_size=protocol.batch_size,
+                train_subset_file=args.train_subset_file,
+            )
+            if qm9_gate.get("valid") is not True:
+                raise RuntimeError(
+                    "real-QM9 pre-training gate rejected candidate: {}".format(
+                        qm9_gate.get("error", "unknown failure")
+                    )
+                )
+            if qm9_gate.get("test_evaluated") is not False:
+                raise RuntimeError("real-QM9 candidate gate accessed the test split")
+            validation["qm9_pretraining_gate"] = qm9_gate
+        return {
+            "accepted": True,
+            "workflow": workflow,
+            "child": child,
+            "child_id": child_id,
+            "novelty": novelty,
+            "validation": validation,
+        }
+    except Exception as error:
+        failure_traceback = traceback.format_exc()[-12000:]
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+        return {
+            "accepted": False,
+            "workflow": workflow,
+            "child": child,
+            "child_id": child_id,
+            "novelty": novelty,
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "traceback": failure_traceback,
+            "validation": validation,
+            "qm9_pretraining_gate": qm9_gate,
+        }
+
+
 def _read_architecture_archive(path):
     if not path:
         return set(), ""
@@ -156,7 +266,11 @@ def run(args):
         "model": args.model if args.selection_mode == "glm" else "",
         "credential_serialized": False,
         "validation_level": args.validation_level,
+        "candidate_replacement_attempts": args.candidate_replacement_attempts,
         "equiformer_v3_root": str(Path(args.equiformer_v3_root).resolve()),
+        "equiformer_root": str(Path(args.equiformer_root).resolve()) if args.equiformer_root else "",
+        "data_path": str(Path(args.data_path).resolve()) if args.data_path else "",
+        "train_subset_file": str(Path(args.train_subset_file).resolve()) if args.train_subset_file else "",
         "workflow": [
             "fixed_best_parent",
             "generate_8_unique_siblings",
@@ -184,7 +298,11 @@ def run(args):
             "selection_mode",
             "model",
             "validation_level",
+            "candidate_replacement_attempts",
             "equiformer_v3_root",
+            "equiformer_root",
+            "data_path",
+            "train_subset_file",
         )
         changed = {key: (existing.get(key), manifest.get(key)) for key in frozen_keys if existing.get(key) != manifest.get(key)}
         if changed:
@@ -196,57 +314,148 @@ def run(args):
         parent_path.write_text(dumps_program(parent), encoding="utf-8")
 
     records = _read_records(records_path)
+    rejected_path = output / "rejected_candidates.jsonl"
+    rejected = _read_records(rejected_path)
     completed = len(records)
     if completed > protocol.cohort_size:
         raise RuntimeError("cohort contains more records than its frozen size")
     parent_state = parent_id if args.mutation_mode == "structural" else v3_evolution_state(parent)
-    seen_states = list(archived_ids) + [parent_state] + [str(item["state"]) for item in records]
-    seen_ids = set(archived_ids) | {parent_id} | {str(item["architecture_id"]) for item in records}
+    seen_states = (
+        list(archived_ids)
+        + [parent_state]
+        + [str(item["state"]) for item in records]
+        + [str(item["state"]) for item in rejected if item.get("state")]
+    )
+    seen_ids = (
+        set(archived_ids)
+        | {parent_id}
+        | {str(item["architecture_id"]) for item in records}
+        | {str(item["architecture_id"]) for item in rejected if item.get("architecture_id")}
+    )
     backend = E3NNGraphBackend(registry, equiformer_v3_root=args.equiformer_v3_root)
 
     for candidate_index in range(completed + 1, protocol.cohort_size + 1):
-        actions = _available_actions(
-            parent,
-            seen_states,
-            mutation_mode=args.mutation_mode,
-            registry=registry,
+        accepted = None
+        prior_rejections = sum(
+            int(item.get("candidate_index", -1)) == candidate_index for item in rejected
         )
-        if not actions:
-            raise RuntimeError("fixed parent cannot produce eight unseen certified V3 siblings")
-        candidate_dir = _candidate_dir(output, candidate_index, resume=args.resume)
-        workflow = _run_three_stage_round(
-            args,
-            parent,
-            actions,
-            records,
-            seen_states,
-            candidate_index,
-            candidate_dir,
-            registry,
-        )
-        child = workflow["child"]
-        child_id = architecture_id(child, registry)
-        if child_id in seen_ids:
-            raise RuntimeError("cohort generator produced a duplicate architecture")
-        validation = _validate_candidate(
-            child,
-            registry,
-            backend,
-            validation_level=args.validation_level,
-            seed=protocol.seed + args.cycle_index * 1000 + candidate_index,
-        )
-        novelty = (
-            v3_structural_novelty_report(parent, child, registry)
-            if args.mutation_mode == "structural"
-            else {
-                "parent_architecture_id": parent_id,
-                "child_architecture_id": child_id,
-                "is_structurally_novel": False,
-                "only_attribute_changed": True,
-            }
-        )
-        if args.mutation_mode == "structural" and not novelty["is_structurally_novel"]:
-            raise RuntimeError("formal structural mutation changed no operators, nodes, or graph edges")
+        for replacement_attempt in range(
+            prior_rejections + 1,
+            args.candidate_replacement_attempts + 1,
+        ):
+            actions = _available_actions(
+                parent,
+                seen_states,
+                mutation_mode=args.mutation_mode,
+                registry=registry,
+            )
+            if not actions:
+                raise RuntimeError("fixed parent cannot produce eight unseen certified V3 siblings")
+            attempt_serial = replacement_attempt
+            attempt_root = output / "candidate_attempts"
+            attempt_dir = attempt_root / "candidate_{:03d}_attempt_{:03d}".format(
+                candidate_index,
+                attempt_serial,
+            )
+            if attempt_dir.exists():
+                if not args.resume:
+                    raise RuntimeError("candidate attempt directory already exists: {}".format(attempt_dir))
+                interrupted_root = output / "failed_attempts"
+                interrupted_root.mkdir(parents=True, exist_ok=True)
+                interrupted = interrupted_root / (
+                    "interrupted_candidate_{:03d}_attempt_{:03d}".format(
+                        candidate_index,
+                        attempt_serial,
+                    )
+                )
+                suffix = 1
+                while interrupted.exists():
+                    interrupted = interrupted_root / (
+                        "interrupted_candidate_{:03d}_attempt_{:03d}_{:03d}".format(
+                            candidate_index,
+                            attempt_serial,
+                            suffix,
+                        )
+                    )
+                    suffix += 1
+                attempt_dir.replace(interrupted)
+            attempt_dir.mkdir(parents=True, exist_ok=False)
+            attempt = _generate_candidate_attempt(
+                args,
+                parent=parent,
+                actions=actions,
+                records=records,
+                seen_states=seen_states,
+                candidate_index=candidate_index,
+                attempt_dir=attempt_dir,
+                attempt_number=attempt_serial,
+                registry=registry,
+                backend=backend,
+                protocol=protocol,
+            )
+            child = attempt["child"]
+            child_id = attempt["child_id"]
+            workflow = attempt["workflow"]
+            novelty = attempt["novelty"]
+            attempt_dir.joinpath("candidate.dsl.json").write_text(dumps_program(child), encoding="utf-8")
+            _write_json(attempt_dir / "patch.json", workflow["patch"].to_dict())
+            _write_json(attempt_dir / "structural_novelty.json", novelty)
+            if child_id in seen_ids:
+                attempt.update({
+                    "accepted": False,
+                    "error_type": "DuplicateArchitectureError",
+                    "error": "cohort generator produced a duplicate or previously rejected architecture",
+                    "traceback": "",
+                })
+            if not attempt["accepted"]:
+                rejection = {
+                    "cycle_index": args.cycle_index,
+                    "candidate_index": candidate_index,
+                    "replacement_attempt": attempt_serial,
+                    "parent_architecture_id": parent_id,
+                    "architecture_id": child_id,
+                    "state": workflow["state"],
+                    "action_id": workflow["action"].action_id,
+                    "factor_id": workflow["router"]["factor_id"],
+                    "region_id": workflow["router"]["region_id"],
+                    "mutation_family": workflow["action"].field,
+                    "error_type": attempt["error_type"],
+                    "error": attempt["error"],
+                    "traceback": attempt["traceback"],
+                    "attempt_dir": str(attempt_dir),
+                    "rejected_at": _now(),
+                }
+                _write_json(attempt_dir / "rejection.json", rejection)
+                if attempt.get("validation") is not None:
+                    _write_json(attempt_dir / "partial_validation.json", attempt["validation"])
+                if attempt.get("qm9_pretraining_gate") is not None:
+                    _write_json(
+                        attempt_dir / "qm9_pretraining_gate.json",
+                        attempt["qm9_pretraining_gate"],
+                    )
+                _append_jsonl(rejected_path, rejection)
+                rejected.append(rejection)
+                seen_states.append(workflow["state"])
+                seen_ids.add(child_id)
+                continue
+            accepted = attempt
+            candidate_dir = output / "candidate_{:03d}".format(candidate_index)
+            if candidate_dir.exists():
+                raise RuntimeError("accepted candidate directory already exists: {}".format(candidate_dir))
+            attempt_dir.replace(candidate_dir)
+            break
+        if accepted is None:
+            raise RuntimeError(
+                "candidate {} exhausted {} replacement attempts".format(
+                    candidate_index,
+                    args.candidate_replacement_attempts,
+                )
+            )
+        child = accepted["child"]
+        child_id = accepted["child_id"]
+        workflow = accepted["workflow"]
+        novelty = accepted["novelty"]
+        validation = accepted["validation"]
         candidate_path = candidate_dir / "candidate.dsl.json"
         canonical_path = candidate_dir / "candidate.canonical.dsl.json"
         candidate_path.write_text(dumps_program(child), encoding="utf-8")
@@ -285,6 +494,7 @@ def run(args):
             "equivariance_contract_sha256": protocol.equivariance_contract_sha256,
             "selected_by": args.selection_mode,
             "validation_level": args.validation_level,
+            "replacement_attempt": attempt_serial,
             "created_at": _now(),
         }
         _append_jsonl(records_path, record)
@@ -313,6 +523,8 @@ def run(args):
         "next_required_stage": "quarter_8k_all_8",
         "next_parent_not_selected_before_250k": True,
         "candidate_records": records,
+        "rejected_candidate_count": len(rejected),
+        "rejected_candidates_path": str(rejected_path),
         "completed_at": _now(),
     }
     _write_json(output / "summary.json", summary)
@@ -343,11 +555,15 @@ def get_parser():
     parser.add_argument("--max-tokens", type=int, default=12000)
     parser.add_argument("--timeout", type=float, default=float(os.environ.get("GLM_TIMEOUT_SECONDS", "600")))
     parser.add_argument("--llm-attempts", type=int, default=int(os.environ.get("GLM_LLM_ATTEMPTS", "5")))
+    parser.add_argument("--candidate-replacement-attempts", type=int, default=16)
     parser.add_argument("--allow-deterministic-fallback", action="store_true")
     parser.add_argument("--critic-repair-attempts", type=int, default=2)
     parser.add_argument("--compiler-repair-attempts", type=int, default=2)
     parser.add_argument("--validation-level", choices=("static", "build", "full"), default="static")
     parser.add_argument("--architecture-archive", default="")
+    parser.add_argument("--equiformer-root", default=os.environ.get("EQUIFORMER_ROOT", ""))
+    parser.add_argument("--data-path", default="")
+    parser.add_argument("--train-subset-file", default="")
     parser.add_argument(
         "--equiformer-v3-root",
         default=os.environ.get("EQUIFORMER_V3_ROOT", "") or (str(DEFAULT_V3_ROOT) if DEFAULT_V3_ROOT.exists() else ""),

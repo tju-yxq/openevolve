@@ -272,8 +272,7 @@ def export(repo: Path, v3_root: Path, output: Path, *, num_layers: int) -> dict:
             "one backward pass reaches positions and every trainable parameter tensor",
         ],
         "not_proved": [
-            "full-model parameter-by-parameter equality with the official constructor",
-            "full-model forward and gradient numerical equality with the official constructor",
+            "this production-depth smoke does not itself replace the separate frozen two-layer official full-model oracle",
             "checkpoint loading equality",
             "train/eval RNG equality under nonzero stochastic rates",
             "stress head",

@@ -173,8 +173,30 @@ def _call_glm(args, prompt):
         method="POST",
     )
     started = time.time()
-    with urllib.request.urlopen(request, timeout=args.timeout) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    attempts = max(1, int(getattr(args, "llm_attempts", 3)))
+    last_error = None
+    payload = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=args.timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as error:
+            last_error = error
+            if error.code not in {408, 425, 429, 500, 502, 503, 504}:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as error:
+            last_error = error
+        if attempt < attempts:
+            time.sleep(min(20.0, 2.0 ** attempt))
+    if payload is None:
+        raise RuntimeError(
+            "GLM request failed after {} attempts: {}: {}".format(
+                attempts,
+                type(last_error).__name__,
+                last_error,
+            )
+        ) from last_error
     content = payload["choices"][0]["message"]["content"]
     return {
         "response": _extract_json_object(content),
@@ -999,8 +1021,8 @@ def get_parser():
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--max-tokens", type=int, default=12000)
-    parser.add_argument("--timeout", type=float, default=180.0)
-    parser.add_argument("--llm-attempts", type=int, default=3)
+    parser.add_argument("--timeout", type=float, default=float(os.environ.get("GLM_TIMEOUT_SECONDS", "600")))
+    parser.add_argument("--llm-attempts", type=int, default=int(os.environ.get("GLM_LLM_ATTEMPTS", "5")))
     parser.add_argument("--critic-repair-attempts", type=int, default=2)
     parser.add_argument("--compiler-repair-attempts", type=int, default=2)
     parser.add_argument("--allow-deterministic-fallback", action="store_true")

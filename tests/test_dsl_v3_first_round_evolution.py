@@ -24,11 +24,55 @@ from equivariant_nas.dsl import (
 from equivariant_nas.dsl.backends import EquiformerV3Spec
 from scripts.export_dsl_v3_seed import export_seed
 from scripts.run_dsl_v3_evolution import (
+    _call_glm,
     _available_actions,
     _parse_synthesized_patch,
     _run_three_stage_round,
     get_parser,
 )
+
+
+def test_glm_transport_retries_a_read_timeout(monkeypatch):
+    attempts = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "choices": [{"message": {"content": json.dumps({"ok": True})}}]
+            }).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        del request, timeout
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise TimeoutError("slow upstream")
+        return Response()
+
+    monkeypatch.setenv("GLM_API_KEY", "test-only")
+    monkeypatch.setattr("scripts.run_dsl_v3_evolution.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("scripts.run_dsl_v3_evolution.time.sleep", lambda seconds: None)
+    result = _call_glm(
+        Namespace(
+            api_key_env="GLM_API_KEY",
+            model="glm-test",
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=32,
+            api_base="https://example.invalid/v1",
+            timeout=1.0,
+            llm_attempts=3,
+        ),
+        {"system": "system", "user": "user"},
+    )
+
+    assert len(attempts) == 2
+    assert result["response"] == {"ok": True}
 
 
 def _spec():

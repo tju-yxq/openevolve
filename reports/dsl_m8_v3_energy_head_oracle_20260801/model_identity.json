@@ -1,0 +1,132 @@
+{
+  "architecture_id": "d63de94569200d29",
+  "class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
+  "input_types": {
+    "batch": {
+      "allows_empty_targets": false,
+      "endpoint": "batch",
+      "group": {
+        "dimension": 3,
+        "family": "SO3",
+        "order": 0,
+        "periodicity": "none",
+        "permutation": "node_set",
+        "translation": "relative_coordinates"
+      },
+      "index_dtype": "int64",
+      "kind": "index_map",
+      "schema_version": "evoequilang-value-types-v2@1",
+      "sorted_by_target": false,
+      "source_carrier": "node",
+      "target_carrier": "graph",
+      "target_size": null
+    },
+    "x": {
+      "axes": [],
+      "axis_specs": [],
+      "carrier": "node",
+      "dtype": "float32",
+      "equivariance_level": 1,
+      "frame": {
+        "kind": "global",
+        "reference": ""
+      },
+      "group": {
+        "dimension": 3,
+        "family": "SO3",
+        "order": 0,
+        "periodicity": "none",
+        "permutation": "node_set",
+        "translation": "relative_coordinates"
+      },
+      "irreps": "3x0+3x1+3x2",
+      "kind": "equivariant_tensor",
+      "layout": {
+        "channel_order": [],
+        "coefficient_order": "canonical",
+        "parity_convention": "group_native",
+        "resolution_specs": [],
+        "storage": "irrep_major",
+        "truncation_state": "full"
+      },
+      "measure": "dimensionless",
+      "schema_version": "evoequilang-value-types-v2@1"
+    }
+  },
+  "output_types": {
+    "energy": {
+      "axes": [
+        "energy_channel"
+      ],
+      "axis_specs": [
+        {
+          "broadcastable": false,
+          "name": "energy_channel",
+          "order": 0,
+          "role": "channel",
+          "sharing": "independent",
+          "size": 1
+        }
+      ],
+      "carrier": "graph",
+      "dtype": "float32",
+      "equivariance_level": 1,
+      "feature_role": "channel",
+      "frame": {
+        "kind": "invariant",
+        "reference": ""
+      },
+      "group": {
+        "dimension": 3,
+        "family": "SO3",
+        "order": 0,
+        "periodicity": "none",
+        "permutation": "node_set",
+        "translation": "relative_coordinates"
+      },
+      "irreps": "1x0",
+      "kind": "invariant_tensor",
+      "layout": {
+        "channel_order": [],
+        "coefficient_order": "canonical",
+        "parity_convention": "group_native",
+        "resolution_specs": [],
+        "storage": "irrep_major",
+        "truncation_state": "full"
+      },
+      "measure": "dimensionless",
+      "schema_version": "evoequilang-value-types-v2@1"
+    }
+  },
+  "parameter_mapping": {
+    "node_modules.n0000.norm.affine_bias": "norm.affine_bias",
+    "node_modules.n0000.norm.affine_weight": "norm.affine_weight",
+    "node_modules.n0002.linear.bias": "energy_block.linear_1.bias",
+    "node_modules.n0002.linear.weight": "energy_block.linear_1.weight",
+    "node_modules.n0005.linear.bias": "energy_block.linear_2.bias",
+    "node_modules.n0005.linear.weight": "energy_block.linear_2.weight"
+  },
+  "parameter_shapes": {
+    "node_modules.n0000.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0000.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0002.linear.bias": [
+      4
+    ],
+    "node_modules.n0002.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0005.linear.bias": [
+      1
+    ],
+    "node_modules.n0005.linear.weight": [
+      1,
+      4
+    ]
+  }
+}

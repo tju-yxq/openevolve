@@ -1,0 +1,39 @@
+{
+  "canonical_architecture_id": "d63de94569200d29",
+  "dsl_repository": {
+    "branch": "codex/v3-mapping",
+    "head": "af3be1f220b00b4531faa78554c21fbfcbe1717d",
+    "worktree_dirty": true,
+    "worktree_status_sha256": "d0b7365e962fd9754e572dfdb0a0476ca511d114b56903114ce137647cc8c3d1"
+  },
+  "lowering_rules": 102,
+  "normalized_node_count": 8,
+  "official_v3_repository": {
+    "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "origin": "https://github.com/atomicarchitects/equiformer_v3.git"
+  },
+  "oracle_pytest_result": "1 passed",
+  "oracle_test": "tests/test_dsl_v3_official_energy_head.py",
+  "pending": [
+    "full input-plus-backbone-plus-energy-plus-force model oracle",
+    "nonzero stochastic-rate train/eval and RNG oracle",
+    "checkpoint loader",
+    "stress head",
+    "training trajectory"
+  ],
+  "proved": [
+    "the final merge LayerNorm is represented by a typed primitive node",
+    "the scalar projection, SiLU, zero-rate dropout and output projection are represented by typed primitive nodes",
+    "node energies are reduced through an explicit node-to-graph batch map and divided by avg_num_nodes",
+    "same-seed construction and initialization RNG equality",
+    "bijective mapping of every trainable energy-head parameter",
+    "official forward and forward-RNG numerical alignment",
+    "node-feature and all-parameter gradient numerical alignment",
+    "generic Lowering does not call the official energy-head or model constructor"
+  ],
+  "registry_entries": 102,
+  "spec_architecture_id": "1ae79baaa7c1bc73",
+  "status": "official_v3_energy_head_oracle_passed",
+  "trainable_parameter_count": 33,
+  "trainable_parameter_tensor_count": 6
+}

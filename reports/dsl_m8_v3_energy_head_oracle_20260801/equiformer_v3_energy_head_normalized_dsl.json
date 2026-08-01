@@ -1,0 +1,340 @@
+{
+  "annotations": {
+    "constructor_bypass": false,
+    "force_derivative_contract": "outside this direct head; gradient-force task path remains pending",
+    "numerical_scope": "official final merge norm, ScalarFeedForwardNetwork and avg-num-nodes energy aggregation",
+    "official_source_commit": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "reference_backend": "equiformer_v3_official_energy_head"
+  },
+  "constraints": [],
+  "inputs": [
+    {
+      "name": "x",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "dtype": "float32",
+        "equivariance_level": 1,
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "none",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "3x0+3x1+3x2",
+        "kind": "equivariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "batch",
+      "type": {
+        "allows_empty_targets": false,
+        "endpoint": "batch",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "none",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "node",
+        "target_carrier": "graph",
+        "target_size": null
+      }
+    }
+  ],
+  "language_version": "2.6.0",
+  "nodes": [
+    {
+      "annotations": {},
+      "attrs": {
+        "affine": true,
+        "centering": true,
+        "epsilon": 1e-05,
+        "normalization": "component"
+      },
+      "declared_types": {},
+      "id": "n0000",
+      "inputs": {
+        "x": "input:x"
+      },
+      "op": "core.equivariant_merge_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "scalar_channel",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0001",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "scalar_channel",
+        "bias": true,
+        "out_axis": "energy_hidden",
+        "out_features": 4
+      },
+      "declared_types": {},
+      "id": "n0002",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0003",
+      "inputs": {
+        "x": "n0002"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0004",
+      "inputs": {
+        "x": "n0003"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "energy_hidden",
+        "bias": true,
+        "out_axis": "energy_channel",
+        "out_features": 1
+      },
+      "declared_types": {},
+      "id": "n0005",
+      "inputs": {
+        "x": "n0004"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0006",
+      "inputs": {
+        "index": "input:batch",
+        "x": "n0005"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "factor": 0.18181818181818182
+      },
+      "declared_types": {},
+      "id": "n0007",
+      "inputs": {
+        "x": "n0006"
+      },
+      "op": "core.constant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "energy",
+      "source": "n0007",
+      "type": {
+        "axes": [
+          "energy_channel"
+        ],
+        "axis_specs": [
+          {
+            "broadcastable": false,
+            "name": "energy_channel",
+            "order": 0,
+            "role": "channel",
+            "sharing": "independent",
+            "size": 1
+          }
+        ],
+        "carrier": "graph",
+        "dtype": "float32",
+        "equivariance_level": 1,
+        "feature_role": "channel",
+        "frame": {
+          "kind": "invariant",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "none",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "1x0",
+        "kind": "invariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    }
+  ],
+  "parameters": {
+    "equiformer_v3_spec": {
+      "alpha_drop": 0.0,
+      "attn_activation": "sep-merge_gates2_swiglu",
+      "attn_alpha_channels": 2,
+      "attn_eps": 1e-16,
+      "attn_grid_resolution": [
+        14,
+        8
+      ],
+      "attn_hidden_channels": 2,
+      "attn_mask_rate": 0.0,
+      "attn_value_channels": 2,
+      "attn_weights_drop": 0.1,
+      "avg_degree": 23.395238876342773,
+      "avg_num_nodes": 5.5,
+      "direct_prediction": true,
+      "drop_path_rate": 0.05,
+      "edge_channels": 5,
+      "enforce_max_neighbors_strictly": true,
+      "ffn_activation": "sep-merge_gates2_swiglu",
+      "ffn_drop": 0.0,
+      "ffn_grid_resolution": [
+        14,
+        14
+      ],
+      "ffn_hidden_channels": 4,
+      "gradient_checkpointing_block_list": [],
+      "lmax": 2,
+      "max_neighbors": 20,
+      "max_num_elements": 32,
+      "max_radius": 12.0,
+      "mmax": 1,
+      "norm_type": "merge_layer_norm",
+      "num_channels": 3,
+      "num_heads": 1,
+      "num_layers": 2,
+      "num_radial_basis": 6,
+      "otf_graph": true,
+      "proj_drop": 0.0,
+      "regress_forces": true,
+      "regress_stress": false,
+      "softcap": null,
+      "use_add_merge": false,
+      "use_atom_edge_embedding": true,
+      "use_attn_renorm": true,
+      "use_envelope": true,
+      "use_gate_force_head": true,
+      "use_grid_mlp": true,
+      "use_head_reg": false,
+      "use_pbc": false,
+      "use_pbc_single": false,
+      "use_rad_l_parametrization": true,
+      "value_drop": 0.0
+    },
+    "lowering_contract": {
+      "aggregation": "sum node energies by explicit node->graph batch map, then divide by avg_num_nodes",
+      "initializer_schedule": [
+        {
+          "after_node": "n0005",
+          "nodes": [
+            "n0002",
+            "n0005"
+          ]
+        }
+      ],
+      "module_construction_order": [
+        "n0000",
+        "n0001",
+        "n0002",
+        "n0003",
+        "n0004",
+        "n0005",
+        "n0006",
+        "n0007"
+      ]
+    },
+    "parameter_mapping": {
+      "node_modules.energy_linear1.linear.bias": "energy_block.linear_1.bias",
+      "node_modules.energy_linear1.linear.weight": "energy_block.linear_1.weight",
+      "node_modules.energy_linear2.linear.bias": "energy_block.linear_2.bias",
+      "node_modules.energy_linear2.linear.weight": "energy_block.linear_2.weight",
+      "node_modules.final_norm.norm.affine_bias": "norm.affine_bias",
+      "node_modules.final_norm.norm.affine_weight": "norm.affine_weight"
+    }
+  },
+  "program_id": "equiformer_v3_energy_head_1ae79baaa7c1bc73",
+  "task_contract": "equiformer_v3_official_energy_head"
+}

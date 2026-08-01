@@ -1,0 +1,37 @@
+{
+  "backend": "e3nn_graph",
+  "composition_errors": [],
+  "missing_dependencies": [],
+  "node_exactness": {
+    "n0000": "library_exact",
+    "n0001": "constructive_exact",
+    "n0002": "constructive_exact",
+    "n0003": "numerically_tested",
+    "n0004": "constructive_exact",
+    "n0005": "constructive_exact",
+    "n0006": "constructive_exact",
+    "n0007": "constructive_exact"
+  },
+  "runtime_kinds": {
+    "input:batch": "index_map",
+    "input:x": "dense_tensor",
+    "n0000": "dense_tensor",
+    "n0000:out": "dense_tensor",
+    "n0001": "dense_tensor",
+    "n0001:out": "dense_tensor",
+    "n0002": "dense_tensor",
+    "n0002:out": "dense_tensor",
+    "n0003": "dense_tensor",
+    "n0003:out": "dense_tensor",
+    "n0004": "dense_tensor",
+    "n0004:out": "dense_tensor",
+    "n0005": "dense_tensor",
+    "n0005:out": "dense_tensor",
+    "n0006": "dense_tensor",
+    "n0006:out": "dense_tensor",
+    "n0007": "dense_tensor",
+    "n0007:out": "dense_tensor"
+  },
+  "supported": true,
+  "unsupported_nodes": []
+}

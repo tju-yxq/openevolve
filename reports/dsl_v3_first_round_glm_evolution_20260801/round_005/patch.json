@@ -1,0 +1,124 @@
+{
+  "edits": [
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.1
+        }
+      },
+      "target": "block0_ffn_scalar_dropout"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "probability": 0.1
+        }
+      },
+      "target": "block0_ffn_grid_dropout"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.1
+        }
+      },
+      "target": "block1_ffn_scalar_dropout"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "probability": 0.1
+        }
+      },
+      "target": "block1_ffn_grid_dropout"
+    },
+    {
+      "kind": "change_parameters",
+      "payload": {
+        "value": 0.1
+      },
+      "target": "program.parameters.equiformer_v3_spec.ffn_drop"
+    }
+  ],
+  "expected_effects": {
+    "equivariance_contract": "unchanged",
+    "parameter_shapes": "unchanged",
+    "training_effect": "hypothesis_only"
+  },
+  "hypothesis": {
+    "action_id": "ffn_drop=0.10",
+    "claim": "将 FFN 标量与 S2 网格 dropout 提升至 0.10，可在不破坏注意力分布锐度与等变投影数值稳定性的前提下，迫使 FFN 非线性变换学习更冗余的几何基底组合",
+    "current_value": 0.02,
+    "mutation_family": "ffn_drop",
+    "proposed_value": 0.1,
+    "rationale": "前四轮已分别探索了注意力权重平滑、图级残差完整性、值路径噪声注入与等变投影正则；当前 ffn_drop=0.02 仍处于低正则区间。FFN 是等变特征非线性表达的核心瓶颈，提升其标量与 S2 网格联合 dropout 能在 SO(3) 合同约束下迫使高阶球谐通道在更宽的噪声带宽中学习几何表示，从而增强泛化能力，同时避免像值路径 dropout 那样直接干扰注意力输出的数值稳定性",
+    "risk": "若 FFN 的 S2 网格通道对高阶球谐基底高度敏感，0.10 的联合 dropout 可能破坏球面网格上的 Clebsch-Gordan 分解数值条件，导致等变特征的梯度方差膨胀或训练损失震荡",
+    "status": "未经训练验证的候选假设"
+  },
+  "language_version": "2.9.0",
+  "parent_architecture_id": "8e065b7e0506fb64",
+  "patch_version": "1.0",
+  "postconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_scalar_dropout",
+      "value": 0.1
+    },
+    {
+      "attr": "probability",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_grid_dropout",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_scalar_dropout",
+      "value": 0.1
+    },
+    {
+      "attr": "probability",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_grid_dropout",
+      "value": 0.1
+    }
+  ],
+  "preconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_scalar_dropout",
+      "value": 0.02
+    },
+    {
+      "attr": "probability",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_grid_dropout",
+      "value": 0.02
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_scalar_dropout",
+      "value": 0.02
+    },
+    {
+      "attr": "probability",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_grid_dropout",
+      "value": 0.02
+    }
+  ],
+  "scope": [
+    "block0_ffn_scalar_dropout",
+    "block0_ffn_grid_dropout",
+    "block1_ffn_scalar_dropout",
+    "block1_ffn_grid_dropout",
+    "program.parameters.equiformer_v3_spec.ffn_drop"
+  ]
+}

@@ -1,0 +1,1432 @@
+{
+  "architecture_id": "c907d8c7ab62b9a3",
+  "reconstructed_sources": [
+    {
+      "dtype": "int64",
+      "semantic": "official RadialFunction degree-to-coefficient expansion is structurally represented by core.degreewise_invariant_scale@1",
+      "shape": [
+        9
+      ],
+      "source_key": "blocks.0.ga.rad_func.expand_index",
+      "values": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "dtype": "int64",
+      "semantic": "official RadialFunction degree-to-coefficient expansion is structurally represented by core.degreewise_invariant_scale@1",
+      "shape": [
+        9
+      ],
+      "source_key": "blocks.1.ga.rad_func.expand_index",
+      "values": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "dtype": "int64",
+      "semantic": "official RadialFunction degree-to-coefficient expansion is structurally represented by core.degreewise_invariant_scale@1",
+      "shape": [
+        9
+      ],
+      "source_key": "force_block.rad_func.expand_index",
+      "values": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "dtype": "int64",
+      "semantic": "official EquivariantDropout degree mask expansion is reconstructed from the typed output irreps",
+      "shape": [
+        9
+      ],
+      "source_key": "blocks.0.proj_drop.expand_index",
+      "values": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "dtype": "int64",
+      "semantic": "official EquivariantDropout degree mask expansion is reconstructed from the typed output irreps",
+      "shape": [
+        9
+      ],
+      "source_key": "blocks.1.proj_drop.expand_index",
+      "values": [
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    }
+  ],
+  "source_format": "fairchem-equiformer-v3@a7300c58df683dc99cb48027d5bfd4c887486c48",
+  "source_tensor_count": 158,
+  "target_format": "evoequilang-v3-direct-state-dict",
+  "target_tensor_count": 157,
+  "tensor_groups": [
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "sphere_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_atom_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.source_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_source_edge_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.target_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_target_edge_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.0.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_linear0.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.0.bias"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_linear0.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.1.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_norm0.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.1.bias"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_norm0.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.3.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_linear1.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.3.bias"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_linear1.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.4.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_norm1.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.4.bias"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_norm1.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.6.weight"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_linear2.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "edge_degree_embedding.rad_func.net.6.bias"
+      ],
+      "target_keys": [
+        "node_modules.input_radial_linear2.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.norm_1.affine_weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm1.norm.affine_weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.norm_1.affine_bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm1.norm.affine_bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.norm_2.affine_weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm2.norm.affine_weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.norm_2.affine_bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm2.norm.affine_bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.source_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_source_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.target_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_target_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.0.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_linear0.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.0.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_linear0.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.1.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_norm0.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.1.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_norm0.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.3.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_linear1.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.3.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_linear1.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.4.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_norm1.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.4.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_norm1.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.6.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_linear2.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.rad_func.net.6.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_radial_linear2.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.so2_linear_1.fc_m0.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_so2_linear1.fc_m0.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.so2_linear_1.fc_m0.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_so2_linear1.fc_m0.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.alpha_norm.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_alpha_norm.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.alpha_norm.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_alpha_norm.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.alpha_dot"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_alpha_dot.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.so2_linear_2.fc_m0.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_so2_linear2.fc_m0.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.so2_linear_2.fc_m0.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_so2_linear2.fc_m0.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.proj.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_projection.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.proj.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_projection.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.so2_linear_1.so2_m_linear.0.fc.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_so2_linear1.so2_m_linear.0.fc.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ga.so2_linear_2.so2_m_linear.0.fc.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_so2_linear2.so2_m_linear.0.fc.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.so3_linear_1.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_so3_linear1.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.so3_linear_1.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_so3_linear1.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.scalar_mlp.0.linear.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_scalar_linear.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.scalar_mlp.0.linear.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_scalar_linear.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.grid_mlp.gating_linear.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_gate_linear.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.grid_mlp.gating_linear.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_gate_linear.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.grid_mlp.grid_linear_1.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_grid_linear1.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.grid_mlp.grid_linear_2.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_grid_linear2.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.so3_linear_2.weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_so3_linear2.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.0.ffn.so3_linear_2.bias"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_so3_linear2.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.norm_1.affine_weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm1.norm.affine_weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.norm_1.affine_bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm1.norm.affine_bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.norm_2.affine_weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm2.norm.affine_weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.norm_2.affine_bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm2.norm.affine_bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.source_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_source_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.target_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_target_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.0.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_linear0.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.0.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_linear0.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.1.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_norm0.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.1.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_norm0.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.3.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_linear1.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.3.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_linear1.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.4.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_norm1.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.4.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_norm1.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.6.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_linear2.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.rad_func.net.6.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_radial_linear2.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.so2_linear_1.fc_m0.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_so2_linear1.fc_m0.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.so2_linear_1.fc_m0.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_so2_linear1.fc_m0.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.alpha_norm.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_alpha_norm.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.alpha_norm.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_alpha_norm.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.alpha_dot"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_alpha_dot.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.so2_linear_2.fc_m0.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_so2_linear2.fc_m0.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.so2_linear_2.fc_m0.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_so2_linear2.fc_m0.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.proj.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_projection.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.proj.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_projection.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.so2_linear_1.so2_m_linear.0.fc.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_so2_linear1.so2_m_linear.0.fc.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ga.so2_linear_2.so2_m_linear.0.fc.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_so2_linear2.so2_m_linear.0.fc.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.so3_linear_1.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_so3_linear1.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.so3_linear_1.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_so3_linear1.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.scalar_mlp.0.linear.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_scalar_linear.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.scalar_mlp.0.linear.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_scalar_linear.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.grid_mlp.gating_linear.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_gate_linear.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.grid_mlp.gating_linear.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_gate_linear.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.grid_mlp.grid_linear_1.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_grid_linear1.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.grid_mlp.grid_linear_2.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_grid_linear2.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.so3_linear_2.weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_so3_linear2.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "blocks.1.ffn.so3_linear_2.bias"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_so3_linear2.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "norm.affine_weight"
+      ],
+      "target_keys": [
+        "node_modules.final_norm.norm.affine_weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "norm.affine_bias"
+      ],
+      "target_keys": [
+        "node_modules.final_norm.norm.affine_bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "energy_block.linear_1.weight"
+      ],
+      "target_keys": [
+        "node_modules.energy_energy_linear1.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "energy_block.linear_1.bias"
+      ],
+      "target_keys": [
+        "node_modules.energy_energy_linear1.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "energy_block.linear_2.weight"
+      ],
+      "target_keys": [
+        "node_modules.energy_energy_linear2.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "energy_block.linear_2.bias"
+      ],
+      "target_keys": [
+        "node_modules.energy_energy_linear2.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.source_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_source_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.target_embedding.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_target_embedding.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.0.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_linear0.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.0.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_linear0.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.1.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_norm0.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.1.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_norm0.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.3.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_linear1.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.3.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_linear1.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.4.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_norm1.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.4.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_norm1.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.6.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_linear2.linear.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.rad_func.net.6.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_radial_linear2.linear.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.so2_linear_1.fc_m0.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_so2_linear1.fc_m0.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.so2_linear_1.fc_m0.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_so2_linear1.fc_m0.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.alpha_norm.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_alpha_norm.layer_norm.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.alpha_norm.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_alpha_norm.layer_norm.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.alpha_dot"
+      ],
+      "target_keys": [
+        "node_modules.force_alpha_dot.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.so2_linear_2.fc_m0.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_so2_linear2.fc_m0.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.so2_linear_2.fc_m0.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_so2_linear2.fc_m0.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.proj.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_projection.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.proj.bias"
+      ],
+      "target_keys": [
+        "node_modules.force_projection.bias"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.so2_linear_1.so2_m_linear.0.fc.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_so2_linear1.so2_m_linear.0.fc.weight"
+      ]
+    },
+    {
+      "semantic": "trainable parameter",
+      "source_keys": [
+        "force_block.so2_linear_2.so2_m_linear.0.fc.weight"
+      ],
+      "target_keys": [
+        "node_modules.force_so2_linear2.so2_m_linear.0.fc.weight"
+      ]
+    },
+    {
+      "semantic": "fixed Gaussian radial offsets",
+      "source_keys": [
+        "distance_expansion.offset"
+      ],
+      "target_keys": [
+        "node_modules.input_distance_expansion.offset"
+      ]
+    },
+    {
+      "semantic": "shared official Wigner layout buffer broadcast to typed frame entries",
+      "source_keys": [
+        "so3_rotation.wigner_index_to_m_array",
+        "edge_degree_embedding.so3_rotation.wigner_index_to_m_array",
+        "blocks.0.ga.so3_rotation.wigner_index_to_m_array",
+        "blocks.1.ga.so3_rotation.wigner_index_to_m_array",
+        "force_block.so3_rotation.wigner_index_to_m_array"
+      ],
+      "target_keys": [
+        "node_modules.input_edge_spherical_lift.rotation.wigner_index_to_m_array",
+        "node_modules.block0_attn_message_rotate.rotation.wigner_index_to_m_array",
+        "node_modules.block0_attn_message_rotate_inv.rotation.wigner_index_to_m_array",
+        "node_modules.block1_attn_message_rotate.rotation.wigner_index_to_m_array",
+        "node_modules.block1_attn_message_rotate_inv.rotation.wigner_index_to_m_array",
+        "node_modules.force_message_rotate.rotation.wigner_index_to_m_array",
+        "node_modules.force_message_rotate_inv.rotation.wigner_index_to_m_array"
+      ]
+    },
+    {
+      "semantic": "shared official Wigner layout buffer broadcast to typed frame entries",
+      "source_keys": [
+        "so3_rotation.wigner_inv_rescale",
+        "edge_degree_embedding.so3_rotation.wigner_inv_rescale",
+        "blocks.0.ga.so3_rotation.wigner_inv_rescale",
+        "blocks.1.ga.so3_rotation.wigner_inv_rescale",
+        "force_block.so3_rotation.wigner_inv_rescale"
+      ],
+      "target_keys": [
+        "node_modules.input_edge_spherical_lift.rotation.wigner_inv_rescale",
+        "node_modules.block0_attn_message_rotate.rotation.wigner_inv_rescale",
+        "node_modules.block0_attn_message_rotate_inv.rotation.wigner_inv_rescale",
+        "node_modules.block1_attn_message_rotate.rotation.wigner_inv_rescale",
+        "node_modules.block1_attn_message_rotate_inv.rotation.wigner_inv_rescale",
+        "node_modules.force_message_rotate.rotation.wigner_inv_rescale",
+        "node_modules.force_message_rotate_inv.rotation.wigner_inv_rescale"
+      ]
+    },
+    {
+      "semantic": "first merge-norm degree expansion",
+      "source_keys": [
+        "blocks.0.norm_1.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm1.norm.expand_index"
+      ]
+    },
+    {
+      "semantic": "first merge-norm degree balance",
+      "source_keys": [
+        "blocks.0.norm_1.balance_degree_weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm1.norm.balance_degree_weight"
+      ]
+    },
+    {
+      "semantic": "attention S2 forward grid matrix",
+      "source_keys": [
+        "blocks.0.ga.act.so3_grid.to_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_gated_activation.activation.so3_grid.to_grid_mat"
+      ]
+    },
+    {
+      "semantic": "attention S2 inverse grid matrix",
+      "source_keys": [
+        "blocks.0.ga.act.so3_grid.from_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_gated_activation.activation.so3_grid.from_grid_mat"
+      ]
+    },
+    {
+      "semantic": "attention projection degree expansion",
+      "source_keys": [
+        "blocks.0.ga.proj.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block0_attn_projection.expand_index"
+      ]
+    },
+    {
+      "semantic": "second merge-norm degree expansion",
+      "source_keys": [
+        "blocks.0.norm_2.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm2.norm.expand_index"
+      ]
+    },
+    {
+      "semantic": "second merge-norm degree balance",
+      "source_keys": [
+        "blocks.0.norm_2.balance_degree_weight"
+      ],
+      "target_keys": [
+        "node_modules.block0_norm2.norm.balance_degree_weight"
+      ]
+    },
+    {
+      "semantic": "FFN input linear degree expansion",
+      "source_keys": [
+        "blocks.0.ffn.so3_linear_1.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_so3_linear1.expand_index"
+      ]
+    },
+    {
+      "semantic": "FFN S2 forward grid matrix",
+      "source_keys": [
+        "blocks.0.ffn.so3_grid.to_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_grid_project.grid.to_grid_mat"
+      ]
+    },
+    {
+      "semantic": "FFN S2 inverse grid matrix",
+      "source_keys": [
+        "blocks.0.ffn.so3_grid.from_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_grid_project.grid.from_grid_mat"
+      ]
+    },
+    {
+      "semantic": "FFN output linear degree expansion",
+      "source_keys": [
+        "blocks.0.ffn.so3_linear_2.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block0_ffn_so3_linear2.expand_index"
+      ]
+    },
+    {
+      "semantic": "first merge-norm degree expansion",
+      "source_keys": [
+        "blocks.1.norm_1.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm1.norm.expand_index"
+      ]
+    },
+    {
+      "semantic": "first merge-norm degree balance",
+      "source_keys": [
+        "blocks.1.norm_1.balance_degree_weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm1.norm.balance_degree_weight"
+      ]
+    },
+    {
+      "semantic": "attention S2 forward grid matrix",
+      "source_keys": [
+        "blocks.1.ga.act.so3_grid.to_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_gated_activation.activation.so3_grid.to_grid_mat"
+      ]
+    },
+    {
+      "semantic": "attention S2 inverse grid matrix",
+      "source_keys": [
+        "blocks.1.ga.act.so3_grid.from_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_gated_activation.activation.so3_grid.from_grid_mat"
+      ]
+    },
+    {
+      "semantic": "attention projection degree expansion",
+      "source_keys": [
+        "blocks.1.ga.proj.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block1_attn_projection.expand_index"
+      ]
+    },
+    {
+      "semantic": "second merge-norm degree expansion",
+      "source_keys": [
+        "blocks.1.norm_2.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm2.norm.expand_index"
+      ]
+    },
+    {
+      "semantic": "second merge-norm degree balance",
+      "source_keys": [
+        "blocks.1.norm_2.balance_degree_weight"
+      ],
+      "target_keys": [
+        "node_modules.block1_norm2.norm.balance_degree_weight"
+      ]
+    },
+    {
+      "semantic": "FFN input linear degree expansion",
+      "source_keys": [
+        "blocks.1.ffn.so3_linear_1.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_so3_linear1.expand_index"
+      ]
+    },
+    {
+      "semantic": "FFN S2 forward grid matrix",
+      "source_keys": [
+        "blocks.1.ffn.so3_grid.to_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_grid_project.grid.to_grid_mat"
+      ]
+    },
+    {
+      "semantic": "FFN S2 inverse grid matrix",
+      "source_keys": [
+        "blocks.1.ffn.so3_grid.from_grid_mat"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_grid_project.grid.from_grid_mat"
+      ]
+    },
+    {
+      "semantic": "FFN output linear degree expansion",
+      "source_keys": [
+        "blocks.1.ffn.so3_linear_2.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.block1_ffn_so3_linear2.expand_index"
+      ]
+    },
+    {
+      "semantic": "shared final norm degree expansion",
+      "source_keys": [
+        "norm.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.final_norm.norm.expand_index"
+      ]
+    },
+    {
+      "semantic": "shared final norm degree balance",
+      "source_keys": [
+        "norm.balance_degree_weight"
+      ],
+      "target_keys": [
+        "node_modules.final_norm.norm.balance_degree_weight"
+      ]
+    },
+    {
+      "semantic": "direct-force gate degree expansion",
+      "source_keys": [
+        "force_block.act.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.force_gated_activation.activation.expand_index"
+      ]
+    },
+    {
+      "semantic": "direct-force projection degree expansion",
+      "source_keys": [
+        "force_block.proj.expand_index"
+      ],
+      "target_keys": [
+        "node_modules.force_projection.expand_index"
+      ]
+    }
+  ],
+  "version": "evoequilang-checkpoint-mapping-v1"
+}

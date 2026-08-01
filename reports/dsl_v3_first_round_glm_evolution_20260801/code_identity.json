@@ -1,0 +1,15 @@
+{
+  "branch": "codex/v3-mapping",
+  "code_commit": "aaeee1cef4636dc37f582132c7792d1c305fa323",
+  "commit_subject": "完成 V3 第一轮十轮候选生成入口",
+  "compiler_semantics_version": "evoequilang-24",
+  "backend_semantics_version": "backend-neutral-v22",
+  "official_v3_commit": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+  "full_regression": {
+    "passed": 374,
+    "skipped": 3,
+    "warnings": 870
+  },
+  "evidence_note": "十轮运行在同一代码内容提交前生成，提交后重新执行了全部候选 build 验证、最终候选 full 验证和全量 pytest。",
+  "credential_serialized": false
+}

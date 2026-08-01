@@ -1,0 +1,80 @@
+{
+  "edits": [
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.05
+        }
+      },
+      "target": "block0_attn_attention_weight_dropout"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.05
+        }
+      },
+      "target": "block1_attn_attention_weight_dropout"
+    },
+    {
+      "kind": "change_parameters",
+      "payload": {
+        "value": 0.05
+      },
+      "target": "program.parameters.equiformer_v3_spec.attn_weights_drop"
+    }
+  ],
+  "expected_effects": {
+    "equivariance_contract": "unchanged",
+    "parameter_shapes": "unchanged",
+    "training_effect": "hypothesis_only"
+  },
+  "hypothesis": {
+    "action_id": "attn_weights_drop=0.05",
+    "claim": "将归一化注意力权重的 dropout 从 0.10 降至 0.05，可缓解当前等变注意力分布的过度平滑",
+    "current_value": 0.1,
+    "mutation_family": "attn_weights_drop",
+    "proposed_value": 0.05,
+    "rationale": "当前 attn_weights_drop=0.10 在仅有两个 V3 block 的浅层网络中可能过度抑制几何注意力分布的锐度，降低它能保留更多精确相对几何信号，从而提升等变特征的表达保真度",
+    "risk": "若模型已依赖该正则来抑制注意力 logits 爆炸，降低后可能在长程球面节点间出现注意力过度集中并引发过拟合",
+    "status": "未经训练验证的候选假设"
+  },
+  "language_version": "2.9.0",
+  "parent_architecture_id": "a7f3ee98b54e3aed",
+  "patch_version": "1.0",
+  "postconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_attention_weight_dropout",
+      "value": 0.05
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_attention_weight_dropout",
+      "value": 0.05
+    }
+  ],
+  "preconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_attention_weight_dropout",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_attention_weight_dropout",
+      "value": 0.1
+    }
+  ],
+  "scope": [
+    "block0_attn_attention_weight_dropout",
+    "block1_attn_attention_weight_dropout",
+    "program.parameters.equiformer_v3_spec.attn_weights_drop"
+  ]
+}

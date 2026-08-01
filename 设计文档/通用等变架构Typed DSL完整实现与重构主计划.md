@@ -1,11 +1,11 @@
 # 通用等变架构 Typed DSL 完整实现与重构主计划
 
-> 计划版本：`0.31.0`
+> 计划版本：`0.33.0`
 > 制定日期：2026-07-30  
-> 计划状态：实施中；M0、M5 已完成，M1、M2、M3 进行中；M6 已完成整网合同冻结与输入端基础原语子批次，按训练优先级暂缓；M8 V3 精确复刻现为最高优先级  
+> 计划状态：实施中；V3 第一轮十轮候选生成闭环已收尾，下一优先级为统一训练 evaluator 与候选排序；Stress、生产宽度和结构性变异进入第二轮
 > 适用仓库：`equivariant-nas`  
 > 当前分支：`codex/v3-mapping`  
-> 当前分支 HEAD：`3e7ab39fdca06652f01f3447ab2a671ca41e5934`；当前稳定运行时代码 HEAD：`255fcf6599fc2792ced41ba582567e5f8495fc1f`
+> 当前分支 HEAD：`aaeee1cef4636dc37f582132c7792d1c305fa323`；当前稳定运行时代码 HEAD：`aaeee1cef4636dc37f582132c7792d1c305fa323`
 > 当前工作树：包含既有未提交修改，实施时必须按计划项限定修改范围，不得清理或覆盖无关改动
 
 本文是后续 DSL 实现、重构和验收的主计划。后续代码调整必须对应本文中的计划编号；如果实现过程中发现原计划不成立，应先更新本文的变更记录、依赖关系和验收条件，再继续实现，不能在代码中形成没有计划依据的新语义。
@@ -14,8 +14,8 @@
 
 ```text
 分支：codex/v3-mapping
-当前分支 HEAD：3e7ab39fdca06652f01f3447ab2a671ca41e5934（扩展 V3 随机路径证据导出）
-稳定运行时代码 HEAD：255fcf6599fc2792ced41ba582567e5f8495fc1f
+当前分支 HEAD：aaeee1cef4636dc37f582132c7792d1c305fa323（完成 V3 第一轮十轮候选生成入口）
+稳定运行时代码 HEAD：aaeee1cef4636dc37f582132c7792d1c305fa323
 阶段提交一：9b3fa902ae52e7fdb285624d6642e30edb400295（通用 Typed DSL 基础、V1/V2 基础语义和 V3 逐原语映射）
 阶段提交二：4a1383e55069c71877f2a71d2fc44ab1ad807c31（修正 V3 证据导出的阶段范围声明）
 阶段提交三：70c1da03eb50efd655ffaad2cbac50538857229f（共享 V3 随机辅助边框架并完成两层 Backbone 官方对齐）
@@ -29,8 +29,12 @@
 阶段提交十一：1b95c24（记录 V3 两层整网官方对齐证据）
 阶段提交十二：255fcf6599fc2792ced41ba582567e5f8495fc1f（完成 V3 非零随机路径官方对齐）
 阶段提交十三：3e7ab39fdca06652f01f3447ab2a671ca41e5934（扩展 V3 随机路径证据导出）
+阶段提交十四：95182ed（记录 V3 非零随机整网证据）
+阶段提交十五：40b976163f282c8980a1eb3cfc34640678fd71cf（完成 V3 官方检查点双向映射）
+阶段提交十六：28551666049e96f07bf7044ba24d56053712a375（新增 V3 检查点证据导出工具）
+阶段提交十七：aaeee1cef4636dc37f582132c7792d1c305fa323（完成 V3 第一轮十轮候选生成入口）
 工作树：稳定代码已提交；仍包含实施前旧版删除、计划文档、证据目录及其他未收敛改动，不得一并清理或误提交
-最近一次已完成全量回归：361 passed, 3 skipped, 870 warnings（255fcf6 稳定运行时代码）
+最近一次已完成全量回归：374 passed, 3 skipped, 870 warnings（aaeee1c 稳定运行时代码）
 本轮 V3/Lowering 定向回归：Force Head、共享 final norm 的 direct model、Grid 运行时、registry、官方输入与单 Attention，并覆盖 V1/V2/QM9 通用 Lowering 回归，共 68 passed
 本轮 V3 扩展定向回归：单位轴布局、官方规格、输入、SO(2)、Grid、Attention、FFN、TransBlock、Backbone、Energy Head、Direct Force Head、完整 Direct Model、registry/search surface 与 compositional support，共 91 passed
 V3 operator 组合 oracle：FFN、确定性 TransBlock、Direct Force Head 共 4 passed；测试顺序共享的 torch_geometric stub 已补齐 segment max，证据已刷新
@@ -38,6 +42,8 @@ V3 两层 Backbone oracle：2 passed；87 个参数张量/3,475 参数双射，�
 V3 Energy Head oracle：1 passed；9 个规范化节点、6 个参数张量/33 参数双射，同 seed 初始化、前向 RNG、一维 `[graph]` 图能量、节点特征梯度和全部参数梯度均与官方 final norm、ScalarFeedForwardNetwork 与 avg-num-nodes 聚合对齐
 V3 两层 Energy+Force 官方整网 oracle：1 passed；186 个规范化节点、116 个参数张量/4,482 参数双射，官方 `EquiformerV3_OC` 与通用 Lowering 的初始化 RNG、两图 Energy `[2]`、Force `[5,3]`、前向 RNG、位置梯度和全部 116 个参数梯度对齐；实际 Lowering 中不存在官方整网、Block、Attention 或任务头构造器实例
 V3 两层非零随机 Energy+Force 官方整网 oracle：2 passed；190 个规范化节点，`alpha_drop=0.13`、`attn_weights_drop=0.17`、`value_drop=0.19`、`drop_path_rate=0.23`、`proj_drop=0.29`、`ffn_drop=0.31` 同时启用；train/eval 的初始化 RNG、前向 RNG、Energy、Force、位置梯度和全部 116 个参数梯度与官方对齐；修复 value dropout 需同时覆盖标量 SwiGLU 与 S² 网格乘积两处有序掩码的合同
+V3 官方 checkpoint oracle：3 passed；官方随机配置 158 个状态张量与 Lowering 157 个状态张量完整覆盖，116 个参数双射，2 组共享 Wigner 别名一对多广播，5 个结构重建常量严格校验；支持 Fair-Chem `state_dict`、`module.` 与 `_orig_mod.` 前缀，完成官方→DSL→官方精确 round trip，并验证 checkpoint 加载后的 train/eval RNG、Energy、Force、位置梯度和全部参数梯度；6 类损坏或错配 checkpoint 均显式拒绝
+V3 第一轮候选生成：GLM 实际连续选择 10 轮，形成 10 个唯一 190 节点候选；每轮均由完整 Typed Patch 同步修改所有对应 Block 节点与 V3 规格字段，并要求补丁结果和新规格完整重建程序的规范化架构 ID 相同；10/10 通用 Lowering 实际构建通过，均为 33,498 个可训练参数且无官方整网/Block/Attention/Head 构造器旁路；最终候选完成 Energy/Force 前向、全部参数反向和旋转等变性验证
 当前搜索表面定向回归：canonical surface、补丁执行门禁、LLM 协议和旧词表兼容共 25 passed
 Compiler semantics：evoequilang-24
 ValueType schema：evoequilang-value-types-v2@1
@@ -48,9 +54,9 @@ e3nn backend semantics：e3nn-graph-lowering-registry-v24
 当前 canonical search surface：48 个规范数学族；其中 26 个规范族可由 LLM 生成、47 个 concrete realization 可生成，29 个 adapter 仅供可信补全，27 个 context-only 条目不能由新补丁引入
 ```
 
-当前完成边界：已经完成 v1 基线冻结、严格属性/单位合同、通用多输出协议、第一版 RuntimeValueKind，以及 ValueType v2 的轴/布局/结构化类型骨架和 v1-to-v2 类型迁移闭环；已经实现第一版显式 `IndexMapType` / `GraphTopologyType`、`AffinePointType`、`LatticeType`、`LatticeShiftType`、`CategoricalTensorType`、`endpoint_gather`、统一 `segment_reduce`、两类 displacement、ParameterContract、两版 scalar linear、两版 equivariant head 原语、fully-connected external `uvw tensor_product@2`、显式 path-block/instruction 的 weighted external `uvu tensor_product@3`、internal/shared `uvw tensor_product@4`、显式 path-block/instruction 的 internal/shared `uvu tensor_product@5`、官方 V1 `RadialProfile`、`LinearRS`、irrep-wise LayerNorm、gated FFN，以及三类随机正则原语。M5 的 V1 单 Block 已完成：冻结配置的完整 `GraphAttention`、确定性 `TransBlock`、含 alpha/projection dropout 与 GraphDropPath 的随机 `TransBlock`、`rescale_degree=True`、`nonlinear_message=True`、不同输入/输出 irreps 的 `ffn_shortcut`，以及随机边界矩阵均已通过逐原语通用 Lowering 与官方 oracle 验证。M6 已冻结官方两层小型 V1 整网合同，并完成 atom categorical remap/one-hot、flatten、constant scale、distance、可学习 Gaussian RBF、irrep zero-padding 和带显式 initializer scale 的 irrep linear 等输入端基础语义；但 V1 整网 importer、EdgeDegreeEmbedding、最终 norm/head、ScaledScatter、checkpoint 和训练轨迹仍未完成。V3 已形成冻结两层小宽度 Direct Energy+Force 整网的逐原语官方数值闭环，并进一步完成六类非零随机率同时启用时 train/eval、RNG、前向与全部梯度的官方闭环；这仍不替代 checkpoint、stress、训练轨迹和真实生产宽度验收。尚未完成 exactness 四级证据、全部源码仓库身份锁定、其余 ValueType 联合成员、单位代数、旧参数化原语合同迁移、一般 connection mode 的 instruction TP、混合 parity even-first coefficient layout、完整 topology 输入图，以及 V1/V2 整网和 V3 完整生产配置的数值精确复刻。
+当前完成边界：已经完成 v1 基线冻结、严格属性/单位合同、通用多输出协议、第一版 RuntimeValueKind，以及 ValueType v2 的轴/布局/结构化类型骨架和 v1-to-v2 类型迁移闭环；已经实现第一版显式 `IndexMapType` / `GraphTopologyType`、`AffinePointType`、`LatticeType`、`LatticeShiftType`、`CategoricalTensorType`、`endpoint_gather`、统一 `segment_reduce`、两类 displacement、ParameterContract、两版 scalar linear、两版 equivariant head 原语、fully-connected external `uvw tensor_product@2`、显式 path-block/instruction 的 weighted external `uvu tensor_product@3`、internal/shared `uvw tensor_product@4`、显式 path-block/instruction 的 internal/shared `uvu tensor_product@5`、官方 V1 `RadialProfile`、`LinearRS`、irrep-wise LayerNorm、gated FFN，以及三类随机正则原语。M5 的 V1 单 Block 已完成：冻结配置的完整 `GraphAttention`、确定性 `TransBlock`、含 alpha/projection dropout 与 GraphDropPath 的随机 `TransBlock`、`rescale_degree=True`、`nonlinear_message=True`、不同输入/输出 irreps 的 `ffn_shortcut`，以及随机边界矩阵均已通过逐原语通用 Lowering 与官方 oracle 验证。M6 已冻结官方两层小型 V1 整网合同，并完成 atom categorical remap/one-hot、flatten、constant scale、distance、可学习 Gaussian RBF、irrep zero-padding 和带显式 initializer scale 的 irrep linear 等输入端基础语义；但 V1 整网 importer、EdgeDegreeEmbedding、最终 norm/head、ScaledScatter、checkpoint 和训练轨迹仍未完成。V3 已形成冻结两层小宽度 Direct Energy+Force 整网的逐原语官方数值闭环，完成六类非零随机率同时启用时 train/eval、RNG、前向与全部梯度的官方闭环，以及官方 state-dict 的严格双向无损映射；第一轮又完成 GLM 驱动的十轮形状保持候选生成、逐候选通用 Lowering 构建和最终候选运行时等变性验证。当前仍未完成候选训练排序、结构性变异、stress、训练轨迹和真实生产宽度验收。尚未完成 exactness 四级证据、全部源码仓库身份锁定、其余 ValueType 联合成员、单位代数、旧参数化原语合同迁移、一般 connection mode 的 instruction TP、混合 parity even-first coefficient layout、完整 topology 输入图，以及 V1/V2 整网和 V3 完整生产配置的数值精确复刻。
 
-V3 当前新增边界：官方 `EquiformerV3_OC` 构造字段已由严格规格对象全覆盖，真实官方 OC20 YAML 可以无未知 model 字段丢失地导入；DeNS 仍显式拒绝，不能静默落入 base V3。正式 `equiformer_v3_input_program` 已完成 24 个 core 节点的规范化输入流，覆盖原子嵌入、source/target 与 PBC 边几何、固定 Gaussian、包络、source/target atom-edge embedding、三层 RadialFunction、m=0 逆 Wigner lift、target 聚合、avg-degree 缩放和 atom residual；初始化屏障、延迟初始化、前向、位置梯度、全部输入端参数梯度与 RNG 终态均已和官方 oracle 对齐。单个官方 `EquivariantGraphAttention` 已由正式 `equiformer_v3_attention_program` 表达：无 attention-weight dropout 的冻结小配置为 30 个 core 节点，真实 OC20 YAML 因 `attn_weights_drop=0.1` 显式增加一节点，共 31 个节点；真实配置形成 25 个参数张量、8,713,920 个参数，参数映射覆盖率 100%，且不调用官方 Attention、Block 或整网构造器。冻结小配置的同 seed 初始化、前向、node/radial/envelope 输入梯度和全部参数梯度已通过 6 项官方 oracle 测试。随后完成 Grid/S² 类型与 11 个可独立 Lowering 的 Grid 原语，并新增 23 节点显式 V3 FFN、61 节点确定性规范化 TransBlock、12 层 backbone、9 节点 energy head 与 energy-only model。本轮新增 `core.edge_frame_gate_activation@1`，以 31 节点逐原语表达官方 m-primary GateActivation direct force head，并由 `equiformer_v3_direct_model_program` 把 backbone、唯一共享的 final norm、energy MLP 与 force attention 组合为 808 节点双输出程序；103/103 TypeChecker、canonicalization、Lowering 与 runtime composition 均闭合。具备 Torch/e3nn/官方 V3 operator 源码的当前环境中，12 层小宽度完整程序已经由通用 Lowering 构建为 329 个实际模块、486 个参数张量/17,779 参数，并完成一维 energy、forces 前向、位置梯度和 486/486 参数梯度 smoke；过程中修复了 Grid `[carrier, grid_point, channel]` 与 invariant gate `[carrier, channel]` 的错误广播。当前 FFN、确定性 TransBlock 与 Direct Force Head 已分别完成同 seed 初始化、双射参数映射、官方前向、输入梯度和全部参数梯度 oracle；组合运行 4 项测试全部通过。进一步发现官方 V3 每次前向只随机构造一次辅助 edge frame，并由输入 EdgeDegree、全部 Block 与 direct force head 共享；旧 DSL 为每个子图重复构造 frame，虽然数值近似对齐但 RNG 合同错误。现已用 `frame_cache_id` 表达跨子图共享，同时保留每个 `to/from` 配对唯一 `frame_id` 的类型证明。两层 146 节点 Backbone 已完成 87 个参数张量/3,475 参数双射、同 seed 初始化、前向 RNG、前向、位置梯度和全部参数梯度官方对齐。Energy Head 现以新增的 completion-only `core.squeeze_unit_axis@1` 和 `carrier_scalar` 布局显式复刻官方 `[graph]` 输出，9 个节点、6 个参数张量/33 参数完成初始化、前向 RNG、图能量、节点特征梯度和全部参数梯度对齐。进一步完成 186 节点两层 Direct Energy+Force 官方整网 oracle：官方 `EquiformerV3_OC` 与通用 Lowering 的 116 个参数张量/4,482 参数完整双射，初始化 RNG、两图 Energy `[2]`、Force `[5,3]`、前向 RNG、位置梯度和全部参数梯度均对齐；实际 Lowering 中不存在官方整网、TransBlockV3、EquivariantGraphAttention 或 ScalarFeedForwardNetwork 构造器实例。随后完成 190 节点非零随机整网 oracle：六类随机率同时非零，train/eval 的初始化 RNG、前向 RNG、Energy、Force、位置梯度和全部 116 个参数梯度均与官方对齐；其中修复 `value_drop` 在 `sep-merge_gates2_swiglu` 中必须先后作用于标量 SwiGLU 输出与 S² 网格乘积的双掩码合同。当前尚未完成 checkpoint、stress、优化器更新/短训练轨迹和真实生产宽度数值 oracle，因此仍不能表述为“完整 V3 全配置复刻完成”。输入证据位于 `reports/dsl_m8_v3_official_input_20260731/`，Attention 证据位于 `reports/dsl_m8_v3_official_attention_20260731/`，operator oracle 位于 `reports/dsl_m8_v3_operator_oracles_20260801/`，Backbone 证据位于 `reports/dsl_m8_v3_backbone_oracle_20260801/`，刷新后的 Energy Head 证据位于 `reports/dsl_m8_v3_energy_head_oracle_20260801/`，确定性完整两层整网证据位于 `reports/dsl_m8_v3_full_model_oracle_20260801/`，非零随机完整两层整网证据位于 `reports/dsl_m8_v3_stochastic_full_model_oracle_20260801/`，12 层运行 smoke 位于 `reports/dsl_m8_v3_direct_model_20260801/`。
+V3 当前新增边界：官方 `EquiformerV3_OC` 构造字段已由严格规格对象全覆盖，真实官方 OC20 YAML 可以无未知 model 字段丢失地导入；DeNS 仍显式拒绝，不能静默落入 base V3。正式 `equiformer_v3_input_program` 已完成 24 个 core 节点的规范化输入流，覆盖原子嵌入、source/target 与 PBC 边几何、固定 Gaussian、包络、source/target atom-edge embedding、三层 RadialFunction、m=0 逆 Wigner lift、target 聚合、avg-degree 缩放和 atom residual；初始化屏障、延迟初始化、前向、位置梯度、全部输入端参数梯度与 RNG 终态均已和官方 oracle 对齐。单个官方 `EquivariantGraphAttention` 已由正式 `equiformer_v3_attention_program` 表达：无 attention-weight dropout 的冻结小配置为 30 个 core 节点，真实 OC20 YAML 因 `attn_weights_drop=0.1` 显式增加一节点，共 31 个节点；真实配置形成 25 个参数张量、8,713,920 个参数，参数映射覆盖率 100%，且不调用官方 Attention、Block 或整网构造器。冻结小配置的同 seed 初始化、前向、node/radial/envelope 输入梯度和全部参数梯度已通过 6 项官方 oracle 测试。随后完成 Grid/S² 类型与 11 个可独立 Lowering 的 Grid 原语，并新增 23 节点显式 V3 FFN、61 节点确定性规范化 TransBlock、12 层 backbone、9 节点 energy head 与 energy-only model。本轮新增 `core.edge_frame_gate_activation@1`，以 31 节点逐原语表达官方 m-primary GateActivation direct force head，并由 `equiformer_v3_direct_model_program` 把 backbone、唯一共享的 final norm、energy MLP 与 force attention 组合为 808 节点双输出程序；103/103 TypeChecker、canonicalization、Lowering 与 runtime composition 均闭合。具备 Torch/e3nn/官方 V3 operator 源码的当前环境中，12 层小宽度完整程序已经由通用 Lowering 构建为 329 个实际模块、486 个参数张量/17,779 参数，并完成一维 energy、forces 前向、位置梯度和 486/486 参数梯度 smoke；过程中修复了 Grid `[carrier, grid_point, channel]` 与 invariant gate `[carrier, channel]` 的错误广播。当前 FFN、确定性 TransBlock 与 Direct Force Head 已分别完成同 seed 初始化、双射参数映射、官方前向、输入梯度和全部参数梯度 oracle；组合运行 4 项测试全部通过。进一步发现官方 V3 每次前向只随机构造一次辅助 edge frame，并由输入 EdgeDegree、全部 Block 与 direct force head 共享；旧 DSL 为每个子图重复构造 frame，虽然数值近似对齐但 RNG 合同错误。现已用 `frame_cache_id` 表达跨子图共享，同时保留每个 `to/from` 配对唯一 `frame_id` 的类型证明。两层 146 节点 Backbone 已完成 87 个参数张量/3,475 参数双射、同 seed 初始化、前向 RNG、前向、位置梯度和全部参数梯度官方对齐。Energy Head 现以新增的 completion-only `core.squeeze_unit_axis@1` 和 `carrier_scalar` 布局显式复刻官方 `[graph]` 输出，9 个节点、6 个参数张量/33 参数完成初始化、前向 RNG、图能量、节点特征梯度和全部参数梯度对齐。进一步完成 186 节点两层 Direct Energy+Force 官方整网 oracle：官方 `EquiformerV3_OC` 与通用 Lowering 的 116 个参数张量/4,482 参数完整双射，初始化 RNG、两图 Energy `[2]`、Force `[5,3]`、前向 RNG、位置梯度和全部参数梯度均对齐；实际 Lowering 中不存在官方整网、TransBlockV3、EquivariantGraphAttention 或 ScalarFeedForwardNetwork 构造器实例。随后完成 190 节点非零随机整网 oracle：六类随机率同时非零，train/eval 的初始化 RNG、前向 RNG、Energy、Force、位置梯度和全部 116 个参数梯度均与官方对齐；其中修复 `value_drop` 在 `sep-merge_gates2_swiglu` 中必须先后作用于标量 SwiGLU 输出与 S² 网格乘积的双掩码合同。现已新增通用严格 checkpoint 映射层和 V3 专用 manifest：官方随机配置 158 个状态张量与 Lowering 157 个状态张量全部覆盖，116 个参数双射，共享 Wigner 缓冲区经别名一致性检查后一对多广播，5 个结构消除缓冲区由 typed 合同重建并校验；支持 Fair-Chem 包装、分布式/编译前缀、架构身份检查和官方→DSL→官方精确 round trip。当前尚未完成 stress、优化器更新/短训练轨迹和真实生产宽度数值 oracle，因此仍不能表述为“完整 V3 全配置复刻完成”。输入证据位于 `reports/dsl_m8_v3_official_input_20260731/`，Attention 证据位于 `reports/dsl_m8_v3_official_attention_20260731/`，operator oracle 位于 `reports/dsl_m8_v3_operator_oracles_20260801/`，Backbone 证据位于 `reports/dsl_m8_v3_backbone_oracle_20260801/`，刷新后的 Energy Head 证据位于 `reports/dsl_m8_v3_energy_head_oracle_20260801/`，确定性完整两层整网证据位于 `reports/dsl_m8_v3_full_model_oracle_20260801/`，非零随机完整两层整网证据位于 `reports/dsl_m8_v3_stochastic_full_model_oracle_20260801/`，checkpoint 证据位于 `reports/dsl_m8_v3_checkpoint_oracle_20260801/`，12 层运行 smoke 位于 `reports/dsl_m8_v3_direct_model_20260801/`。
 
 原语去冗余当前边界：103 个名称是兼容/执行注册表，不是 103 个独立数学原语。`evoequilang-canonical-search-surface-v1` 已穷举分类全部 103 项并接入正式 OpenEvolve 入口、LLM 提示和补丁执行门禁：LLM 按 canonical family 理解 concrete realization；新增 `squeeze_unit_axis@1` 属于 completion-only 布局 adapter，不会成为 LLM 的独立创新维度；兼容旧版本、初始化专用版本和融合宏不能由新补丁引入。补丁若试图新插入 context-only 算子，以 `E_PATCH_018` 拒绝。当前 search surface 为 48 个规范数学族，仍需继续统一 canonical core 签名；当前内容哈希为 `dfbdfde1ee66694efe921ada6eae47f836ce7ed11b40d0bb89ad9f0a09f9df92`。
 
@@ -1088,15 +1094,18 @@ V2/V3 官方低层库适配放在 backend adapter 中，不进入 DSL 类型或 
 
 计划项：`M8.1` 至 `M8.14`。
 
-当前实施检查点（0.31.0）：
+当前实施检查点（0.33.0）：
 
 - 已完成：官方源码身份、完整构造字段规格、真实 YAML 严格导入、正式输入/EdgeDegreeEmbedding、单 Attention、显式 Grid/S² FFN、TransBlock、Backbone、Energy Head、Direct Force Head 和共享 final norm 的 Energy+Force 整网程序；
 - 已完成：冻结两层小宽度确定性整网的 186 节点官方闭环，116 个参数张量/4,482 参数完成双射，初始化 RNG、Energy `[2]`、Force `[5,3]`、前向 RNG、位置梯度和全部参数梯度对齐；实际 Lowering 不含官方整网、Block、Attention 或任务头构造器；
 - 已完成：冻结两层小宽度非零随机整网的 190 节点官方闭环；六类随机率同时非零，train/eval、随机调用顺序、按图 DropPath 粒度、等变投影掩码、Energy/Force 前向、位置梯度和全部参数梯度对齐；
 - 已修复：官方 `value_drop` 不仅作用于 S² 网格乘积，还作用于标量 SwiGLU 输出；两处有序倒置 dropout 掩码均已进入 Lowering 和证据合同；
+- 已完成：官方 Fair-Chem checkpoint/state-dict 双向映射；158 个官方状态张量与 157 个 Lowering 状态张量严格覆盖，116 个参数双射，共享别名和结构重建缓冲区均有显式合同，checkpoint 加载后的 train/eval 前向、RNG 与梯度继续对齐；
+- 已完成第一轮收尾：官方 V3 配置可导出 Energy+Force seed DSL；GLM 在六类形状保持随机路径目录中连续选择 10 轮，每轮物化为完整 Typed Patch，补丁后程序与更新规格完整重建程序身份一致；10 个候选均唯一且可由通用 Lowering 实际构建，最终候选通过前向、反向和旋转等变性检查；
 - 已完成：12 层小宽度完整程序的通用 Lowering 运行 smoke，329 个实际模块、486 个参数张量/17,779 参数完成一维 Energy、Force、位置梯度和全部参数梯度；
 - 当前 103/103 表示“所有已注册执行项都有 Lowering”，不表示 103 项都是独立搜索原语；canonical search surface 已收敛为 48 个数学族；
-- 尚未完成：官方 checkpoint/state-dict round trip、Stress Head、优化器更新与短训练轨迹、真实生产宽度数值 oracle、DeNS 专用导入，以及 M4 中仍待完成的更细 Grid/S² 原语下拆。
+- 第二轮优先：统一 V3 训练 evaluator、seed 与候选的固定预算排序、参数形状不变候选的 checkpoint 安全继承审计，以及激活/归一化/残差/读出等结构性 Typed Patch；
+- 尚未完成：Stress Head、优化器更新与短训练轨迹、真实生产宽度数值 oracle、DeNS 专用导入，以及 M4 中仍待完成的更细 Grid/S² 原语下拆。
 
 实施内容：
 

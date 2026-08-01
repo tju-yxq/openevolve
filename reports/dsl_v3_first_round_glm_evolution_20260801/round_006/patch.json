@@ -1,0 +1,80 @@
+{
+  "edits": [
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.15
+        }
+      },
+      "target": "block0_attn_alpha_dropout"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.15
+        }
+      },
+      "target": "block1_attn_alpha_dropout"
+    },
+    {
+      "kind": "change_parameters",
+      "payload": {
+        "value": 0.15
+      },
+      "target": "program.parameters.equiformer_v3_spec.alpha_drop"
+    }
+  ],
+  "expected_effects": {
+    "equivariance_contract": "unchanged",
+    "parameter_shapes": "unchanged",
+    "training_effect": "hypothesis_only"
+  },
+  "hypothesis": {
+    "action_id": "alpha_drop=0.15",
+    "claim": "将注意力 alpha 标量路径的 dropout 提升至 0.15，可迫使标量门控路径学习更鲁棒的通道缩放表示，从而增强等变特征的泛化能力",
+    "current_value": 0.02,
+    "mutation_family": "alpha_drop",
+    "proposed_value": 0.15,
+    "rationale": "前五轮已分别探索了 attn_weights、drop_path、value、proj 与 ffn 的随机性；当前 alpha_drop=0.02 仍处于极低正则区间。alpha 标量路径负责对高阶球谐等变特征进行通道级门控缩放，提升其 dropout 能在 SO(3) 合同约束下迫使标量门控学习更冗余的几何基底组合，避免标量路径对训练集局部几何伪影过拟合，同时不直接干扰 S2 球面网格或 Clebsch-Gordan 分解路径的数值稳定性",
+    "risk": "若 alpha 标量门控对高阶等变特征的数值幅度高度敏感，0.15 的 dropout 可能导致球谐通道的有效缩放因子在训练期剧烈波动，破坏等变特征的数值条件并引发梯度方差膨胀或训练损失震荡",
+    "status": "未经训练验证的候选假设"
+  },
+  "language_version": "2.9.0",
+  "parent_architecture_id": "18788b1ab0f1ae48",
+  "patch_version": "1.0",
+  "postconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_alpha_dropout",
+      "value": 0.15
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_alpha_dropout",
+      "value": 0.15
+    }
+  ],
+  "preconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_alpha_dropout",
+      "value": 0.02
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_alpha_dropout",
+      "value": 0.02
+    }
+  ],
+  "scope": [
+    "block0_attn_alpha_dropout",
+    "block1_attn_alpha_dropout",
+    "program.parameters.equiformer_v3_spec.alpha_drop"
+  ]
+}

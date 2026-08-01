@@ -1,0 +1,35 @@
+{
+  "all_constructor_bypass_false": true,
+  "all_generic_lowering_validations_passed": true,
+  "candidate_count": 1,
+  "records": [
+    {
+      "architecture_id": "b6b9058c1216264d",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 10,
+      "runtime": {
+        "energy_shape": [
+          1
+        ],
+        "force_shape": [
+          4,
+          3
+        ],
+        "loss": 0.001479201135225594,
+        "position_gradient_finite": true,
+        "rotation_energy_max_abs_error": 9.313225746154785e-10,
+        "rotation_force_max_abs_error": 2.3469328880310059e-07,
+        "trainable_parameter_gradients_complete": true
+      },
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    }
+  ],
+  "scope": "final",
+  "status": "passed",
+  "unique_architecture_count": 1,
+  "validation_level": "full"
+}

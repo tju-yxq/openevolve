@@ -1,0 +1,124 @@
+{
+  "edits": [
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.05
+        }
+      },
+      "target": "block0_attn_drop_path"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.05
+        }
+      },
+      "target": "block0_ffn_drop_path"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.05
+        }
+      },
+      "target": "block1_attn_drop_path"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.05
+        }
+      },
+      "target": "block1_ffn_drop_path"
+    },
+    {
+      "kind": "change_parameters",
+      "payload": {
+        "value": 0.05
+      },
+      "target": "program.parameters.equiformer_v3_spec.drop_path_rate"
+    }
+  ],
+  "expected_effects": {
+    "equivariance_contract": "unchanged",
+    "parameter_shapes": "unchanged",
+    "training_effect": "hypothesis_only"
+  },
+  "hypothesis": {
+    "action_id": "drop_path_rate=0.05",
+    "claim": "将图级随机深度从 0.10 降至 0.05，可缓解浅层等变网络中残差子图被过度联合丢弃的问题，在保留结构级正则的同时提升训练信号稳定性",
+    "current_value": 0.1,
+    "mutation_family": "drop_path_rate",
+    "proposed_value": 0.05,
+    "rationale": "前七轮已探索所有局部 dropout 与 drop_path_rate=0.10。在仅含两个 V3 block 的架构中，0.10 的 drop_path 对四个残差路径的联合丢弃概率较高，可能导致关键非线性变换在部分迭代中整体缺失；降至 0.05 能在维持宏观结构级噪声注入的同时，显著降低几何特征传播被彻底切断的风险，从而在正则强度与训练稳定性之间取得更优平衡",
+    "risk": "若模型当前的主要过拟合源于结构级冗余而非局部路径，降低 drop_path 可能导致正则不足，使网络在训练集局部几何伪影上出现过拟合",
+    "status": "未经训练验证的候选假设"
+  },
+  "language_version": "2.9.0",
+  "parent_architecture_id": "ddd898b54477b3e7",
+  "patch_version": "1.0",
+  "postconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_drop_path",
+      "value": 0.05
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_drop_path",
+      "value": 0.05
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_drop_path",
+      "value": 0.05
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_drop_path",
+      "value": 0.05
+    }
+  ],
+  "preconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_drop_path",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_drop_path",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_drop_path",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_drop_path",
+      "value": 0.1
+    }
+  ],
+  "scope": [
+    "block0_attn_drop_path",
+    "block0_ffn_drop_path",
+    "block1_attn_drop_path",
+    "block1_ffn_drop_path",
+    "program.parameters.equiformer_v3_spec.drop_path_rate"
+  ]
+}

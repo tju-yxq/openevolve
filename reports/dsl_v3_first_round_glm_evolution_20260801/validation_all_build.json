@@ -1,0 +1,121 @@
+{
+  "all_constructor_bypass_false": true,
+  "all_generic_lowering_validations_passed": true,
+  "candidate_count": 10,
+  "records": [
+    {
+      "architecture_id": "0ce1e6d50e546503",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 1,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "c54a258e3c4a05cb",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 2,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "7f2c46c88f208acc",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 3,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "8e065b7e0506fb64",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 4,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "18788b1ab0f1ae48",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 5,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "66da20a6630573b2",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 6,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "ddd898b54477b3e7",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 7,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "289fe2845f103e8b",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 8,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "11fa215f9fcae0b5",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 9,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    },
+    {
+      "architecture_id": "b6b9058c1216264d",
+      "composition_errors": [],
+      "constructor_bypass": false,
+      "node_count": 190,
+      "round": 10,
+      "runtime": null,
+      "status": "passed",
+      "trainable_parameter_count": 33498,
+      "unsupported_nodes": []
+    }
+  ],
+  "scope": "all",
+  "status": "passed",
+  "unique_architecture_count": 10,
+  "validation_level": "build"
+}

@@ -1,0 +1,94 @@
+{
+  "edits": [
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "dropout": 0.1,
+          "grid_resolution": [
+            6,
+            4
+          ],
+          "mmax": 1,
+          "normalization": "component",
+          "out_irreps": "8x0+8x1+8x2"
+        }
+      },
+      "target": "block0_attn_gated_activation"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "dropout": 0.1,
+          "grid_resolution": [
+            6,
+            4
+          ],
+          "mmax": 1,
+          "normalization": "component",
+          "out_irreps": "8x0+8x1+8x2"
+        }
+      },
+      "target": "block1_attn_gated_activation"
+    },
+    {
+      "kind": "change_parameters",
+      "payload": {
+        "value": 0.1
+      },
+      "target": "program.parameters.equiformer_v3_spec.value_drop"
+    }
+  ],
+  "expected_effects": {
+    "equivariance_contract": "unchanged",
+    "parameter_shapes": "unchanged",
+    "training_effect": "hypothesis_only"
+  },
+  "hypothesis": {
+    "action_id": "value_drop=0.10",
+    "claim": "将注意力值路径的标量与 S2 网格 dropout 提升至 0.10，可强化等变几何特征在训练期的噪声鲁棒性并缓解过拟合",
+    "current_value": 0.02,
+    "mutation_family": "value_drop",
+    "proposed_value": 0.1,
+    "rationale": "前两轮分别探索了注意力权重平滑与图级残差完整性，当前 value_drop=0.02 仍处于较低正则区间；提升值路径 dropout 能在不破坏注意力分布锐度与残差结构的前提下，迫使等变特征在 S2 球面网格上学习更冗余的几何表示，从而增强泛化能力",
+    "risk": "若值路径的标量通道对几何等变约束高度敏感，0.10 的 dropout 可能破坏 SO(3) 特征的数值稳定性，导致训练损失震荡或收敛迟缓",
+    "status": "未经训练验证的候选假设"
+  },
+  "language_version": "2.9.0",
+  "parent_architecture_id": "c54a258e3c4a05cb",
+  "patch_version": "1.0",
+  "postconditions": [
+    {
+      "attr": "dropout",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_gated_activation",
+      "value": 0.1
+    },
+    {
+      "attr": "dropout",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_gated_activation",
+      "value": 0.1
+    }
+  ],
+  "preconditions": [
+    {
+      "attr": "dropout",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_gated_activation",
+      "value": 0.02
+    },
+    {
+      "attr": "dropout",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_gated_activation",
+      "value": 0.02
+    }
+  ],
+  "scope": [
+    "block0_attn_gated_activation",
+    "block1_attn_gated_activation",
+    "program.parameters.equiformer_v3_spec.value_drop"
+  ]
+}

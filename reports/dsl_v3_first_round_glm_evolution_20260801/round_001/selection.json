@@ -1,0 +1,14 @@
+{
+  "action_id": "attn_weights_drop=0.05",
+  "attempt": 1,
+  "hypothesis": {
+    "claim": "将归一化注意力权重的 dropout 从 0.10 降至 0.05，可缓解当前等变注意力分布的过度平滑",
+    "rationale": "当前 attn_weights_drop=0.10 在仅有两个 V3 block 的浅层网络中可能过度抑制几何注意力分布的锐度，降低它能保留更多精确相对几何信号，从而提升等变特征的表达保真度",
+    "risk": "若模型已依赖该正则来抑制注意力 logits 爆炸，降低后可能在长程球面节点间出现注意力过度集中并引发过拟合"
+  },
+  "latency_seconds": 5.011894941329956,
+  "model": "glm-5.2",
+  "raw_response": "{\"action_id\": \"attn_weights_drop=0.05\", \"hypothesis\": {\"claim\": \"将归一化注意力权重的 dropout 从 0.10 降至 0.05，可缓解当前等变注意力分布的过度平滑\", \"rationale\": \"当前 attn_weights_drop=0.10 在仅有两个 V3 block 的浅层网络中可能过度抑制几何注意力分布的锐度，降低它能保留更多精确相对几何信号，从而提升等变特征的表达保真度\", \"risk\": \"若模型已依赖该正则来抑制注意力 logits 爆炸，降低后可能在长程球面节点间出现注意力过度集中并引发过拟合\"}}",
+  "selected_by": "glm",
+  "transport": "openai_compatible"
+}

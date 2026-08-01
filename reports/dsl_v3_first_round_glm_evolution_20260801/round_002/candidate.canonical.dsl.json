@@ -1,0 +1,4460 @@
+{
+  "annotations": {
+    "constructor_bypass": false,
+    "direct_force_head_complete": true,
+    "numerical_scope": "official typed backbone with one shared final norm, scalar energy MLP and direct force attention",
+    "official_source_commit": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "reference_backend": "equiformer_v3_official_direct_energy_force_model",
+    "shared_final_norm": true,
+    "stress_head_complete": false,
+    "task_outputs_complete": true
+  },
+  "constraints": [],
+  "inputs": [
+    {
+      "name": "atomic_numbers",
+      "type": {
+        "carrier": "node",
+        "dtype": "int64",
+        "feature_role": "species",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "categorical_tensor",
+        "labels": [],
+        "schema_version": "evoequilang-value-types-v2@1",
+        "vocabulary_size": 128
+      }
+    },
+    {
+      "name": "positions",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "coordinate_dimension": 3,
+        "dtype": "float32",
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "affine_point",
+        "measure": "angstrom",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "source_index",
+      "type": {
+        "allows_empty_targets": true,
+        "endpoint": "source",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "node",
+        "target_carrier": "edge",
+        "target_size": null
+      }
+    },
+    {
+      "name": "target_index",
+      "type": {
+        "allows_empty_targets": true,
+        "endpoint": "target",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "node",
+        "target_carrier": "edge",
+        "target_size": null
+      }
+    },
+    {
+      "name": "target_segment",
+      "type": {
+        "allows_empty_targets": true,
+        "endpoint": "segment",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "edge",
+        "target_carrier": "node",
+        "target_size": null
+      }
+    },
+    {
+      "name": "lattice",
+      "type": {
+        "carrier": "graph",
+        "dtype": "float32",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "handedness": "right",
+        "kind": "lattice",
+        "lattice_id": "v3_cell",
+        "matrix_convention": "row_vectors",
+        "measure": "angstrom",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "lattice_shift",
+      "type": {
+        "carrier": "edge",
+        "convention": "source_image",
+        "dtype": "int64",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "lattice_shift",
+        "lattice_id": "v3_cell",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "batch",
+      "type": {
+        "allows_empty_targets": false,
+        "endpoint": "batch",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "node",
+        "target_carrier": "graph",
+        "target_size": null
+      }
+    }
+  ],
+  "language_version": "2.9.0",
+  "nodes": [
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0000",
+      "inputs": {
+        "index": "input:source_index",
+        "x": "input:atomic_numbers"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0001",
+      "inputs": {
+        "index": "input:target_index",
+        "x": "input:atomic_numbers"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "channel",
+        "dtype": "float32",
+        "embedding_dim": 8
+      },
+      "declared_types": {},
+      "id": "n0002",
+      "inputs": {
+        "x": "input:atomic_numbers"
+      },
+      "op": "core.categorical_embedding@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0003",
+      "inputs": {
+        "lattice": "input:lattice",
+        "lattice_shift": "input:lattice_shift",
+        "positions": "input:positions",
+        "source_index": "input:source_index",
+        "target_index": "input:target_index"
+      },
+      "op": "core.periodic_displacement@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0004",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0005",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0006",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0007",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0008",
+      "inputs": {
+        "vector": "n0003"
+      },
+      "op": "core.distance@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0009",
+      "inputs": {
+        "x": "n0002"
+      },
+      "op": "core.flatten_invariant_axes@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0010",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0011",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0012",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 8,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0013",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "cutoff": 12.0,
+        "order": 5
+      },
+      "declared_types": {},
+      "id": "n0014",
+      "inputs": {
+        "x": "n0008"
+      },
+      "op": "core.cutoff_envelope@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "radial_basis",
+        "basis_width_scalar": 2.0,
+        "construction_dtype": "float32",
+        "num_basis": 8,
+        "start": 0.0,
+        "stop": 12.0
+      },
+      "declared_types": {},
+      "id": "n0015",
+      "inputs": {
+        "distance": "n0008"
+      },
+      "op": "core.fixed_gaussian_radial_basis@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0016",
+      "inputs": {
+        "x": "n0009"
+      },
+      "op": "core.irrep_pad@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0017",
+      "inputs": {
+        "xs": [
+          "n0015",
+          "n0010",
+          "n0004"
+        ]
+      },
+      "op": "core.invariant_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0018",
+      "inputs": {
+        "xs": [
+          "n0015",
+          "n0011",
+          "n0005"
+        ]
+      },
+      "op": "core.invariant_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0019",
+      "inputs": {
+        "xs": [
+          "n0015",
+          "n0012",
+          "n0006"
+        ]
+      },
+      "op": "core.invariant_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0020",
+      "inputs": {
+        "xs": [
+          "n0015",
+          "n0013",
+          "n0007"
+        ]
+      },
+      "op": "core.invariant_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "bias": true,
+        "out_axis": "edge_hidden",
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0021",
+      "inputs": {
+        "x": "n0017"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "bias": true,
+        "out_axis": "edge_hidden",
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0022",
+      "inputs": {
+        "x": "n0018"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "bias": true,
+        "out_axis": "edge_hidden",
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0023",
+      "inputs": {
+        "x": "n0019"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "edge_input",
+        "bias": true,
+        "out_axis": "edge_hidden",
+        "out_features": 8,
+        "output_axis_role": "channel",
+        "output_feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0024",
+      "inputs": {
+        "x": "n0020"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0025",
+      "inputs": {
+        "x": "n0024"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0026",
+      "inputs": {
+        "x": "n0021"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0027",
+      "inputs": {
+        "x": "n0022"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0028",
+      "inputs": {
+        "x": "n0023"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0029",
+      "inputs": {
+        "x": "n0025"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0030",
+      "inputs": {
+        "x": "n0026"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0031",
+      "inputs": {
+        "x": "n0027"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0032",
+      "inputs": {
+        "x": "n0028"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0033",
+      "inputs": {
+        "x": "n0030"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0034",
+      "inputs": {
+        "x": "n0031"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0035",
+      "inputs": {
+        "x": "n0032"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0036",
+      "inputs": {
+        "x": "n0029"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0037",
+      "inputs": {
+        "x": "n0033"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0038",
+      "inputs": {
+        "x": "n0034"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0039",
+      "inputs": {
+        "x": "n0035"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0040",
+      "inputs": {
+        "x": "n0036"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0041",
+      "inputs": {
+        "x": "n0040"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0042",
+      "inputs": {
+        "x": "n0037"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0043",
+      "inputs": {
+        "x": "n0038"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0044",
+      "inputs": {
+        "x": "n0039"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_axis": "degree_channel",
+        "out_features": 48,
+        "output_axis_role": "coefficient",
+        "output_feature_role": "radial_weight"
+      },
+      "declared_types": {},
+      "id": "n0045",
+      "inputs": {
+        "x": "n0042"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_axis": "degree_channel",
+        "out_features": 48,
+        "output_axis_role": "coefficient",
+        "output_feature_role": "radial_weight"
+      },
+      "declared_types": {},
+      "id": "n0046",
+      "inputs": {
+        "x": "n0043"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_axis": "degree_channel",
+        "out_features": 48,
+        "output_axis_role": "coefficient",
+        "output_feature_role": "radial_weight"
+      },
+      "declared_types": {},
+      "id": "n0047",
+      "inputs": {
+        "x": "n0044"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_axis": "degree_channel",
+        "out_features": 24,
+        "output_axis_role": "coefficient",
+        "output_feature_role": "coefficient"
+      },
+      "declared_types": {},
+      "id": "n0048",
+      "inputs": {
+        "x": "n0041"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0049",
+      "inputs": {
+        "value": "n0048",
+        "weight": "n0014"
+      },
+      "op": "core.invariant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "frame_cache_id": "v3_model_edge",
+        "mmax": 1,
+        "out_irreps": "8x0+8x1+8x2",
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0050",
+      "inputs": {
+        "amplitudes": "n0049",
+        "direction": "n0003"
+      },
+      "op": "core.axisymmetric_spherical_lift@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0051",
+      "inputs": {
+        "index": "input:target_segment",
+        "x": "n0050"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {
+        "factor": 0.042743739667954334
+      },
+      "declared_types": {},
+      "id": "n0052",
+      "inputs": {
+        "x": "n0051"
+      },
+      "op": "core.constant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_input_1f0e892099da7151",
+        "composition_prefix": "input_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0053",
+      "inputs": {
+        "left": "n0016",
+        "right": "n0052"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "affine": true,
+        "centering": true,
+        "epsilon": 1e-05,
+        "normalization": "component"
+      },
+      "declared_types": {},
+      "id": "n0054",
+      "inputs": {
+        "x": "n0053"
+      },
+      "op": "core.equivariant_merge_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0055",
+      "inputs": {
+        "index": "input:source_index",
+        "x": "n0054"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0056",
+      "inputs": {
+        "index": "input:target_index",
+        "x": "n0054"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0057",
+      "inputs": {
+        "xs": [
+          "n0055",
+          "n0056"
+        ]
+      },
+      "op": "core.equivariant_channel_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0058",
+      "inputs": {
+        "value": "n0057",
+        "weight": "n0045"
+      },
+      "op": "core.degreewise_invariant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "frame_cache_id": "v3_model_edge",
+        "frame_id": "block0_v3_attention_edge",
+        "mmax": 1,
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0059",
+      "inputs": {
+        "direction": "n0003",
+        "x": "n0058"
+      },
+      "op": "core.to_edge_frame@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "extra_m0_channels": 32,
+        "mmax": 1,
+        "out_irreps": "16x0+16x1+16x2",
+        "zero_bias": true
+      },
+      "declared_types": {},
+      "id": "n0060",
+      "inputs": {
+        "x": "n0059"
+      },
+      "op": "core.so2_linear@2",
+      "outputs": [
+        "out",
+        "extra_m0"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "alpha_flat",
+        "feature_role": "alpha",
+        "length": 8,
+        "start": 0
+      },
+      "declared_types": {},
+      "id": "n0061",
+      "inputs": {
+        "x": "n0060:extra_m0"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "gate_scalar",
+        "feature_role": "gate",
+        "length": 24,
+        "start": 8
+      },
+      "declared_types": {},
+      "id": "n0062",
+      "inputs": {
+        "x": "n0060:extra_m0"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "dropout": 0.02,
+        "grid_resolution": [
+          6,
+          4
+        ],
+        "mmax": 1,
+        "normalization": "component",
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0063",
+      "inputs": {
+        "scalars": "n0062",
+        "x": "n0060:out"
+      },
+      "op": "core.s2_gated_swiglu_merge@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "alpha_flat",
+        "channel_axis": "alpha_channel",
+        "head_axis": "head",
+        "num_heads": 2
+      },
+      "declared_types": {},
+      "id": "n0064",
+      "inputs": {
+        "x": "n0061"
+      },
+      "op": "core.head_split@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "m0_prefix_rows": 8,
+        "m0_prefix_scale": 0.7071067811865476,
+        "mmax": 1,
+        "out_irreps": "4x0+4x1+4x2",
+        "zero_bias": true
+      },
+      "declared_types": {},
+      "id": "n0065",
+      "inputs": {
+        "x": "n0063"
+      },
+      "op": "core.so2_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "alpha_channel",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0066",
+      "inputs": {
+        "x": "n0064"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "activation": "silu",
+        "negative_slope": 0.2
+      },
+      "declared_types": {},
+      "id": "n0067",
+      "inputs": {
+        "x": "n0066"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0068",
+      "inputs": {
+        "x": "n0067"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "bias": false,
+        "channel_axis": "alpha_channel",
+        "head_axis": "head"
+      },
+      "declared_types": {},
+      "id": "n0069",
+      "inputs": {
+        "x": "n0068"
+      },
+      "op": "core.headwise_scalar_contraction@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "epsilon": 1e-16,
+        "exp_dropout": 0.0,
+        "softcap": null
+      },
+      "declared_types": {},
+      "id": "n0070",
+      "inputs": {
+        "exp_rescale": "n0014",
+        "index": "input:target_segment",
+        "logits": "n0069"
+      },
+      "op": "core.segment_softmax@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0071",
+      "inputs": {
+        "left": "n0070",
+        "right": "n0014"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.05
+      },
+      "declared_types": {},
+      "id": "n0072",
+      "inputs": {
+        "x": "n0071"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0073",
+      "inputs": {
+        "value": "n0065",
+        "weight": "n0072"
+      },
+      "op": "core.invariant_scale@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "frame_id": "block0_v3_attention_edge",
+        "mmax": 1,
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0074",
+      "inputs": {
+        "x": "n0073"
+      },
+      "op": "core.from_edge_frame@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0075",
+      "inputs": {
+        "index": "input:target_segment",
+        "x": "n0074"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "bias": true,
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0076",
+      "inputs": {
+        "x": "n0075"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0077",
+      "inputs": {
+        "batch": "input:batch",
+        "x": "n0076"
+      },
+      "op": "core.graph_stochastic_depth@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0078",
+      "inputs": {
+        "x": "n0077"
+      },
+      "op": "core.equivariant_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0079",
+      "inputs": {
+        "left": "n0053",
+        "right": "n0078"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "affine": true,
+        "centering": true,
+        "epsilon": 1e-05,
+        "normalization": "component"
+      },
+      "declared_types": {},
+      "id": "n0080",
+      "inputs": {
+        "x": "n0079"
+      },
+      "op": "core.equivariant_merge_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "scalar_channel",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0081",
+      "inputs": {
+        "x": "n0080"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "bias": true,
+        "out_irreps": "16x0+16x1+16x2"
+      },
+      "declared_types": {},
+      "id": "n0082",
+      "inputs": {
+        "x": "n0080"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "gate_input_channel",
+        "feature_role": "gate"
+      },
+      "declared_types": {},
+      "id": "n0083",
+      "inputs": {
+        "x": "n0080"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "scalar_channel",
+        "bias": true,
+        "out_axis": "scalar_pair",
+        "out_features": 32
+      },
+      "declared_types": {},
+      "id": "n0084",
+      "inputs": {
+        "x": "n0081"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "gate_input_channel",
+        "bias": true,
+        "out_axis": "gate_channel",
+        "out_features": 16,
+        "output_axis_role": "gate",
+        "output_feature_role": "gate"
+      },
+      "declared_types": {},
+      "id": "n0085",
+      "inputs": {
+        "x": "n0083"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "grid_resolution": [
+          6,
+          6
+        ],
+        "mmax": 2,
+        "normalization": "component",
+        "quadrature": "e3nn_s2grid",
+        "sampling": "equiangular",
+        "use_m_primary": false
+      },
+      "declared_types": {},
+      "id": "n0086",
+      "inputs": {
+        "x": "n0082"
+      },
+      "op": "core.grid_project@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "scalar_gate",
+        "feature_role": "gate",
+        "length": 16,
+        "start": 0
+      },
+      "declared_types": {},
+      "id": "n0087",
+      "inputs": {
+        "x": "n0084"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "axis": "scalar_up",
+        "feature_role": "value",
+        "length": 16,
+        "start": 16
+      },
+      "declared_types": {},
+      "id": "n0088",
+      "inputs": {
+        "x": "n0084"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "activation": "sigmoid"
+      },
+      "declared_types": {},
+      "id": "n0089",
+      "inputs": {
+        "x": "n0085"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "bias": false,
+        "out_channels": 32
+      },
+      "declared_types": {},
+      "id": "n0090",
+      "inputs": {
+        "x": "n0086"
+      },
+      "op": "core.grid_channel_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0091",
+      "inputs": {
+        "x": "n0087"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "left_channels": 16
+      },
+      "declared_types": {},
+      "id": "n0092",
+      "inputs": {
+        "x": "n0090"
+      },
+      "op": "core.grid_split@1",
+      "outputs": [
+        "left",
+        "right"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0093",
+      "inputs": {
+        "left": "n0091",
+        "right": "n0088"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0094",
+      "inputs": {
+        "left": "n0092:left",
+        "right": "n0089"
+      },
+      "op": "core.grid_pointwise_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0095",
+      "inputs": {
+        "left": "n0094",
+        "right": "n0092:right"
+      },
+      "op": "core.grid_pointwise_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0096",
+      "inputs": {
+        "x": "n0093"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0097",
+      "inputs": {
+        "x": "n0096"
+      },
+      "op": "core.flatten_invariant_axes@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "probability": 0.02
+      },
+      "declared_types": {},
+      "id": "n0098",
+      "inputs": {
+        "x": "n0095"
+      },
+      "op": "core.grid_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "bias": false,
+        "out_channels": 16
+      },
+      "declared_types": {},
+      "id": "n0099",
+      "inputs": {
+        "x": "n0098"
+      },
+      "op": "core.grid_channel_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "out_irreps": "16x0+16x1+16x2"
+      },
+      "declared_types": {},
+      "id": "n0100",
+      "inputs": {
+        "x": "n0097"
+      },
+      "op": "core.irrep_pad@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "out_irreps": "16x0+16x1+16x2"
+      },
+      "declared_types": {},
+      "id": "n0101",
+      "inputs": {
+        "x": "n0099"
+      },
+      "op": "core.grid_unproject@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0102",
+      "inputs": {
+        "left": "n0101",
+        "right": "n0100"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "bias": true,
+        "l0_weight_scale": 0.7071067811865476,
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0103",
+      "inputs": {
+        "x": "n0102"
+      },
+      "op": "core.so3_linear@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0104",
+      "inputs": {
+        "batch": "input:batch",
+        "x": "n0103"
+      },
+      "op": "core.graph_stochastic_depth@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0105",
+      "inputs": {
+        "x": "n0104"
+      },
+      "op": "core.equivariant_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block0_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0106",
+      "inputs": {
+        "left": "n0079",
+        "right": "n0105"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "affine": true,
+        "centering": true,
+        "epsilon": 1e-05,
+        "normalization": "component"
+      },
+      "declared_types": {},
+      "id": "n0107",
+      "inputs": {
+        "x": "n0106"
+      },
+      "op": "core.equivariant_merge_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0108",
+      "inputs": {
+        "index": "input:target_index",
+        "x": "n0107"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0109",
+      "inputs": {
+        "index": "input:source_index",
+        "x": "n0107"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0110",
+      "inputs": {
+        "xs": [
+          "n0109",
+          "n0108"
+        ]
+      },
+      "op": "core.equivariant_channel_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0111",
+      "inputs": {
+        "value": "n0110",
+        "weight": "n0046"
+      },
+      "op": "core.degreewise_invariant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "frame_cache_id": "v3_model_edge",
+        "frame_id": "block1_v3_attention_edge",
+        "mmax": 1,
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0112",
+      "inputs": {
+        "direction": "n0003",
+        "x": "n0111"
+      },
+      "op": "core.to_edge_frame@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "extra_m0_channels": 32,
+        "mmax": 1,
+        "out_irreps": "16x0+16x1+16x2",
+        "zero_bias": true
+      },
+      "declared_types": {},
+      "id": "n0113",
+      "inputs": {
+        "x": "n0112"
+      },
+      "op": "core.so2_linear@2",
+      "outputs": [
+        "out",
+        "extra_m0"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "alpha_flat",
+        "feature_role": "alpha",
+        "length": 8,
+        "start": 0
+      },
+      "declared_types": {},
+      "id": "n0114",
+      "inputs": {
+        "x": "n0113:extra_m0"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "gate_scalar",
+        "feature_role": "gate",
+        "length": 24,
+        "start": 8
+      },
+      "declared_types": {},
+      "id": "n0115",
+      "inputs": {
+        "x": "n0113:extra_m0"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "dropout": 0.02,
+        "grid_resolution": [
+          6,
+          4
+        ],
+        "mmax": 1,
+        "normalization": "component",
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0116",
+      "inputs": {
+        "scalars": "n0115",
+        "x": "n0113:out"
+      },
+      "op": "core.s2_gated_swiglu_merge@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "alpha_flat",
+        "channel_axis": "alpha_channel",
+        "head_axis": "head",
+        "num_heads": 2
+      },
+      "declared_types": {},
+      "id": "n0117",
+      "inputs": {
+        "x": "n0114"
+      },
+      "op": "core.head_split@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "m0_prefix_rows": 8,
+        "m0_prefix_scale": 0.7071067811865476,
+        "mmax": 1,
+        "out_irreps": "4x0+4x1+4x2",
+        "zero_bias": true
+      },
+      "declared_types": {},
+      "id": "n0118",
+      "inputs": {
+        "x": "n0116"
+      },
+      "op": "core.so2_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "alpha_channel",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0119",
+      "inputs": {
+        "x": "n0117"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "activation": "silu",
+        "negative_slope": 0.2
+      },
+      "declared_types": {},
+      "id": "n0120",
+      "inputs": {
+        "x": "n0119"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0121",
+      "inputs": {
+        "x": "n0120"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "bias": false,
+        "channel_axis": "alpha_channel",
+        "head_axis": "head"
+      },
+      "declared_types": {},
+      "id": "n0122",
+      "inputs": {
+        "x": "n0121"
+      },
+      "op": "core.headwise_scalar_contraction@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "epsilon": 1e-16,
+        "exp_dropout": 0.0,
+        "softcap": null
+      },
+      "declared_types": {},
+      "id": "n0123",
+      "inputs": {
+        "exp_rescale": "n0014",
+        "index": "input:target_segment",
+        "logits": "n0122"
+      },
+      "op": "core.segment_softmax@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0124",
+      "inputs": {
+        "left": "n0123",
+        "right": "n0014"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.05
+      },
+      "declared_types": {},
+      "id": "n0125",
+      "inputs": {
+        "x": "n0124"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0126",
+      "inputs": {
+        "value": "n0118",
+        "weight": "n0125"
+      },
+      "op": "core.invariant_scale@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "frame_id": "block1_v3_attention_edge",
+        "mmax": 1,
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0127",
+      "inputs": {
+        "x": "n0126"
+      },
+      "op": "core.from_edge_frame@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0128",
+      "inputs": {
+        "index": "input:target_segment",
+        "x": "n0127"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "bias": true,
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0129",
+      "inputs": {
+        "x": "n0128"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0130",
+      "inputs": {
+        "batch": "input:batch",
+        "x": "n0129"
+      },
+      "op": "core.graph_stochastic_depth@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0131",
+      "inputs": {
+        "x": "n0130"
+      },
+      "op": "core.equivariant_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0132",
+      "inputs": {
+        "left": "n0106",
+        "right": "n0131"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "affine": true,
+        "centering": true,
+        "epsilon": 1e-05,
+        "normalization": "component"
+      },
+      "declared_types": {},
+      "id": "n0133",
+      "inputs": {
+        "x": "n0132"
+      },
+      "op": "core.equivariant_merge_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "bias": true,
+        "out_irreps": "16x0+16x1+16x2"
+      },
+      "declared_types": {},
+      "id": "n0134",
+      "inputs": {
+        "x": "n0133"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "scalar_channel",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0135",
+      "inputs": {
+        "x": "n0133"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "gate_input_channel",
+        "feature_role": "gate"
+      },
+      "declared_types": {},
+      "id": "n0136",
+      "inputs": {
+        "x": "n0133"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "scalar_channel",
+        "bias": true,
+        "out_axis": "scalar_pair",
+        "out_features": 32
+      },
+      "declared_types": {},
+      "id": "n0137",
+      "inputs": {
+        "x": "n0135"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "grid_resolution": [
+          6,
+          6
+        ],
+        "mmax": 2,
+        "normalization": "component",
+        "quadrature": "e3nn_s2grid",
+        "sampling": "equiangular",
+        "use_m_primary": false
+      },
+      "declared_types": {},
+      "id": "n0138",
+      "inputs": {
+        "x": "n0134"
+      },
+      "op": "core.grid_project@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "gate_input_channel",
+        "bias": true,
+        "out_axis": "gate_channel",
+        "out_features": 16,
+        "output_axis_role": "gate",
+        "output_feature_role": "gate"
+      },
+      "declared_types": {},
+      "id": "n0139",
+      "inputs": {
+        "x": "n0136"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "bias": false,
+        "out_channels": 32
+      },
+      "declared_types": {},
+      "id": "n0140",
+      "inputs": {
+        "x": "n0138"
+      },
+      "op": "core.grid_channel_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "activation": "sigmoid"
+      },
+      "declared_types": {},
+      "id": "n0141",
+      "inputs": {
+        "x": "n0139"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "scalar_up",
+        "feature_role": "value",
+        "length": 16,
+        "start": 16
+      },
+      "declared_types": {},
+      "id": "n0142",
+      "inputs": {
+        "x": "n0137"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "axis": "scalar_gate",
+        "feature_role": "gate",
+        "length": 16,
+        "start": 0
+      },
+      "declared_types": {},
+      "id": "n0143",
+      "inputs": {
+        "x": "n0137"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0144",
+      "inputs": {
+        "x": "n0143"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "left_channels": 16
+      },
+      "declared_types": {},
+      "id": "n0145",
+      "inputs": {
+        "x": "n0140"
+      },
+      "op": "core.grid_split@1",
+      "outputs": [
+        "left",
+        "right"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0146",
+      "inputs": {
+        "left": "n0144",
+        "right": "n0142"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0147",
+      "inputs": {
+        "left": "n0145:left",
+        "right": "n0141"
+      },
+      "op": "core.grid_pointwise_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0148",
+      "inputs": {
+        "x": "n0146"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0149",
+      "inputs": {
+        "left": "n0147",
+        "right": "n0145:right"
+      },
+      "op": "core.grid_pointwise_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0150",
+      "inputs": {
+        "x": "n0148"
+      },
+      "op": "core.flatten_invariant_axes@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "probability": 0.02
+      },
+      "declared_types": {},
+      "id": "n0151",
+      "inputs": {
+        "x": "n0149"
+      },
+      "op": "core.grid_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "out_irreps": "16x0+16x1+16x2"
+      },
+      "declared_types": {},
+      "id": "n0152",
+      "inputs": {
+        "x": "n0150"
+      },
+      "op": "core.irrep_pad@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "bias": false,
+        "out_channels": 16
+      },
+      "declared_types": {},
+      "id": "n0153",
+      "inputs": {
+        "x": "n0151"
+      },
+      "op": "core.grid_channel_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "out_irreps": "16x0+16x1+16x2"
+      },
+      "declared_types": {},
+      "id": "n0154",
+      "inputs": {
+        "x": "n0153"
+      },
+      "op": "core.grid_unproject@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0155",
+      "inputs": {
+        "left": "n0154",
+        "right": "n0152"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "bias": true,
+        "l0_weight_scale": 0.7071067811865476,
+        "out_irreps": "8x0+8x1+8x2"
+      },
+      "declared_types": {},
+      "id": "n0156",
+      "inputs": {
+        "x": "n0155"
+      },
+      "op": "core.so3_linear@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0157",
+      "inputs": {
+        "batch": "input:batch",
+        "x": "n0156"
+      },
+      "op": "core.graph_stochastic_depth@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {
+        "p": 0.02
+      },
+      "declared_types": {},
+      "id": "n0158",
+      "inputs": {
+        "x": "n0157"
+      },
+      "op": "core.equivariant_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_transblock_1f0e892099da7151",
+        "composition_prefix": "block1_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0159",
+      "inputs": {
+        "left": "n0132",
+        "right": "n0158"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "shared_consumers": [
+          "energy",
+          "forces"
+        ]
+      },
+      "attrs": {
+        "affine": true,
+        "centering": true,
+        "epsilon": 1e-05,
+        "normalization": "component"
+      },
+      "declared_types": {},
+      "id": "n0160",
+      "inputs": {
+        "x": "n0159"
+      },
+      "op": "core.equivariant_merge_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "axis": "scalar_channel",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0161",
+      "inputs": {
+        "x": "n0160"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0162",
+      "inputs": {
+        "index": "input:source_index",
+        "x": "n0160"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0163",
+      "inputs": {
+        "index": "input:target_index",
+        "x": "n0160"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "axis": "scalar_channel",
+        "bias": true,
+        "out_axis": "energy_hidden",
+        "out_features": 16
+      },
+      "declared_types": {},
+      "id": "n0164",
+      "inputs": {
+        "x": "n0161"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0165",
+      "inputs": {
+        "xs": [
+          "n0162",
+          "n0163"
+        ]
+      },
+      "op": "core.equivariant_channel_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0166",
+      "inputs": {
+        "value": "n0165",
+        "weight": "n0047"
+      },
+      "op": "core.degreewise_invariant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0167",
+      "inputs": {
+        "x": "n0164"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0168",
+      "inputs": {
+        "x": "n0167"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "frame_cache_id": "v3_model_edge",
+        "frame_id": "force_v3_force_head_edge",
+        "mmax": 1,
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0169",
+      "inputs": {
+        "direction": "n0003",
+        "x": "n0166"
+      },
+      "op": "core.to_edge_frame@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "axis": "energy_hidden",
+        "bias": true,
+        "out_axis": "energy_channel",
+        "out_features": 1
+      },
+      "declared_types": {},
+      "id": "n0170",
+      "inputs": {
+        "x": "n0168"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "extra_m0_channels": 24,
+        "mmax": 1,
+        "out_irreps": "8x0+8x1+8x2",
+        "zero_bias": true
+      },
+      "declared_types": {},
+      "id": "n0171",
+      "inputs": {
+        "x": "n0169"
+      },
+      "op": "core.so2_linear@2",
+      "outputs": [
+        "out",
+        "extra_m0"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "alpha_flat",
+        "feature_role": "alpha",
+        "length": 8,
+        "start": 0
+      },
+      "declared_types": {},
+      "id": "n0172",
+      "inputs": {
+        "x": "n0171:extra_m0"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0173",
+      "inputs": {
+        "index": "input:batch",
+        "x": "n0170"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "degree_gate",
+        "feature_role": "gate",
+        "length": 16,
+        "start": 8
+      },
+      "declared_types": {},
+      "id": "n0174",
+      "inputs": {
+        "x": "n0171:extra_m0"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "factor": 0.012851294967163014
+      },
+      "declared_types": {},
+      "id": "n0175",
+      "inputs": {
+        "x": "n0173"
+      },
+      "op": "core.constant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "mmax": 1
+      },
+      "declared_types": {},
+      "id": "n0176",
+      "inputs": {
+        "scalars": "n0174",
+        "x": "n0171:out"
+      },
+      "op": "core.edge_frame_gate_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "axis": "alpha_flat",
+        "channel_axis": "alpha_channel",
+        "head_axis": "head",
+        "num_heads": 2
+      },
+      "declared_types": {},
+      "id": "n0177",
+      "inputs": {
+        "x": "n0172"
+      },
+      "op": "core.head_split@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_energy_head_1f0e892099da7151",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "axis": "energy_channel"
+      },
+      "declared_types": {},
+      "id": "n0178",
+      "inputs": {
+        "x": "n0175"
+      },
+      "op": "core.squeeze_unit_axis@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "affine": true,
+        "axis": "alpha_channel",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0179",
+      "inputs": {
+        "x": "n0177"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "mmax": 1,
+        "out_irreps": "4x0+4x1+4x2",
+        "zero_bias": true
+      },
+      "declared_types": {},
+      "id": "n0180",
+      "inputs": {
+        "x": "n0176"
+      },
+      "op": "core.so2_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "activation": "smooth_leaky_relu",
+        "negative_slope": 0.2
+      },
+      "declared_types": {},
+      "id": "n0181",
+      "inputs": {
+        "x": "n0179"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "bias": false,
+        "channel_axis": "alpha_channel",
+        "head_axis": "head"
+      },
+      "declared_types": {},
+      "id": "n0182",
+      "inputs": {
+        "x": "n0181"
+      },
+      "op": "core.headwise_scalar_contraction@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "epsilon": 1e-16,
+        "exp_dropout": 0.0,
+        "softcap": null
+      },
+      "declared_types": {},
+      "id": "n0183",
+      "inputs": {
+        "exp_rescale": "n0014",
+        "index": "input:target_segment",
+        "logits": "n0182"
+      },
+      "op": "core.segment_softmax@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0184",
+      "inputs": {
+        "left": "n0183",
+        "right": "n0014"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0185",
+      "inputs": {
+        "value": "n0180",
+        "weight": "n0184"
+      },
+      "op": "core.invariant_scale@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "frame_id": "force_v3_force_head_edge",
+        "mmax": 1,
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0186",
+      "inputs": {
+        "x": "n0185"
+      },
+      "op": "core.from_edge_frame@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0187",
+      "inputs": {
+        "index": "input:target_segment",
+        "x": "n0186"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "bias": true,
+        "out_irreps": "1x0+1x1+1x2"
+      },
+      "declared_types": {},
+      "id": "n0188",
+      "inputs": {
+        "x": "n0187"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_force_head_1f0e892099da7151",
+        "composition_prefix": "force_"
+      },
+      "attrs": {
+        "selections": [
+          {
+            "irrep": "1",
+            "multiplicity": 1,
+            "start": 0
+          }
+        ]
+      },
+      "declared_types": {},
+      "id": "n0189",
+      "inputs": {
+        "x": "n0188"
+      },
+      "op": "core.irrep_select@2",
+      "outputs": [
+        "out"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "energy",
+      "source": "n0178",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "graph",
+        "dtype": "float32",
+        "equivariance_level": 1,
+        "feature_role": "channel",
+        "frame": {
+          "kind": "invariant",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "1x0",
+        "kind": "invariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "carrier_scalar",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "forces",
+      "source": "n0189",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "dtype": "float32",
+        "equivariance_level": 1,
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "1x1",
+        "kind": "equivariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    }
+  ],
+  "parameters": {
+    "equiformer_v3_spec": {
+      "alpha_drop": 0.02,
+      "attn_activation": "sep-merge_gates2_swiglu",
+      "attn_alpha_channels": 4,
+      "attn_eps": 1e-16,
+      "attn_grid_resolution": [
+        6,
+        4
+      ],
+      "attn_hidden_channels": 8,
+      "attn_mask_rate": 0.0,
+      "attn_value_channels": 2,
+      "attn_weights_drop": 0.05,
+      "avg_degree": 23.395238876342773,
+      "avg_num_nodes": 77.81317,
+      "direct_prediction": true,
+      "drop_path_rate": 0.0,
+      "edge_channels": 8,
+      "enforce_max_neighbors_strictly": true,
+      "ffn_activation": "sep-merge_gates2_swiglu",
+      "ffn_drop": 0.02,
+      "ffn_grid_resolution": [
+        6,
+        6
+      ],
+      "ffn_hidden_channels": 16,
+      "gradient_checkpointing_block_list": [],
+      "lmax": 2,
+      "max_neighbors": 20,
+      "max_num_elements": 128,
+      "max_radius": 12.0,
+      "mmax": 1,
+      "norm_type": "merge_layer_norm",
+      "num_channels": 8,
+      "num_heads": 2,
+      "num_layers": 2,
+      "num_radial_basis": 8,
+      "otf_graph": true,
+      "proj_drop": 0.02,
+      "regress_forces": true,
+      "regress_stress": false,
+      "softcap": null,
+      "use_add_merge": false,
+      "use_atom_edge_embedding": true,
+      "use_attn_renorm": true,
+      "use_envelope": true,
+      "use_gate_force_head": true,
+      "use_grid_mlp": true,
+      "use_head_reg": false,
+      "use_pbc": true,
+      "use_pbc_single": false,
+      "use_rad_l_parametrization": true,
+      "value_drop": 0.02
+    },
+    "lowering_contract": {
+      "global_initializer": "official self.apply(self._init_weights) after complete module construction",
+      "initializer_schedule": [
+        {
+          "after_node": "n0007",
+          "nodes": [
+            "n0013",
+            "n0007"
+          ]
+        },
+        {
+          "after_node": "n0004",
+          "nodes": [
+            "n0010",
+            "n0004"
+          ]
+        },
+        {
+          "after_node": "n0103",
+          "nodes": [
+            "n0084",
+            "n0085"
+          ]
+        },
+        {
+          "after_node": "n0005",
+          "nodes": [
+            "n0011",
+            "n0005"
+          ]
+        },
+        {
+          "after_node": "n0156",
+          "nodes": [
+            "n0137",
+            "n0139"
+          ]
+        },
+        {
+          "after_node": "n0170",
+          "nodes": [
+            "n0164",
+            "n0170"
+          ]
+        },
+        {
+          "after_node": "n0006",
+          "nodes": [
+            "n0012",
+            "n0006"
+          ]
+        }
+      ],
+      "module_construction_order": [
+        "n0002",
+        "n0015",
+        "n0014",
+        "n0050",
+        "n0000",
+        "n0001",
+        "n0013",
+        "n0007",
+        "n0020",
+        "n0024",
+        "n0025",
+        "n0029",
+        "n0036",
+        "n0040",
+        "n0041",
+        "n0048",
+        "n0049",
+        "n0051",
+        "n0052",
+        "n0009",
+        "n0016",
+        "n0053",
+        "n0003",
+        "n0008",
+        "n0054",
+        "n0010",
+        "n0004",
+        "n0021",
+        "n0026",
+        "n0033",
+        "n0037",
+        "n0045",
+        "n0060",
+        "n0066",
+        "n0069",
+        "n0070",
+        "n0063",
+        "n0065",
+        "n0017",
+        "n0030",
+        "n0042",
+        "n0055",
+        "n0056",
+        "n0057",
+        "n0058",
+        "n0059",
+        "n0061",
+        "n0062",
+        "n0064",
+        "n0067",
+        "n0068",
+        "n0071",
+        "n0072",
+        "n0073",
+        "n0074",
+        "n0075",
+        "n0076",
+        "n0077",
+        "n0078",
+        "n0079",
+        "n0080",
+        "n0082",
+        "n0081",
+        "n0084",
+        "n0087",
+        "n0088",
+        "n0091",
+        "n0093",
+        "n0096",
+        "n0086",
+        "n0083",
+        "n0085",
+        "n0089",
+        "n0090",
+        "n0092",
+        "n0094",
+        "n0095",
+        "n0098",
+        "n0099",
+        "n0101",
+        "n0097",
+        "n0100",
+        "n0102",
+        "n0103",
+        "n0104",
+        "n0105",
+        "n0106",
+        "n0107",
+        "n0011",
+        "n0005",
+        "n0022",
+        "n0027",
+        "n0034",
+        "n0038",
+        "n0046",
+        "n0113",
+        "n0119",
+        "n0122",
+        "n0123",
+        "n0116",
+        "n0118",
+        "n0018",
+        "n0031",
+        "n0043",
+        "n0109",
+        "n0108",
+        "n0110",
+        "n0111",
+        "n0112",
+        "n0114",
+        "n0115",
+        "n0117",
+        "n0120",
+        "n0121",
+        "n0124",
+        "n0125",
+        "n0126",
+        "n0127",
+        "n0128",
+        "n0129",
+        "n0130",
+        "n0131",
+        "n0132",
+        "n0133",
+        "n0134",
+        "n0135",
+        "n0137",
+        "n0143",
+        "n0142",
+        "n0144",
+        "n0146",
+        "n0148",
+        "n0138",
+        "n0136",
+        "n0139",
+        "n0141",
+        "n0140",
+        "n0145",
+        "n0147",
+        "n0149",
+        "n0151",
+        "n0153",
+        "n0154",
+        "n0150",
+        "n0152",
+        "n0155",
+        "n0156",
+        "n0157",
+        "n0158",
+        "n0159",
+        "n0160",
+        "n0161",
+        "n0164",
+        "n0167",
+        "n0168",
+        "n0170",
+        "n0173",
+        "n0175",
+        "n0178",
+        "n0012",
+        "n0006",
+        "n0023",
+        "n0028",
+        "n0035",
+        "n0039",
+        "n0047",
+        "n0171",
+        "n0179",
+        "n0182",
+        "n0183",
+        "n0176",
+        "n0180",
+        "n0019",
+        "n0032",
+        "n0044",
+        "n0162",
+        "n0163",
+        "n0165",
+        "n0166",
+        "n0169",
+        "n0172",
+        "n0174",
+        "n0177",
+        "n0181",
+        "n0184",
+        "n0185",
+        "n0186",
+        "n0187",
+        "n0189",
+        "n0188"
+      ],
+      "shared_final_norm": {
+        "consumers": [
+          "n0161",
+          "n0162",
+          "n0163"
+        ],
+        "node": "n0160"
+      },
+      "task_outputs": [
+        "energy",
+        "forces"
+      ]
+    },
+    "parameter_mapping": {
+      "backbone": {
+        "blocks": {
+          "block0": {
+            "attention": {
+              "node_modules.alpha_dot.weight": "alpha_dot",
+              "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+              "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+              "node_modules.projection.bias": "proj.bias",
+              "node_modules.projection.weight": "proj.weight",
+              "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+              "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+              "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+              "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+              "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+              "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+              "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+              "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+              "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+              "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+              "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+              "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+              "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+              "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+              "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+              "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+              "node_modules.source_embedding.weight": "source_embedding.weight",
+              "node_modules.target_embedding.weight": "target_embedding.weight"
+            },
+            "drop_path": "attn_drop_path/ffn_drop_path",
+            "feed_forward": {
+              "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+              "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+              "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+              "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+              "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+              "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+              "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+              "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+              "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+              "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+            },
+            "norm_1": "norm1",
+            "norm_2": "norm2",
+            "proj_drop": "attn_proj_drop/ffn_proj_drop"
+          },
+          "block1": {
+            "attention": {
+              "node_modules.alpha_dot.weight": "alpha_dot",
+              "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+              "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+              "node_modules.projection.bias": "proj.bias",
+              "node_modules.projection.weight": "proj.weight",
+              "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+              "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+              "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+              "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+              "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+              "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+              "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+              "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+              "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+              "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+              "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+              "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+              "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+              "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+              "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+              "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+              "node_modules.source_embedding.weight": "source_embedding.weight",
+              "node_modules.target_embedding.weight": "target_embedding.weight"
+            },
+            "drop_path": "attn_drop_path/ffn_drop_path",
+            "feed_forward": {
+              "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+              "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+              "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+              "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+              "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+              "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+              "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+              "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+              "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+              "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+            },
+            "norm_1": "norm1",
+            "norm_2": "norm2",
+            "proj_drop": "attn_proj_drop/ffn_proj_drop"
+          }
+        },
+        "input": {
+          "node_modules.atom_embedding.weight": "sphere_embedding.weight",
+          "node_modules.radial_linear0.linear.bias": "edge_degree_embedding.rad_func.net.0.bias",
+          "node_modules.radial_linear0.linear.weight": "edge_degree_embedding.rad_func.net.0.weight",
+          "node_modules.radial_linear1.linear.bias": "edge_degree_embedding.rad_func.net.3.bias",
+          "node_modules.radial_linear1.linear.weight": "edge_degree_embedding.rad_func.net.3.weight",
+          "node_modules.radial_linear2.linear.bias": "edge_degree_embedding.rad_func.net.6.bias",
+          "node_modules.radial_linear2.linear.weight": "edge_degree_embedding.rad_func.net.6.weight",
+          "node_modules.radial_norm0.layer_norm.bias": "edge_degree_embedding.rad_func.net.1.bias",
+          "node_modules.radial_norm0.layer_norm.weight": "edge_degree_embedding.rad_func.net.1.weight",
+          "node_modules.radial_norm1.layer_norm.bias": "edge_degree_embedding.rad_func.net.4.bias",
+          "node_modules.radial_norm1.layer_norm.weight": "edge_degree_embedding.rad_func.net.4.weight",
+          "node_modules.source_edge_embedding.weight": "edge_degree_embedding.source_embedding.weight",
+          "node_modules.target_edge_embedding.weight": "edge_degree_embedding.target_embedding.weight"
+        }
+      },
+      "energy_head": {
+        "node_modules.energy_linear1.linear.bias": "energy_block.linear_1.bias",
+        "node_modules.energy_linear1.linear.weight": "energy_block.linear_1.weight",
+        "node_modules.energy_linear2.linear.bias": "energy_block.linear_2.bias",
+        "node_modules.energy_linear2.linear.weight": "energy_block.linear_2.weight"
+      },
+      "force_head": {
+        "node_modules.alpha_dot.weight": "alpha_dot",
+        "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+        "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+        "node_modules.projection.bias": "proj.bias",
+        "node_modules.projection.weight": "proj.weight",
+        "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+        "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+        "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+        "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+        "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+        "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+        "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+        "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+        "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+        "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+        "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+        "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+        "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+        "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+        "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+        "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+        "node_modules.source_embedding.weight": "source_embedding.weight",
+        "node_modules.target_embedding.weight": "target_embedding.weight"
+      },
+      "shared_final_norm": {
+        "node_modules.final_norm.norm.affine_bias": "norm.affine_bias",
+        "node_modules.final_norm.norm.affine_weight": "norm.affine_weight"
+      }
+    }
+  },
+  "program_id": "equiformer_v3_direct_model_1f0e892099da7151",
+  "task_contract": "equiformer_v3_official_direct_energy_force_model"
+}

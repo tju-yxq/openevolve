@@ -1,0 +1,124 @@
+{
+  "edits": [
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.1
+        }
+      },
+      "target": "block0_attn_proj_drop"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.1
+        }
+      },
+      "target": "block0_ffn_proj_drop"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.1
+        }
+      },
+      "target": "block1_attn_proj_drop"
+    },
+    {
+      "kind": "change_attrs",
+      "payload": {
+        "attrs": {
+          "p": 0.1
+        }
+      },
+      "target": "block1_ffn_proj_drop"
+    },
+    {
+      "kind": "change_parameters",
+      "payload": {
+        "value": 0.1
+      },
+      "target": "program.parameters.equiformer_v3_spec.proj_drop"
+    }
+  ],
+  "expected_effects": {
+    "equivariance_contract": "unchanged",
+    "parameter_shapes": "unchanged",
+    "training_effect": "hypothesis_only"
+  },
+  "hypothesis": {
+    "action_id": "proj_drop=0.10",
+    "claim": "将注意力与 FFN 的等变投影 dropout 提升至 0.10，可在不破坏注意力分布锐度与值路径几何信号的前提下，迫使等变线性投影学习更鲁棒的通道混合表示",
+    "current_value": 0.02,
+    "mutation_family": "proj_drop",
+    "proposed_value": 0.1,
+    "rationale": "前三轮已分别探索了注意力权重平滑、图级残差完整性与值路径噪声注入；当前 proj_drop=0.02 仍处于低正则区间。投影层是等变类型转换与通道混合的关键瓶颈，提升其 dropout 能在 SO(3) 合同约束下迫使高阶球谐通道学习更冗余的几何基底组合，从而增强等变特征在未见几何构型上的泛化能力，同时避免像值路径 dropout 那样直接干扰 S2 球面网格上的数值稳定性",
+    "risk": "若等变投影的权重谱范数较大或高阶球谐通道维度较低，0.10 的 dropout 可能破坏 Clebsch-Gordan 分解路径的数值条件，导致高阶等变特征的梯度方差爆炸或训练损失震荡",
+    "status": "未经训练验证的候选假设"
+  },
+  "language_version": "2.9.0",
+  "parent_architecture_id": "7f2c46c88f208acc",
+  "patch_version": "1.0",
+  "postconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_proj_drop",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_proj_drop",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_proj_drop",
+      "value": 0.1
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_proj_drop",
+      "value": 0.1
+    }
+  ],
+  "preconditions": [
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_attn_proj_drop",
+      "value": 0.02
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block0_ffn_proj_drop",
+      "value": 0.02
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_attn_proj_drop",
+      "value": 0.02
+    },
+    {
+      "attr": "p",
+      "kind": "node_attr_equals",
+      "node_id": "block1_ffn_proj_drop",
+      "value": 0.02
+    }
+  ],
+  "scope": [
+    "block0_attn_proj_drop",
+    "block0_ffn_proj_drop",
+    "block1_attn_proj_drop",
+    "block1_ffn_proj_drop",
+    "program.parameters.equiformer_v3_spec.proj_drop"
+  ]
+}

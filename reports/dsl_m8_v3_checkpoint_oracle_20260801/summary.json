@@ -1,0 +1,38 @@
+{
+  "canonical_architecture_id": "66fb85cad134b70b",
+  "checkpoint_mapping_version": "evoequilang-checkpoint-mapping-v1",
+  "dsl_repository": {
+    "branch": "codex/v3-mapping",
+    "head": "28551666049e96f07bf7044ba24d56053712a375",
+    "worktree_dirty": true,
+    "worktree_status_sha256": "67eff0c77463918ab2e08bed2e69b714a3891d5d16b02f29cf01d66018a4bcd2"
+  },
+  "official_v3_repository": {
+    "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "origin": "https://github.com/atomicarchitects/equiformer_v3.git"
+  },
+  "oracle_pytest_result": "3 passed",
+  "oracle_test": "tests/test_dsl_v3_official_checkpoint.py",
+  "pending": [
+    "stress head",
+    "optimizer update and short training trajectory",
+    "real production-width configuration numerical oracle"
+  ],
+  "proved": [
+    "all official and lowered state-dict keys are covered without silent loss",
+    "all 116 trainable parameters map bijectively",
+    "shared official Wigner buffers are validated as aliases and broadcast to every typed frame entry",
+    "structurally eliminated radial and equivariant-dropout expand-index buffers are checked against exact constants",
+    "Fair-Chem state_dict wrappers, module prefixes and torch-compile prefixes are accepted with collision checks",
+    "official-to-lowered-to-official state-dict round trip is exact",
+    "a checkpoint-loaded stochastic model aligns with official train/eval RNG, energy, forces, position gradients and all parameter gradients",
+    "missing, unexpected, wrong-shape, inconsistent-alias, corrupt-reconstruction and wrong-architecture checkpoints are rejected"
+  ],
+  "reconstructed_source_tensor_count": 5,
+  "source_alias_group_count": 2,
+  "source_state_tensor_count": 158,
+  "spec_architecture_id": "c907d8c7ab62b9a3",
+  "status": "official_v3_checkpoint_round_trip_oracle_passed",
+  "target_state_tensor_count": 157,
+  "trainable_parameter_tensor_count": 116
+}

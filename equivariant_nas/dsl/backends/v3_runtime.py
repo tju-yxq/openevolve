@@ -423,6 +423,15 @@ def build_v3_gated_swiglu_merge_module(
                 use_m_primary=True,
             )
             if float(dropout) > 0.0:
+                # Official V3's ``add_dropout`` applies value dropout to both
+                # stochastic branches of sep-merge-gates2-swiglu: the scalar
+                # SwiGLU result and the S2-grid product.  Keeping only the grid
+                # mask consumes one fewer RNG draw per attention call and
+                # changes the merged l=0 coefficients.
+                self.activation.scalar_act = torch.nn.Sequential(
+                    self.activation.scalar_act,
+                    torch.nn.Dropout(float(dropout)),
+                )
                 self.activation.grid_drop = torch.nn.Dropout(float(dropout))
 
         def forward(self, value, scalars):

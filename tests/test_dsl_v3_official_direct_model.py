@@ -1,6 +1,7 @@
 import importlib
 import sys
 import types
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,18 @@ def _spec():
         ffn_drop=0.0,
         avg_num_nodes=5.5,
         avg_degree=3.25,
+    )
+
+
+def _stochastic_spec():
+    return replace(
+        _spec(),
+        alpha_drop=0.13,
+        attn_weights_drop=0.17,
+        value_drop=0.19,
+        drop_path_rate=0.23,
+        proj_drop=0.29,
+        ffn_drop=0.31,
     )
 
 
@@ -462,6 +475,147 @@ def test_v3_two_layer_direct_model_matches_official_model_end_to_end():
     )
     expected_forward_rng = torch.random.get_rng_state().clone()
     torch.manual_seed(9702)
+    actual_outputs = actual(
+        {
+            "atomic_numbers": atomic_numbers,
+            "positions": positions_actual,
+            "source_index": _index(source, source.numel()),
+            "target_index": _index(target, target.numel()),
+            "target_segment": _index(target, atomic_numbers.numel()),
+            "batch": _index(batch, 2),
+        },
+        {},
+    )
+    actual_forward_rng = torch.random.get_rng_state().clone()
+    assert tuple(actual_outputs["energy"].shape) == (2,)
+    assert tuple(actual_outputs["forces"].shape) == (5, 3)
+    torch.testing.assert_close(
+        actual_outputs["energy"],
+        expected_outputs["energy"],
+        rtol=3.0e-5,
+        atol=3.0e-6,
+    )
+    torch.testing.assert_close(
+        actual_outputs["forces"],
+        expected_outputs["forces"],
+        rtol=4.0e-5,
+        atol=4.0e-7,
+    )
+    assert torch.equal(actual_forward_rng, expected_forward_rng)
+
+    expected_loss = (
+        expected_outputs["energy"].square().sum()
+        + expected_outputs["forces"].square().sum()
+    )
+    actual_loss = (
+        actual_outputs["energy"].square().sum()
+        + actual_outputs["forces"].square().sum()
+    )
+    expected_loss.backward()
+    actual_loss.backward()
+    torch.testing.assert_close(
+        positions_actual.grad,
+        positions_expected.grad,
+        rtol=1.0e-4,
+        atol=1.0e-6,
+    )
+    for actual_name, expected_name in mapping.items():
+        assert actual_parameters[actual_name].grad is not None
+        assert expected_parameters[expected_name].grad is not None
+        torch.testing.assert_close(
+            actual_parameters[actual_name].grad,
+            expected_parameters[expected_name].grad,
+            rtol=1.5e-4,
+            atol=1.5e-6,
+        )
+
+
+@pytest.mark.parametrize("training", [True, False], ids=("train", "eval"))
+def test_v3_two_layer_direct_model_matches_all_official_stochastic_paths(training):
+    modules = _official_modules()
+    spec = _stochastic_spec()
+    registry = core_registry()
+    program = equiformer_v3_direct_model_program(spec)
+    inference = TypeChecker(registry).check(program)
+
+    torch.manual_seed(19701)
+    expected = _official_model(spec, modules)
+    expected_init_rng = torch.random.get_rng_state().clone()
+    torch.manual_seed(19701)
+    actual = E3NNGraphBackend(
+        registry,
+        equiformer_v3_root=str(V3_ROOT),
+    ).build(program, inference)
+    actual_init_rng = torch.random.get_rng_state().clone()
+    assert torch.equal(actual_init_rng, expected_init_rng)
+    expected.train(training)
+    actual.train(training)
+
+    forbidden_types = (
+        modules["model"].EquiformerV3_OC,
+        modules["transformer"].TransBlockV3,
+        modules["transformer"].EquivariantGraphAttention,
+        modules["output"].ScalarFeedForwardNetwork,
+    )
+    assert not any(
+        isinstance(module, forbidden_types) for module in actual.modules()
+    )
+
+    expected_parameters = dict(expected.named_parameters())
+    actual_parameters = dict(actual.named_parameters())
+    mapping = _direct_model_parameter_mapping(spec, program)
+    assert len(program.nodes) == 190
+    assert set(mapping) == set(actual_parameters)
+    assert set(mapping.values()) == set(expected_parameters)
+    for actual_name, expected_name in mapping.items():
+        torch.testing.assert_close(
+            actual_parameters[actual_name],
+            expected_parameters[expected_name],
+            rtol=0.0,
+            atol=0.0,
+        )
+
+    actual_modules = dict(actual.named_modules())
+    for block_index in range(spec.num_layers):
+        prefix = "node_modules.block{}_attn_gated_activation.activation".format(
+            block_index
+        )
+        assert isinstance(
+            actual_modules[prefix + ".scalar_act.1"],
+            torch.nn.Dropout,
+        )
+        assert isinstance(actual_modules[prefix + ".grid_drop"], torch.nn.Dropout)
+        assert actual_modules[prefix + ".scalar_act.1"].p == spec.value_drop
+        assert actual_modules[prefix + ".grid_drop"].p == spec.value_drop
+
+    atomic_numbers = torch.tensor([1, 6, 8, 14, 16], dtype=torch.long)
+    positions_expected = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [1.1, 0.2, -0.1],
+            [0.3, 1.2, 0.4],
+            [-0.4, 0.6, 1.3],
+            [0.8, -0.7, 0.5],
+        ],
+        dtype=torch.float32,
+        requires_grad=True,
+    )
+    positions_actual = positions_expected.detach().clone().requires_grad_(True)
+    source = torch.tensor([0, 1, 2, 3, 4, 3, 4, 2], dtype=torch.long)
+    target = torch.tensor([1, 0, 3, 4, 2, 2, 3, 4], dtype=torch.long)
+    edge_index = torch.stack((source, target), dim=0)
+    batch = torch.tensor([0, 0, 1, 1, 1], dtype=torch.long)
+
+    torch.manual_seed(19702)
+    expected_outputs = _official_forward(
+        expected,
+        atomic_numbers,
+        positions_expected,
+        edge_index,
+        batch,
+    )
+    expected_forward_rng = torch.random.get_rng_state().clone()
+    torch.manual_seed(19702)
     actual_outputs = actual(
         {
             "atomic_numbers": atomic_numbers,

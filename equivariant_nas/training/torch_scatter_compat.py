@@ -2,8 +2,35 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import sys
 import types
+
+
+@contextmanager
+def trusted_legacy_torch_load():
+    """Load trusted legacy PyG artifacts under the PyTorch 2.6+ default.
+
+    The pinned Equiformer QM9 loader calls ``torch.load(path)`` on processed
+    PyG ``Data`` objects.  PyTorch 2.6 changed that call to
+    ``weights_only=True`` by default, which cannot deserialize the historical
+    ``GlobalStorage`` payload.  Keep the compatibility override scoped to the
+    dataset constructors; explicit caller choices are left unchanged.
+    """
+
+    import torch
+
+    original_load = torch.load
+
+    def compatible_load(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_load(*args, **kwargs)
+
+    torch.load = compatible_load
+    try:
+        yield
+    finally:
+        torch.load = original_load
 
 
 def scatter_fallback(src, index, dim=-1, out=None, dim_size=None, reduce="sum"):

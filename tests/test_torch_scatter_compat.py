@@ -5,6 +5,7 @@ import pytest
 from equivariant_nas.training.torch_scatter_compat import (
     install_torch_scatter_fallback,
     scatter_fallback,
+    trusted_legacy_torch_load,
 )
 
 
@@ -39,3 +40,21 @@ def test_install_fallback_replaces_an_unloadable_extension(monkeypatch):
         sys.modules.pop("torch_scatter", None)
         if original is not None:
             sys.modules["torch_scatter"] = original
+
+
+def test_trusted_legacy_torch_load_only_changes_the_implicit_default(monkeypatch):
+    torch = pytest.importorskip("torch")
+    calls = []
+
+    def fake_load(*args, **kwargs):
+        calls.append(kwargs.copy())
+        return "loaded"
+
+    monkeypatch.setattr(torch, "load", fake_load)
+    original = torch.load
+    with trusted_legacy_torch_load():
+        assert torch.load("legacy.pt") == "loaded"
+        assert torch.load("explicit.pt", weights_only=True) == "loaded"
+
+    assert torch.load is original
+    assert calls == [{"weights_only": False}, {"weights_only": True}]

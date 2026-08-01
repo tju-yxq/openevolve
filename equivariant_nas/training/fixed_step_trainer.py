@@ -22,7 +22,10 @@ from timm.utils import ModelEmaV2, NativeScaler, dispatch_clip_grad
 from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
 
-from equivariant_nas.training.torch_scatter_compat import install_torch_scatter_fallback
+from equivariant_nas.training.torch_scatter_compat import (
+    install_torch_scatter_fallback,
+    trusted_legacy_torch_load,
+)
 
 TORCH_SCATTER_BACKEND = install_torch_scatter_fallback()
 
@@ -423,9 +426,10 @@ def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    full_train_dataset = base.QM9(
-        args.data_path, "train", feature_type=args.feature_type
-    )
+    with trusted_legacy_torch_load():
+        full_train_dataset = base.QM9(
+            args.data_path, "train", feature_type=args.feature_type
+        )
     train_dataset, training_dataset_id, subset_metadata = fixed_training_subset(
         full_train_dataset, args.train_subset_file
     )
@@ -437,12 +441,13 @@ def main(args):
         args.checkpoint_interval_steps = data_steps_per_epoch
     if args.reference_steps_per_epoch <= 0 or args.checkpoint_interval_steps <= 0:
         raise ValueError("resolved reference/checkpoint step intervals must be positive")
-    val_dataset = base.QM9(args.data_path, "valid", feature_type=args.feature_type)
-    test_dataset = (
-        base.QM9(args.data_path, "test", feature_type=args.feature_type)
-        if args.evaluate_test
-        else None
-    )
+    with trusted_legacy_torch_load():
+        val_dataset = base.QM9(args.data_path, "valid", feature_type=args.feature_type)
+        test_dataset = (
+            base.QM9(args.data_path, "test", feature_type=args.feature_type)
+            if args.evaluate_test
+            else None
+        )
     observed_mean, observed_std = target_mean_std(train_dataset, args.target)
     log.info("Training set mean: {}, std:{}".format(observed_mean, observed_std))
     log.info(

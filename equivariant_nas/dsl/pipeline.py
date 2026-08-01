@@ -481,14 +481,18 @@ def evaluate_dsl_candidate_pipeline(
 
         batch = None
         if run_symmetry or max_steps > 0:
-            from equivariant_nas.training.torch_scatter_compat import install_torch_scatter_fallback
+            from equivariant_nas.training.torch_scatter_compat import (
+                install_torch_scatter_fallback,
+                trusted_legacy_torch_load,
+            )
 
             result["torch_scatter_backend"] = install_torch_scatter_fallback()
             from datasets.pyg.qm9 import QM9
             from torch_geometric.loader import DataLoader
             from torch.utils.data import Subset
 
-            dataset = QM9(data_path, "train", feature_type="one_hot")
+            with trusted_legacy_torch_load():
+                dataset = QM9(data_path, "train", feature_type="one_hot")
             if train_subset_file:
                 with np.load(train_subset_file) as payload:
                     dataset = Subset(dataset, np.asarray(payload["train_local_indices"], dtype=np.int64).tolist())

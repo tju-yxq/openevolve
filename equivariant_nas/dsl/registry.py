@@ -2678,6 +2678,11 @@ def _to_edge_frame_v2(node, inputs, attrs):
         raise DSLValidationError([
             Diagnostic("E_FRAME_V2_002", "use_rotation_mask must be boolean", node_id=node)
         ])
+    frame_cache_id = attrs.get("frame_cache_id", attrs.get("frame_id", node))
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise DSLValidationError([
+            Diagnostic("E_FRAME_V2_004", "frame_cache_id must be a nonempty string", node_id=node)
+        ])
     return outputs, obligations
 
 
@@ -3152,6 +3157,11 @@ def _axisymmetric_spherical_lift(node, inputs, attrs):
     if not isinstance(attrs.get("use_rotation_mask", False), bool):
         raise DSLValidationError([
             Diagnostic("E_AXISYMMETRIC_LIFT_008", "use_rotation_mask must be boolean", node_id=node)
+        ])
+    frame_cache_id = attrs.get("frame_cache_id", node)
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise DSLValidationError([
+            Diagnostic("E_AXISYMMETRIC_LIFT_009", "frame_cache_id must be a nonempty string", node_id=node)
         ])
     return {
         "out": EquivariantTensorType(
@@ -5038,6 +5048,7 @@ _PRIMITIVE_CONTRACTS = {
         "description": "Express global-frame 3D irreps in an edge-aligned local frame.",
         "optional_attrs": {
             "frame_id": "stable identifier paired with from_edge_frame",
+            "frame_cache_id": "stable identifier for sharing one random auxiliary edge frame across multiple entries",
             "mmax": "optional retained SO(2) order, satisfying 0 <= mmax <= lmax",
             "use_rotation_mask": "whether to use the stabilized official V3 rotation-gradient mask",
         },
@@ -5178,6 +5189,7 @@ _PRIMITIVE_CONTRACTS = {
         "required_attrs": ("out_irreps",),
         "optional_attrs": {
             "mmax": "maximum edge-frame order used by the official Wigner adapter",
+            "frame_cache_id": "stable identifier for sharing the official random auxiliary edge frame",
             "use_rotation_mask": "whether to use the official differentiable rotation masking convention",
         },
         "motif_parameter_attrs": ("out_irreps", "mmax", "use_rotation_mask"),

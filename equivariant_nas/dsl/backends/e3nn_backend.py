@@ -55,6 +55,7 @@ from .v3_runtime import (
     equiformer_v3_source_available,
     load_equiformer_v3_modules,
     unproject_v3_grid_value,
+    v3_edge_rotation_matrix,
 )
 
 
@@ -1848,10 +1849,55 @@ def _execute_fixed_gaussian_radial_basis(context: RuntimeExecutionContext):
     return context.module(distance)
 
 
+def _shared_v3_edge_rotation_matrix(context: RuntimeExecutionContext, direction):
+    frame_cache_id = str(
+        context.node.attrs.get(
+            "frame_cache_id",
+            context.node.attrs.get("frame_id", context.node.id),
+        )
+    )
+    if not frame_cache_id:
+        raise RuntimeError("V3 edge-frame operations require a nonempty frame_cache_id")
+    use_rotation_mask = bool(context.node.attrs.get("use_rotation_mask", False))
+    cache = context.graph_context.setdefault("_v3_edge_frame_cache", {})
+    cache_key = (frame_cache_id, use_rotation_mask)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        cached_direction = cached["direction"]
+        same_storage = cached_direction is direction
+        if not same_storage and hasattr(cached_direction, "data_ptr") and hasattr(direction, "data_ptr"):
+            same_storage = (
+                cached_direction.data_ptr() == direction.data_ptr()
+                and tuple(cached_direction.shape) == tuple(direction.shape)
+                and cached_direction.dtype == direction.dtype
+                and cached_direction.device == direction.device
+            )
+        if not same_storage:
+            raise RuntimeError(
+                "V3 frame_cache_id {} was reused with a different direction tensor".format(
+                    frame_cache_id
+                )
+            )
+        return cached["rotation_matrix"]
+    rotation_matrix = v3_edge_rotation_matrix(
+        direction,
+        use_rotation_mask=use_rotation_mask,
+        modules=_v3_modules(context.libraries),
+    )
+    cache[cache_key] = {
+        "direction": direction,
+        "rotation_matrix": rotation_matrix,
+    }
+    return rotation_matrix
+
+
 def _execute_axisymmetric_spherical_lift(context: RuntimeExecutionContext):
+    direction = context.resolved["direction"][0]
+    rotation_matrix = _shared_v3_edge_rotation_matrix(context, direction)
     return context.module(
         context.resolved["amplitudes"][0],
-        context.resolved["direction"][0],
+        direction,
+        rotation_matrix,
     )
 
 
@@ -2287,10 +2333,13 @@ def _execute_to_edge_frame(context: RuntimeExecutionContext):
 
 
 def _execute_v3_to_edge_frame(context: RuntimeExecutionContext):
+    direction = context.resolved["direction"][0]
+    rotation_matrix = _shared_v3_edge_rotation_matrix(context, direction)
     return context.module(
         context.resolved["x"][0],
-        context.resolved["direction"][0],
+        direction,
         str(context.node.attrs.get("frame_id", context.node.id)),
+        rotation_matrix,
     )
 
 
@@ -3315,12 +3364,13 @@ class E3NNGraphBackend:
 
             def forward(self, inputs: Mapping[str, Any], context: Mapping[str, Any]):
                 values = {"input:{}".format(name): value for name, value in inputs.items()}
+                runtime_context = dict(context)
                 for node in ordered_nodes:
                     if node.id in fused_node_ids:
                         fusion = fusion_by_end.get(node.id)
                         if fusion is None:
                             continue
-                        if fusion.context_key not in context:
+                        if fusion.context_key not in runtime_context:
                             raise RuntimeError(
                                 "fused backend {} requires context value {}".format(
                                     fusion.backend_semantics,
@@ -3329,7 +3379,7 @@ class E3NNGraphBackend:
                             )
                         output = self.node_modules[node.id](
                             self._resolve(fusion.input_reference, values),
-                            context[fusion.context_key],
+                            runtime_context[fusion.context_key],
                         )
                     else:
                         resolved = {
@@ -3345,7 +3395,7 @@ class E3NNGraphBackend:
                                 output_types=node_output_types(node),
                                 value_type=value_type,
                                 module=module,
-                                graph_context=context,
+                                graph_context=runtime_context,
                                 program_inputs=inputs,
                                 training=self.training,
                                 libraries=libraries,

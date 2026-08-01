@@ -898,6 +898,7 @@ def equiformer_v3_input_program(
     *,
     dtype: str = "float32",
     length_measure: str = "angstrom",
+    frame_cache_id: str = "v3_input_edge",
     task_contract: str = "equiformer_v3_official_input",
 ) -> ArchitectureProgram:
     """Import the official V3 input and EdgeDegreeEmbedding path as core nodes.
@@ -908,6 +909,8 @@ def equiformer_v3_input_program(
     """
 
     spec.validate()
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise ValueError("the official V3 input lowering requires a nonempty frame_cache_id")
     if dtype != "float32":
         raise ValueError(
             "the first official V3 input lowering is frozen to float32 because the pinned V3 Wigner implementation does not support full-model float64 conversion"
@@ -1038,6 +1041,7 @@ def equiformer_v3_input_program(
             {
                 "out_irreps": hidden_irreps_text,
                 "mmax": spec.mmax,
+                "frame_cache_id": frame_cache_id,
                 "use_rotation_mask": not spec.direct_prediction,
             },
         )
@@ -1241,6 +1245,8 @@ def equiformer_v3_attention_program(
     *,
     dtype: str = "float32",
     length_measure: str = "angstrom",
+    frame_id: str = "v3_attention_edge",
+    frame_cache_id: str | None = None,
     task_contract: str = "equiformer_v3_official_attention",
 ) -> ArchitectureProgram:
     """Import one official V3 EquivariantGraphAttention as typed core nodes.
@@ -1253,6 +1259,12 @@ def equiformer_v3_attention_program(
     """
 
     spec.validate()
+    if not isinstance(frame_id, str) or not frame_id:
+        raise ValueError("the official V3 attention lowering requires a nonempty frame_id")
+    if frame_cache_id is None:
+        frame_cache_id = frame_id
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise ValueError("the official V3 attention lowering requires a nonempty frame_cache_id")
     if dtype != "float32":
         raise ValueError("the official V3 attention lowering is currently frozen to float32")
     if not spec.use_atom_edge_embedding:
@@ -1328,7 +1340,6 @@ def equiformer_v3_attention_program(
     value_irreps = _dense_so3_irreps(spec.num_heads * spec.attn_value_channels, spec.lmax)
     alpha_width = spec.num_heads * spec.attn_alpha_channels
     scalar_width = doubled_hidden + spec.attn_hidden_channels
-    frame_id = "v3_attention_edge"
 
     nodes = [
         Node(
@@ -1408,7 +1419,12 @@ def equiformer_v3_attention_program(
             "message_rotate",
             "core.to_edge_frame@2",
             {"x": ("message_radial",), "direction": ("input:edge_vector",)},
-            {"mmax": spec.mmax, "frame_id": frame_id, "use_rotation_mask": not spec.direct_prediction},
+            {
+                "mmax": spec.mmax,
+                "frame_id": frame_id,
+                "frame_cache_id": frame_cache_id,
+                "use_rotation_mask": not spec.direct_prediction,
+            },
         ),
         Node(
             "so2_linear1",
@@ -1839,6 +1855,8 @@ def equiformer_v3_transblock_program(
     *,
     dtype: str = "float32",
     length_measure: str = "angstrom",
+    frame_id: str = "v3_attention_edge",
+    frame_cache_id: str | None = None,
     task_contract: str = "equiformer_v3_official_transblock",
 ) -> ArchitectureProgram:
     """Expand one official V3 ``TransBlockV3`` into typed primitive nodes.
@@ -1857,6 +1875,12 @@ def equiformer_v3_transblock_program(
     """
 
     spec.validate()
+    if not isinstance(frame_id, str) or not frame_id:
+        raise ValueError("the official V3 TransBlock lowering requires a nonempty frame_id")
+    if frame_cache_id is None:
+        frame_cache_id = frame_id
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise ValueError("the official V3 TransBlock lowering requires a nonempty frame_cache_id")
     if dtype != "float32":
         raise ValueError("the official V3 TransBlock lowering is currently frozen to float32")
     if spec.norm_type != "merge_layer_norm":
@@ -1868,6 +1892,8 @@ def equiformer_v3_transblock_program(
         spec,
         dtype=dtype,
         length_measure=length_measure,
+        frame_id=frame_id,
+        frame_cache_id=frame_cache_id,
         task_contract="equiformer_v3_official_attention_subprogram",
     )
     feed_forward = equiformer_v3_feed_forward_program(
@@ -2079,27 +2105,34 @@ def equiformer_v3_backbone_program(
     *,
     dtype: str = "float32",
     length_measure: str = "angstrom",
+    frame_cache_id: str = "v3_model_edge",
     task_contract: str = "equiformer_v3_official_backbone",
 ) -> ArchitectureProgram:
     """Compose the official V3 input path and repeated typed TransBlock stack.
 
     The program ends at the final node representation and deliberately excludes
     energy/force/stress heads.  It is therefore a backbone mapping boundary,
-    not a complete task model.  Every block is expanded into its 62 typed
-    nodes; no official block or network constructor is used by Lowering.
+    not a complete task model.  Every block is expanded into its typed nodes;
+    optional stochastic nodes are present exactly when enabled by the spec.
+    No official block or network constructor is used by Lowering.
     """
 
     spec.validate()
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise ValueError("the official V3 backbone lowering requires a nonempty frame_cache_id")
     input_program = equiformer_v3_input_program(
         spec,
         dtype=dtype,
         length_measure=length_measure,
+        frame_cache_id=frame_cache_id,
         task_contract="equiformer_v3_official_input_subprogram",
     )
     block_template = equiformer_v3_transblock_program(
         spec,
         dtype=dtype,
         length_measure=length_measure,
+        frame_id="v3_attention_edge",
+        frame_cache_id=frame_cache_id,
         task_contract="equiformer_v3_official_transblock_subprogram",
     )
 
@@ -2202,6 +2235,8 @@ def equiformer_v3_backbone_program(
             "module_construction_order": construction_order,
             "initializer_schedule": initializer_schedule,
             "backbone_order": ["input"] + ["block{}".format(index) for index in range(spec.num_layers)],
+            "frame_cache_id": frame_cache_id,
+            "frame_cache_semantics": "one official random auxiliary edge frame per model forward",
             "task_heads": "excluded_from_backbone_program",
         },
         "parameter_mapping": {
@@ -2224,6 +2259,7 @@ def equiformer_v3_backbone_program(
             "numerical_scope": "official V3 input path plus repeated typed TransBlock stack; task heads excluded",
             "grid_equivariance_certification": "finite_grid_empirical",
             "block_count": spec.num_layers,
+            "shared_edge_frame_cache": frame_cache_id,
             "task_heads_complete": False,
         },
     )
@@ -2383,6 +2419,8 @@ def equiformer_v3_force_head_program(
     *,
     dtype: str = "float32",
     length_measure: str = "angstrom",
+    frame_id: str = "v3_force_head_edge",
+    frame_cache_id: str | None = None,
     task_contract: str = "equiformer_v3_official_force_head",
 ) -> ArchitectureProgram:
     """Express the official direct-force attention head using typed primitives.
@@ -2394,6 +2432,12 @@ def equiformer_v3_force_head_program(
     """
 
     spec.validate()
+    if not isinstance(frame_id, str) or not frame_id:
+        raise ValueError("the official V3 force-head lowering requires a nonempty frame_id")
+    if frame_cache_id is None:
+        frame_cache_id = frame_id
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise ValueError("the official V3 force-head lowering requires a nonempty frame_cache_id")
     if dtype != "float32":
         raise ValueError("the official V3 force-head lowering is currently frozen to float32")
     if not spec.use_gate_force_head:
@@ -2435,7 +2479,6 @@ def equiformer_v3_force_head_program(
     output_irreps = _dense_so3_irreps(1, spec.lmax)
     alpha_width = spec.num_heads * spec.attn_alpha_channels
     gate_width = spec.lmax * spec.attn_hidden_channels
-    frame_id = "v3_force_head_edge"
 
     nodes = list(prefix_nodes)
     nodes[-1] = replace(
@@ -2443,6 +2486,7 @@ def equiformer_v3_force_head_program(
         attrs={
             **dict(nodes[-1].attrs),
             "frame_id": frame_id,
+            "frame_cache_id": frame_cache_id,
         },
     )
     nodes.extend(
@@ -2663,6 +2707,7 @@ def equiformer_v3_direct_model_program(
     *,
     dtype: str = "float32",
     length_measure: str = "angstrom",
+    frame_cache_id: str = "v3_model_edge",
     task_contract: str = "equiformer_v3_official_direct_energy_force_model",
 ) -> ArchitectureProgram:
     """Compose the official direct energy+force V3 path without head duplication.
@@ -2674,6 +2719,8 @@ def equiformer_v3_direct_model_program(
     """
 
     spec.validate()
+    if not isinstance(frame_cache_id, str) or not frame_cache_id:
+        raise ValueError("the official V3 direct model lowering requires a nonempty frame_cache_id")
     if not spec.direct_prediction:
         raise ValueError("the direct V3 model program requires direct_prediction=True")
     if not spec.regress_forces:
@@ -2685,6 +2732,7 @@ def equiformer_v3_direct_model_program(
         spec,
         dtype=dtype,
         length_measure=length_measure,
+        frame_cache_id=frame_cache_id,
         task_contract="equiformer_v3_official_backbone_subprogram",
     )
     energy_head = equiformer_v3_energy_head_program(
@@ -2696,6 +2744,8 @@ def equiformer_v3_direct_model_program(
         spec,
         dtype=dtype,
         length_measure=length_measure,
+        frame_id="v3_force_head_edge",
+        frame_cache_id=frame_cache_id,
         task_contract="equiformer_v3_official_force_head_subprogram",
     )
 

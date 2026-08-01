@@ -29,6 +29,17 @@ from .v2_runtime import (
 V3_OPERATOR_SEMANTICS = "equiformer-v3-operators@{}".format(V3_REFERENCE_COMMIT)
 
 
+def v3_edge_rotation_matrix(direction, *, use_rotation_mask: bool, modules):
+    """Construct the official random auxiliary edge frame exactly once per frame token."""
+
+    so3, _so2_ops, _activation, _layer_norm = modules
+    edge_rot_mat = importlib.import_module(so3.__package__ + ".edge_rot_mat")
+    return edge_rot_mat.init_edge_rot_mat(
+        direction,
+        use_rotation_mask=bool(use_rotation_mask),
+    )
+
+
 @dataclass(frozen=True)
 class GridRuntimeValue:
     """Finite S2 samples plus the exact inverse projection used at the boundary."""
@@ -272,7 +283,6 @@ def build_v3_edge_frame_rotation_module(
     import torch
 
     so3, _so2_ops, _activation, _layer_norm = modules
-    edge_rot_mat = importlib.import_module(so3.__package__ + ".edge_rot_mat")
     lmax, channels = uniform_so3_layout(irreps)
     if mmax < 0 or mmax > lmax:
         raise DSLValidationError([
@@ -288,7 +298,7 @@ def build_v3_edge_frame_rotation_module(
                 use_rotation_mask=bool(use_rotation_mask),
             )
 
-        def forward(self, flat, direction, frame_id=""):
+        def forward(self, flat, direction, frame_id="", rotation_matrix=None):
             if flat.dim() != 2 or int(flat.shape[-1]) != irreps.dimension:
                 raise RuntimeError(
                     "V3 edge-frame rotation expected [edge, {}] canonical coefficients".format(
@@ -299,10 +309,12 @@ def build_v3_edge_frame_rotation_module(
                 raise RuntimeError("V3 edge-frame rotation expected [edge, 3] directions")
             if flat.shape[0] != direction.shape[0] or direction.shape[0] == 0:
                 raise RuntimeError("V3 edge-frame rotation requires the same nonzero edge count")
-            rotation_matrix = edge_rot_mat.init_edge_rot_mat(
-                direction,
-                use_rotation_mask=bool(use_rotation_mask),
-            )
+            if rotation_matrix is None:
+                rotation_matrix = v3_edge_rotation_matrix(
+                    direction,
+                    use_rotation_mask=bool(use_rotation_mask),
+                    modules=modules,
+                )
             self.rotation.set_wigner(rotation_matrix)
             embedding = flat_to_embedding_tensor(flat, irreps)
             rotated = self.rotation.rotate(embedding)
@@ -700,7 +712,6 @@ def build_v3_axisymmetric_spherical_lift_module(
     import torch
 
     so3, _so2_ops, _activation, _layer_norm = modules
-    edge_rot_mat = importlib.import_module(so3.__package__ + ".edge_rot_mat")
     lmax, channels = uniform_so3_layout(output_irreps)
     if mmax < 0 or mmax > lmax:
         raise DSLValidationError([
@@ -716,7 +727,7 @@ def build_v3_axisymmetric_spherical_lift_module(
                 use_rotation_mask=bool(use_rotation_mask),
             )
 
-        def forward(self, amplitudes, direction):
+        def forward(self, amplitudes, direction, rotation_matrix=None):
             if amplitudes.dim() != 2 or int(amplitudes.shape[-1]) != (lmax + 1) * channels:
                 raise RuntimeError(
                     "axisymmetric spherical lift expected [edge, {}] amplitudes".format(
@@ -727,10 +738,12 @@ def build_v3_axisymmetric_spherical_lift_module(
                 raise RuntimeError("axisymmetric spherical lift expected [edge, 3] directions")
             if amplitudes.shape[0] != direction.shape[0] or direction.shape[0] == 0:
                 raise RuntimeError("axisymmetric spherical lift requires the same nonzero edge count")
-            rotation_matrix = edge_rot_mat.init_edge_rot_mat(
-                direction,
-                use_rotation_mask=bool(use_rotation_mask),
-            )
+            if rotation_matrix is None:
+                rotation_matrix = v3_edge_rotation_matrix(
+                    direction,
+                    use_rotation_mask=bool(use_rotation_mask),
+                    modules=modules,
+                )
             self.rotation.set_wigner(rotation_matrix)
             m0 = amplitudes.reshape(amplitudes.shape[0], lmax + 1, channels)
             embedding = torch.bmm(

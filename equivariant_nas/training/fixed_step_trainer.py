@@ -417,19 +417,6 @@ def main(args):
         raise ValueError("one validation interval must be positive")
     if args.data_epoch_origin_step < 0 or args.lr_schedule_origin_step < 0:
         raise ValueError("step origins must be non-negative")
-    # ``args.epochs`` is retained only to construct the original 300-epoch
-    # timm cosine scheduler. It is not used as a stopping condition.
-    schedule_span_steps = args.max_steps - args.lr_schedule_origin_step
-    if schedule_span_steps <= 0:
-        raise ValueError("LR schedule origin must be smaller than --max-steps")
-    required_reference_epochs = (
-        schedule_span_steps + args.reference_steps_per_epoch - 1
-    ) // args.reference_steps_per_epoch
-    if args.resume_model_only and args.lr_schedule_origin_step > 0:
-        args.epochs = required_reference_epochs
-    elif args.epochs < required_reference_epochs:
-        args.epochs = required_reference_epochs
-
     utils.init_distributed_mode(args)
     if args.distributed:
         raise NotImplementedError(
@@ -461,6 +448,19 @@ def main(args):
         args.checkpoint_interval_steps = data_steps_per_epoch
     if args.reference_steps_per_epoch <= 0 or args.checkpoint_interval_steps <= 0:
         raise ValueError("resolved reference/checkpoint step intervals must be positive")
+    # ``args.epochs`` is retained only to construct the original cosine
+    # scheduler. Resolve the V3 automatic step axis from the actual dataset
+    # before performing any schedule arithmetic.
+    schedule_span_steps = args.max_steps - args.lr_schedule_origin_step
+    if schedule_span_steps <= 0:
+        raise ValueError("LR schedule origin must be smaller than --max-steps")
+    required_reference_epochs = (
+        schedule_span_steps + args.reference_steps_per_epoch - 1
+    ) // args.reference_steps_per_epoch
+    if args.resume_model_only and args.lr_schedule_origin_step > 0:
+        args.epochs = required_reference_epochs
+    elif args.epochs < required_reference_epochs:
+        args.epochs = required_reference_epochs
     with trusted_legacy_torch_load():
         val_dataset = base.QM9(args.data_path, "valid", feature_type=args.feature_type)
         test_dataset = (

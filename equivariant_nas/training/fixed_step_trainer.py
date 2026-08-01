@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import time
+import types
 from contextlib import suppress
 from pathlib import Path
 
@@ -40,6 +41,19 @@ EQUIFORMER_ROOT = os.environ.get(
 )
 if EQUIFORMER_ROOT not in sys.path:
     sys.path.insert(0, EQUIFORMER_ROOT)
+
+if "--dsl-program" in sys.argv and "nets" not in sys.modules:
+    # ``main_qm9`` imports every legacy V1 registry module for side effects.
+    # A DSL-lowered model never uses that registry, and importing it would
+    # unnecessarily require OC20-only packages such as ``ocpmodels``.
+    nets_stub = types.ModuleType("nets")
+
+    def _unused_model_entrypoint(*args, **kwargs):
+        del args, kwargs
+        raise RuntimeError("legacy model registry is unavailable in DSL training mode")
+
+    nets_stub.model_entrypoint = _unused_model_entrypoint
+    sys.modules["nets"] = nets_stub
 
 import main_qm9 as base
 import utils

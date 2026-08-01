@@ -13,6 +13,12 @@ from .equiformer_v3_spec import (
     baseline_v3_spec,
     official_v3_oc_spec,
 )
+from .v3_checkpoint import (
+    equiformer_v3_direct_checkpoint_manifest,
+    equiformer_v3_direct_parameter_mapping,
+    export_equiformer_v3_direct_checkpoint,
+    load_equiformer_v3_direct_checkpoint,
+)
 from .equiformer_v2_backend import (
     V2_REFERENCE_COMMIT,
     EquiformerV2GraphBackend,
@@ -50,6 +56,9 @@ __all__ = [
     "count_trainable_parameters",
     "ArchitectureSpec",
     "EquiformerV3Spec",
+    "equiformer_v3_direct_checkpoint_manifest",
+    "equiformer_v3_direct_parameter_mapping",
+    "export_equiformer_v3_direct_checkpoint",
     "SpecValidationError",
     "baseline_spec",
     "baseline_v3_spec",
@@ -58,6 +67,7 @@ __all__ = [
     "find_v2_fusion_patterns",
     "load_equiformer_v2_modules",
     "load_equiformer_v3_modules",
+    "load_equiformer_v3_direct_checkpoint",
     "equiformer_v3_source_available",
     "resolve_equiformer_v3_package_path",
 ]

@@ -2,6 +2,7 @@
 
 from .ast import ArchitectureProgram, InputPort, Node, OutputPort
 from .canonicalize import BACKEND_SEMANTICS_VERSION, COMPILER_SEMANTICS_VERSION, architecture_id, canonicalize
+from .checkpoint import CHECKPOINT_MAPPING_VERSION, CheckpointMappingError, CheckpointMappingManifest, CheckpointTensorGroup, ReconstructedTensorContract, export_source_state_dict, extract_checkpoint_state_dict, load_mapped_checkpoint_state_dict, normalize_checkpoint_prefixes, translate_checkpoint_state_dict
 from .compiler import Compiler, LoweringPlan
 from .completion import AvailableValue, CompletionAction, CompletionDistance, HoleSink, TypedHole, complete_typed_hole, materialize_completion_patch, program_completion_frontier
 from .cost import CostEstimate, enforce_static_resource_contract, estimate_static_cost
@@ -43,6 +44,10 @@ __all__ = [
     "CostEstimate",
     "Compiler",
     "CanonicalSearchSurface",
+    "CHECKPOINT_MAPPING_VERSION",
+    "CheckpointMappingError",
+    "CheckpointMappingManifest",
+    "CheckpointTensorGroup",
     "LoweringPlan",
     "COMPILER_SEMANTICS_VERSION",
     "DSLValidationError",
@@ -99,6 +104,7 @@ __all__ = [
     "ResourceContract",
     "RecordType",
     "RepresentationLayout",
+    "ReconstructedTensorContract",
     "ResolutionSpec",
     "RegionDefinition",
     "RewriteRuleDescriptor",
@@ -132,6 +138,8 @@ __all__ = [
     "default_canonical_search_surface",
     "enforce_static_resource_contract",
     "estimate_static_cost",
+    "export_source_state_dict",
+    "extract_checkpoint_state_dict",
     "equiformer_v1_capability_profile",
     "factor_by_region",
     "expand_motifs",
@@ -151,6 +159,8 @@ __all__ = [
     "migrate_message_flow_to_explicit_topology",
     "migrate_task_contract_v1_to_v2",
     "migrate_value_type_v1_to_v2",
+    "load_mapped_checkpoint_state_dict",
+    "normalize_checkpoint_prefixes",
     "reference_motif_registry",
     "replay_motif_proposal",
     "parse_patch_response",
@@ -168,6 +178,7 @@ __all__ = [
     "validate_unique_factor_ownership",
     "v1_region_registry",
     "synthesizer_prompt",
+    "translate_checkpoint_state_dict",
     "run_language_evolution_boundary",
     "value_type_from_dict",
     "VocabularyDecision",

@@ -21,6 +21,10 @@ def build_lowered_v3_qm9_model(program, *, equiformer_v3_root: str):
     inference = TypeChecker(registry).check(program)
     backend = E3NNGraphBackend(registry, equiformer_v3_root=equiformer_v3_root)
     graph = backend.build(program, inference)
+    v3_spec = dict(program.parameters.get("equiformer_v3_spec", {}))
+    max_radius = float(v3_spec.get("max_radius", 5.0))
+    if max_radius <= 0.0:
+        raise ValueError("V3 QM9 max_radius must be positive")
     forbidden = {
         "EquiformerV3_OC",
         "TransBlockV3",
@@ -75,9 +79,11 @@ def build_lowered_v3_qm9_model(program, *, equiformer_v3_root: str):
                 positions = pos
                 num_graphs = int(graph_index.max()) + 1 if graph_index.numel() else 0
             else:
-                if not hasattr(batch, "edge_index"):
-                    raise ValueError("QM9 batch lacks the frozen precomputed edge_index")
-                edge_index = batch.edge_index
+                edge_index = getattr(batch, "edge_d_index", None)
+                if edge_index is None:
+                    edge_index = getattr(batch, "edge_index", None)
+                if edge_index is None:
+                    raise ValueError("QM9 batch lacks a frozen precomputed neighbor index")
                 atomic_numbers = getattr(batch, "atomic_numbers", None)
                 if atomic_numbers is None:
                     atomic_numbers = batch.z
@@ -87,12 +93,21 @@ def build_lowered_v3_qm9_model(program, *, equiformer_v3_root: str):
             if edge_index.ndim != 2 or edge_index.shape[0] != 2:
                 raise ValueError("QM9 edge_index must have shape [2, E]")
             num_nodes = int(atomic_numbers.numel())
+            source = edge_index[0].long()
+            target = edge_index[1].long()
+            displacement = positions.index_select(0, source) - positions.index_select(0, target)
+            squared_distance = displacement.square().sum(dim=-1)
+            edge_mask = source.ne(target) & squared_distance.gt(0.0)
+            edge_mask = edge_mask & squared_distance.le(max_radius * max_radius)
+            edge_index = edge_index[:, edge_mask]
+            if edge_index.shape[1] == 0:
+                raise ValueError("V3 QM9 neighbor filtering removed every edge")
             num_edges = int(edge_index.shape[1])
             inputs = {
                 "atomic_numbers": atomic_numbers.long(),
                 "positions": positions,
-                "source_index": _index(edge_index[0].long(), num_edges),
-                "target_index": _index(edge_index[1].long(), num_edges),
+                "source_index": _index(edge_index[0].long(), num_nodes),
+                "target_index": _index(edge_index[1].long(), num_nodes),
                 "target_segment": _index(edge_index[1].long(), num_nodes),
                 "batch": _index(graph_index.long(), num_graphs),
             }

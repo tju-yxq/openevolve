@@ -147,6 +147,51 @@ def test_energy_only_v3_generic_lowering_accepts_a_pyg_qm9_batch():
     assert symmetry["maximum_absolute"] < 1.0e-6
 
 
+def test_v3_qm9_adapter_filters_dense_self_loops_and_out_of_radius_edges():
+    torch = pytest.importorskip("torch")
+
+    spec = EquiformerV3Spec(
+        num_layers=1,
+        num_channels=4,
+        attn_hidden_channels=4,
+        num_heads=1,
+        attn_alpha_channels=2,
+        attn_value_channels=2,
+        ffn_hidden_channels=8,
+        lmax=1,
+        mmax=1,
+        attn_grid_resolution=(4, 4),
+        ffn_grid_resolution=(4, 4),
+        edge_channels=4,
+        num_radial_basis=4,
+        max_num_elements=10,
+        max_radius=1.5,
+        use_pbc=False,
+        otf_graph=False,
+        regress_forces=False,
+        regress_stress=False,
+    )
+    model = build_lowered_v3_qm9_model(
+        v3_program_from_spec(spec),
+        equiformer_v3_root="../equiformer_v3_official",
+    )
+    batch = SimpleNamespace(
+        z=torch.tensor([1, 6, 8]),
+        atomic_numbers=torch.tensor([1, 6, 8]),
+        pos=torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [4.0, 0.0, 0.0]]),
+        edge_index=torch.tensor([[0, 1], [1, 0]]),
+        edge_d_index=torch.tensor(
+            [[0, 1, 2, 0, 1, 2, 0], [0, 1, 2, 1, 0, 0, 2]]
+        ),
+        batch=torch.zeros(3, dtype=torch.long),
+        num_graphs=1,
+    )
+
+    outputs = model(batch)
+    assert outputs["energy"].shape == (1,)
+    assert torch.isfinite(outputs["energy"]).all()
+
+
 def test_v3_pipeline_representation_statistics_ignore_categorical_and_topology_values():
     inference = TypeChecker(core_registry()).check(v3_program_from_spec(EquiformerV3Spec(
         num_layers=1,

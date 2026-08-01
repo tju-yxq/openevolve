@@ -17,15 +17,19 @@ from pathlib import Path
 
 import numpy as np
 import torch
+
+from equivariant_nas.training.torch_scatter_compat import (
+    install_torch_scatter_fallback,
+    install_torchvision_schema_stubs,
+    trusted_legacy_torch_load,
+)
+
+TORCHVISION_SCHEMA_BACKEND = install_torchvision_schema_stubs()
+
 from timm.scheduler import create_scheduler
 from timm.utils import ModelEmaV2, NativeScaler, dispatch_clip_grad
 from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
-
-from equivariant_nas.training.torch_scatter_compat import (
-    install_torch_scatter_fallback,
-    trusted_legacy_torch_load,
-)
 
 TORCH_SCATTER_BACKEND = install_torch_scatter_fallback()
 

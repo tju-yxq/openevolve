@@ -1,10 +1,45 @@
-"""Narrow torch_scatter compatibility for legacy QM9 loader imports."""
+"""Narrow runtime compatibility for the pinned QM9 training environment."""
 
 from __future__ import annotations
 
 from contextlib import contextmanager
 import sys
 import types
+
+
+_TORCHVISION_SCHEMA_LIBRARY = None
+
+
+def install_torchvision_schema_stubs() -> str:
+    """Declare missing detection schemas needed only while importing old timm.
+
+    Some CPU-incompatible torchvision builds omit their compiled operator
+    schemas, while torchvision's meta-registration module still expects them.
+    The QM9 trainer never executes these operators; declaring schemas is enough
+    to import timm's scheduler and EMA utilities without inventing kernels.
+    """
+
+    import torch
+
+    schemas = {
+        "nms": "nms(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor",
+        "qnms": "qnms(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor",
+    }
+    missing = []
+    namespace = torch.ops.torchvision
+    for name in schemas:
+        try:
+            getattr(namespace, name)
+        except AttributeError:
+            missing.append(name)
+    if not missing:
+        return "native"
+    global _TORCHVISION_SCHEMA_LIBRARY
+    if _TORCHVISION_SCHEMA_LIBRARY is None:
+        _TORCHVISION_SCHEMA_LIBRARY = torch.library.Library("torchvision", "FRAGMENT")
+    for name in missing:
+        _TORCHVISION_SCHEMA_LIBRARY.define(schemas[name])
+    return "schema_stub"
 
 
 @contextmanager

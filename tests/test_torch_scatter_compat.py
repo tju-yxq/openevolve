@@ -4,6 +4,7 @@ import pytest
 
 from equivariant_nas.training.torch_scatter_compat import (
     install_torch_scatter_fallback,
+    install_torchvision_schema_stubs,
     scatter_fallback,
     trusted_legacy_torch_load,
 )
@@ -58,3 +59,14 @@ def test_trusted_legacy_torch_load_only_changes_the_implicit_default(monkeypatch
 
     assert torch.load is original
     assert calls == [{"weights_only": False}, {"weights_only": True}]
+
+
+def test_torchvision_schema_compat_is_idempotent():
+    torch = pytest.importorskip("torch")
+    first = install_torchvision_schema_stubs()
+    second = install_torchvision_schema_stubs()
+
+    assert first in {"native", "schema_stub"}
+    assert second == "native"
+    assert torch.ops.torchvision.nms is not None
+    assert torch.ops.torchvision.qnms is not None

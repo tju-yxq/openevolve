@@ -171,6 +171,10 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
         },
         "oracle_pytest_result": pytest_result,
         "oracle_test": "tests/test_dsl_v3_official_direct_model.py",
+        "supporting_contract_tests": [
+            "tests/test_dsl_v3_official_energy_head.py",
+            "tests/test_dsl_invariant_unit_axis.py",
+        ],
         "proved": [
             "the official EquiformerV3_OC constructor and generic Typed DSL Lowering consume identical initialization RNG under one seed",
             "all 116 trainable parameter tensors form a bijection with the official two-layer direct model",
@@ -197,6 +201,32 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
     )
     _write_json(output / "support_report.json", support.to_dict())
     _write_json(output / "lowering_manifest.json", backend.lowering_manifest())
+    _write_json(
+        output / "mathematical_contracts.json",
+        {
+            "energy_unit_axis": {
+                "map": "V tensor R^1 -> V",
+                "precondition": "one statically known invariant energy_channel axis of size one",
+                "runtime": "[graph, 1] -> [graph]",
+                "output_layout": "carrier_scalar",
+                "equivariance": "identity isomorphism on one trivial representation; group action and certification level are unchanged",
+                "negative_diagnostics": [
+                    "E_UNIT_AXIS_001",
+                    "E_UNIT_AXIS_003",
+                    "E_UNIT_AXIS_004",
+                    "runtime shape [carrier, 1] rejection",
+                ],
+            },
+            "shared_edge_frame": {
+                "cache": frame_cache_ids,
+                "typed_entries": frame_entry_ids,
+                "contract": "one official random auxiliary edge frame is shared across input, both blocks and force head while every to/from proof pair keeps a unique frame_id",
+            },
+            "shared_final_norm": program.parameters["lowering_contract"][
+                "shared_final_norm"
+            ],
+        },
+    )
     _write_json(
         output / "model_identity.json",
         {

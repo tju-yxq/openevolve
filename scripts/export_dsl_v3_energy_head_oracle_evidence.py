@@ -134,7 +134,22 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
         "trainable_parameter_tensor_count": len(parameters),
         "trainable_parameter_count": sum(value.numel() for value in parameters.values()),
         "oracle_pytest_result": pytest_result,
-        "oracle_test": "tests/test_dsl_v3_official_energy_head.py",
+        "oracle_tests": [
+            "tests/test_dsl_v3_official_energy_head.py",
+            "tests/test_dsl_invariant_unit_axis.py",
+        ],
+        "layout_contract": {
+            "mathematical_map": "V tensor R^1 -> V",
+            "typed_input": "InvariantTensorType[graph, energy_channel=1]",
+            "typed_output": "InvariantTensorType[graph] with carrier_scalar storage",
+            "runtime_map": "[graph, 1] -> [graph] by exact unit-axis squeeze",
+            "negative_diagnostics": [
+                "E_UNIT_AXIS_001",
+                "E_UNIT_AXIS_003",
+                "E_UNIT_AXIS_004",
+                "runtime shape [carrier, 1] rejection",
+            ],
+        },
         "proved": [
             "the final merge LayerNorm is represented by a typed primitive node",
             "the scalar projection, SiLU, zero-rate dropout and output projection are represented by typed primitive nodes",

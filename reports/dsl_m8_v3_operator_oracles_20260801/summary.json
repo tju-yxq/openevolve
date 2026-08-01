@@ -1,9 +1,9 @@
 {
   "dsl_repository": {
     "branch": "codex/v3-mapping",
-    "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+    "head": "69b758b9504eafc886adfa4b78a90cb7bd8d8ec7",
     "worktree_dirty": true,
-    "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+    "worktree_status_sha256": "617fe085fbf7486bb1be2b9a19f3b55d2c0b1667ddf91f8eae680b4869d88b3e"
   },
   "lowering_rules": 102,
   "official_v3_repository": {
@@ -17,8 +17,8 @@
     "tests/test_dsl_v3_official_attention.py::test_v3_official_direct_force_head_matches_parameters_forward_and_all_gradients"
   ],
   "pending": [
+    "official energy-head numerical oracle",
     "nonzero stochastic-rate train/eval and RNG oracle",
-    "multi-layer backbone official numerical oracle",
     "full energy+force model parameter and numerical oracle",
     "checkpoint loader",
     "stress head",
@@ -26,7 +26,7 @@
   ],
   "programs": {
     "direct_force_head": {
-      "canonical_architecture_id": "1029ef4d93d125ef",
+      "canonical_architecture_id": "f1d3ae598ca43d55",
       "constructor_bypass": false,
       "node_count": 31,
       "parameter_mapping": {
@@ -61,7 +61,7 @@
       "unsupported_lowering_nodes": 0
     },
     "feed_forward": {
-      "canonical_architecture_id": "3d4d443e6ee33071",
+      "canonical_architecture_id": "7b591a11a6f9b41b",
       "constructor_bypass": false,
       "node_count": 23,
       "parameter_mapping": {
@@ -83,7 +83,7 @@
       "unsupported_lowering_nodes": 0
     },
     "transblock": {
-      "canonical_architecture_id": "96b281611c8960df",
+      "canonical_architecture_id": "290dcd47d91623ff",
       "constructor_bypass": false,
       "node_count": 61,
       "parameter_mapping": {

@@ -513,6 +513,7 @@
     {
       "annotations": {},
       "attrs": {
+        "frame_cache_id": "v3_input_edge",
         "mmax": 2,
         "out_irreps": "128x0+128x1+128x2+128x3+128x4+128x5+128x6",
         "use_rotation_mask": false

@@ -12,9 +12,9 @@
     "constructor_bypass": false,
     "core_primitive_count": 102,
     "lowering_rule_count": 102,
-    "normalized_dsl_architecture_id": "b4ac695d93450a51",
+    "normalized_dsl_architecture_id": "9968c1311664952b",
     "normalized_node_count": 807,
-    "parameter_state_sha256": "58777105341569e4898fcf94318bfb9cd4ae650d8f57e70960bc955779937427",
+    "parameter_state_sha256": "6514051b851d702cd99265e90e4746fa51c32f49490d4c45b460f1072c54aa9c",
     "spec_architecture_id": "2a06ba93ff817feb",
     "trainable_parameter_count": 17779,
     "trainable_parameter_tensor_count": 486
@@ -43,10 +43,10 @@
     ],
     "energy_value": [
       [
-        0.013336642645299435
+        0.013336644507944584
       ]
     ],
-    "force_l2_norm": 0.05174225568771362,
+    "force_l2_norm": 0.05174225941300392,
     "force_shape": [
       4,
       3

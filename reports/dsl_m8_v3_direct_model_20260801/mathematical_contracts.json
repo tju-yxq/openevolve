@@ -12,9 +12,9 @@
   },
   "shared_final_norm": {
     "consumers": [
-      "n0781",
+      "n0779",
       "n0780",
-      "n0779"
+      "n0781"
     ],
     "node": "n0778",
     "statement": "one SO(3)-equivariant final normalization result is aliased to both task heads"

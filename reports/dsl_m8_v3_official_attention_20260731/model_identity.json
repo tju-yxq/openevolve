@@ -7,16 +7,16 @@
   "dsl_language_version": "2.2.0",
   "dsl_repository": {
     "branch": "codex/v3-mapping",
-    "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+    "head": "69b758b9504eafc886adfa4b78a90cb7bd8d8ec7",
     "path": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas",
     "worktree_dirty": true,
-    "worktree_status_line_count": 142,
-    "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+    "worktree_status_line_count": 159,
+    "worktree_status_sha256": "617fe085fbf7486bb1be2b9a19f3b55d2c0b1667ddf91f8eae680b4869d88b3e"
   },
   "evidence_version": "evoequilang-v3-official-attention-evidence@1",
   "graph_class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
   "lowering_rule_count": 102,
-  "normalized_dsl_architecture_id": "7365ad65b6957d9f",
+  "normalized_dsl_architecture_id": "a8b61a6829275fc5",
   "normalized_node_count": 31,
   "normalized_node_ops": [
     "core.categorical_embedding@2",
@@ -37,8 +37,8 @@
     "core.so2_linear@2",
     "core.invariant_slice@1",
     "core.invariant_slice@1",
-    "core.s2_gated_swiglu_merge@1",
     "core.head_split@1",
+    "core.s2_gated_swiglu_merge@1",
     "core.so2_linear@1",
     "core.scalar_layer_norm@1",
     "core.scalar_activation@1",

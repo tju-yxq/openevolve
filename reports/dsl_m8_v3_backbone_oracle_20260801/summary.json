@@ -1,0 +1,51 @@
+{
+  "block_count": 2,
+  "canonical_architecture_id": "a9d807bd5f4aa82b",
+  "dsl_repository": {
+    "branch": "codex/v3-mapping",
+    "head": "70c1da03eb50efd655ffaad2cbac50538857229f",
+    "worktree_dirty": true,
+    "worktree_status_sha256": "ce64c2566b758a7d809e036512a0b442e77892f2e406a614fa6581d7a16b4552"
+  },
+  "frame_contract": {
+    "shared_cache_count": 1,
+    "shared_frame_cache_ids": [
+      "v3_model_edge"
+    ],
+    "typed_entry_count": 2,
+    "typed_entry_frame_ids": [
+      "block0_v3_attention_edge",
+      "block1_v3_attention_edge"
+    ]
+  },
+  "lowering_rules": 102,
+  "normalized_node_count": 146,
+  "official_v3_repository": {
+    "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "origin": "https://github.com/atomicarchitects/equiformer_v3.git"
+  },
+  "oracle_pytest_result": "2 passed",
+  "oracle_test": "tests/test_dsl_v3_official_backbone.py",
+  "pending": [
+    "official energy-head numerical oracle",
+    "full energy+force model parameter and numerical oracle",
+    "nonzero stochastic-rate train/eval and RNG oracle",
+    "checkpoint loader",
+    "stress head",
+    "training trajectory"
+  ],
+  "proved": [
+    "two consecutive official TransBlockV3 layers are represented by typed primitive nodes",
+    "same-seed full-backbone construction and initialization RNG equality",
+    "bijective mapping of every trainable input and block parameter",
+    "official forward and forward-RNG numerical alignment",
+    "position and all-parameter gradient numerical alignment",
+    "one official random auxiliary edge frame is shared across input and every block while typed entry tokens remain unique",
+    "no official input, Block, backbone, or model constructor is used by generic Lowering"
+  ],
+  "registry_entries": 102,
+  "spec_architecture_id": "c81c43f0aa187cd7",
+  "status": "official_v3_two_layer_backbone_oracle_passed",
+  "trainable_parameter_count": 3475,
+  "trainable_parameter_tensor_count": 87
+}

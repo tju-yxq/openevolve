@@ -593,6 +593,7 @@
         "composition_prefix": "attn_"
       },
       "attrs": {
+        "frame_cache_id": "v3_attention_edge",
         "frame_id": "v3_attention_edge",
         "mmax": 1,
         "use_rotation_mask": false
@@ -725,18 +726,17 @@
         "composition_prefix": "attn_"
       },
       "attrs": {
-        "m0_prefix_rows": 2,
-        "m0_prefix_scale": 0.7071067811865476,
-        "mmax": 1,
-        "out_irreps": "2x0+2x1+2x2",
-        "zero_bias": true
+        "affine": true,
+        "axis": "alpha_channel",
+        "bias": true,
+        "epsilon": 1e-05
       },
       "declared_types": {},
       "id": "n0021",
       "inputs": {
-        "x": "n0019"
+        "x": "n0020"
       },
-      "op": "core.so2_linear@1",
+      "op": "core.scalar_layer_norm@1",
       "outputs": [
         "out"
       ]
@@ -747,17 +747,18 @@
         "composition_prefix": "attn_"
       },
       "attrs": {
-        "affine": true,
-        "axis": "alpha_channel",
-        "bias": true,
-        "epsilon": 1e-05
+        "m0_prefix_rows": 2,
+        "m0_prefix_scale": 0.7071067811865476,
+        "mmax": 1,
+        "out_irreps": "2x0+2x1+2x2",
+        "zero_bias": true
       },
       "declared_types": {},
       "id": "n0022",
       "inputs": {
-        "x": "n0020"
+        "x": "n0019"
       },
-      "op": "core.scalar_layer_norm@1",
+      "op": "core.so2_linear@1",
       "outputs": [
         "out"
       ]
@@ -774,7 +775,7 @@
       "declared_types": {},
       "id": "n0023",
       "inputs": {
-        "x": "n0022"
+        "x": "n0021"
       },
       "op": "core.scalar_activation@1",
       "outputs": [
@@ -849,7 +850,7 @@
       "declared_types": {},
       "id": "n0027",
       "inputs": {
-        "value": "n0021",
+        "value": "n0022",
         "weight": "n0026"
       },
       "op": "core.invariant_scale@2",
@@ -1004,11 +1005,30 @@
         "composition_prefix": "ffn_"
       },
       "attrs": {
+        "bias": true,
+        "out_irreps": "4x0+4x1+4x2"
+      },
+      "declared_types": {},
+      "id": "n0036",
+      "inputs": {
+        "x": "n0034"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
+        "composition_prefix": "ffn_"
+      },
+      "attrs": {
         "axis": "gate_input_channel",
         "feature_role": "gate"
       },
       "declared_types": {},
-      "id": "n0036",
+      "id": "n0037",
       "inputs": {
         "x": "n0034"
       },
@@ -1023,15 +1043,17 @@
         "composition_prefix": "ffn_"
       },
       "attrs": {
+        "axis": "scalar_channel",
         "bias": true,
-        "out_irreps": "4x0+4x1+4x2"
+        "out_axis": "scalar_pair",
+        "out_features": 8
       },
       "declared_types": {},
-      "id": "n0037",
+      "id": "n0038",
       "inputs": {
-        "x": "n0034"
+        "x": "n0035"
       },
-      "op": "core.so3_linear@1",
+      "op": "core.scalar_linear@4",
       "outputs": [
         "out"
       ]
@@ -1053,32 +1075,11 @@
         "use_m_primary": false
       },
       "declared_types": {},
-      "id": "n0038",
-      "inputs": {
-        "x": "n0037"
-      },
-      "op": "core.grid_project@1",
-      "outputs": [
-        "out"
-      ]
-    },
-    {
-      "annotations": {
-        "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
-        "composition_prefix": "ffn_"
-      },
-      "attrs": {
-        "axis": "scalar_channel",
-        "bias": true,
-        "out_axis": "scalar_pair",
-        "out_features": 8
-      },
-      "declared_types": {},
       "id": "n0039",
       "inputs": {
-        "x": "n0035"
+        "x": "n0036"
       },
-      "op": "core.scalar_linear@4",
+      "op": "core.grid_project@1",
       "outputs": [
         "out"
       ]
@@ -1099,9 +1100,30 @@
       "declared_types": {},
       "id": "n0040",
       "inputs": {
-        "x": "n0036"
+        "x": "n0037"
       },
       "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
+        "composition_prefix": "ffn_"
+      },
+      "attrs": {
+        "axis": "scalar_up",
+        "feature_role": "value",
+        "length": 4,
+        "start": 4
+      },
+      "declared_types": {},
+      "id": "n0041",
+      "inputs": {
+        "x": "n0038"
+      },
+      "op": "core.invariant_slice@1",
       "outputs": [
         "out"
       ]
@@ -1116,9 +1138,9 @@
         "out_channels": 8
       },
       "declared_types": {},
-      "id": "n0041",
+      "id": "n0042",
       "inputs": {
-        "x": "n0038"
+        "x": "n0039"
       },
       "op": "core.grid_channel_linear@1",
       "outputs": [
@@ -1137,9 +1159,9 @@
         "start": 0
       },
       "declared_types": {},
-      "id": "n0042",
+      "id": "n0043",
       "inputs": {
-        "x": "n0039"
+        "x": "n0038"
       },
       "op": "core.invariant_slice@1",
       "outputs": [
@@ -1155,48 +1177,9 @@
         "activation": "sigmoid"
       },
       "declared_types": {},
-      "id": "n0043",
-      "inputs": {
-        "x": "n0040"
-      },
-      "op": "core.scalar_activation@1",
-      "outputs": [
-        "out"
-      ]
-    },
-    {
-      "annotations": {
-        "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
-        "composition_prefix": "ffn_"
-      },
-      "attrs": {
-        "axis": "scalar_up",
-        "feature_role": "value",
-        "length": 4,
-        "start": 4
-      },
-      "declared_types": {},
       "id": "n0044",
       "inputs": {
-        "x": "n0039"
-      },
-      "op": "core.invariant_slice@1",
-      "outputs": [
-        "out"
-      ]
-    },
-    {
-      "annotations": {
-        "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
-        "composition_prefix": "ffn_"
-      },
-      "attrs": {
-        "activation": "silu"
-      },
-      "declared_types": {},
-      "id": "n0045",
-      "inputs": {
-        "x": "n0042"
+        "x": "n0040"
       },
       "op": "core.scalar_activation@1",
       "outputs": [
@@ -1212,9 +1195,9 @@
         "left_channels": 4
       },
       "declared_types": {},
-      "id": "n0046",
+      "id": "n0045",
       "inputs": {
-        "x": "n0041"
+        "x": "n0042"
       },
       "op": "core.grid_split@1",
       "outputs": [
@@ -1227,14 +1210,15 @@
         "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
         "composition_prefix": "ffn_"
       },
-      "attrs": {},
-      "declared_types": {},
-      "id": "n0047",
-      "inputs": {
-        "left": "n0045",
-        "right": "n0044"
+      "attrs": {
+        "activation": "silu"
       },
-      "op": "core.invariant_product@1",
+      "declared_types": {},
+      "id": "n0046",
+      "inputs": {
+        "x": "n0043"
+      },
+      "op": "core.scalar_activation@1",
       "outputs": [
         "out"
       ]
@@ -1246,10 +1230,10 @@
       },
       "attrs": {},
       "declared_types": {},
-      "id": "n0048",
+      "id": "n0047",
       "inputs": {
-        "left": "n0046:left",
-        "right": "n0043"
+        "left": "n0045:left",
+        "right": "n0044"
       },
       "op": "core.grid_pointwise_product@1",
       "outputs": [
@@ -1263,10 +1247,27 @@
       },
       "attrs": {},
       "declared_types": {},
+      "id": "n0048",
+      "inputs": {
+        "left": "n0046",
+        "right": "n0041"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
+        "composed_from": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
+        "composition_prefix": "ffn_"
+      },
+      "attrs": {},
+      "declared_types": {},
       "id": "n0049",
       "inputs": {
-        "left": "n0048",
-        "right": "n0046:right"
+        "left": "n0047",
+        "right": "n0045:right"
       },
       "op": "core.grid_pointwise_product@1",
       "outputs": [
@@ -1284,7 +1285,7 @@
       "declared_types": {},
       "id": "n0050",
       "inputs": {
-        "x": "n0047"
+        "x": "n0048"
       },
       "op": "core.scalar_dropout@1",
       "outputs": [
@@ -1569,7 +1570,7 @@
         {
           "after_node": "n0057",
           "nodes": [
-            "n0039",
+            "n0038",
             "n0040"
           ]
         }
@@ -1584,11 +1585,11 @@
         "n0011",
         "n0013",
         "n0016",
-        "n0022",
+        "n0021",
         "n0024",
         "n0025",
         "n0019",
-        "n0021",
+        "n0022",
         "n0005",
         "n0009",
         "n0012",
@@ -1610,21 +1611,21 @@
         "n0032",
         "n0033",
         "n0034",
-        "n0037",
-        "n0035",
-        "n0039",
-        "n0042",
-        "n0044",
-        "n0045",
-        "n0047",
-        "n0050",
-        "n0038",
         "n0036",
-        "n0040",
+        "n0035",
+        "n0038",
         "n0043",
         "n0041",
         "n0046",
         "n0048",
+        "n0050",
+        "n0039",
+        "n0037",
+        "n0040",
+        "n0044",
+        "n0042",
+        "n0045",
+        "n0047",
         "n0049",
         "n0052",
         "n0054",

@@ -8,14 +8,14 @@
     "dsl_language_version": "2.1.0",
     "dsl_repository": {
       "branch": "codex/v3-mapping",
-      "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+      "head": "70c1da03eb50efd655ffaad2cbac50538857229f",
       "path": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas",
       "worktree_dirty": true,
-      "worktree_status_line_count": 142,
-      "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+      "worktree_status_line_count": 140,
+      "worktree_status_sha256": "732f0f2175715fb3f79128b3fecb4ca05709facf7d98ed03be7701634527cfc7"
     },
     "lowering_rule_count": 102,
-    "normalized_dsl_architecture_id": "4dedc6327402d0f2",
+    "normalized_dsl_architecture_id": "dd7e9908bcc80ce7",
     "normalized_node_count": 24,
     "official_block_or_model_class_used_by_lowering": false,
     "official_v3_repository": {

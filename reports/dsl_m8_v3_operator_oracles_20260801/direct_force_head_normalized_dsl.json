@@ -506,6 +506,7 @@
     {
       "annotations": {},
       "attrs": {
+        "frame_cache_id": "v3_force_head_edge",
         "frame_id": "v3_force_head_edge",
         "mmax": 1,
         "use_rotation_mask": false
@@ -543,10 +544,10 @@
     {
       "annotations": {},
       "attrs": {
-        "axis": "degree_gate",
-        "feature_role": "gate",
-        "length": 4,
-        "start": 2
+        "axis": "alpha_flat",
+        "feature_role": "alpha",
+        "length": 2,
+        "start": 0
       },
       "declared_types": {},
       "id": "n0016",
@@ -561,10 +562,10 @@
     {
       "annotations": {},
       "attrs": {
-        "axis": "alpha_flat",
-        "feature_role": "alpha",
-        "length": 2,
-        "start": 0
+        "axis": "degree_gate",
+        "feature_role": "gate",
+        "length": 4,
+        "start": 2
       },
       "declared_types": {},
       "id": "n0017",
@@ -579,17 +580,15 @@
     {
       "annotations": {},
       "attrs": {
-        "axis": "alpha_flat",
-        "channel_axis": "alpha_channel",
-        "head_axis": "head",
-        "num_heads": 1
+        "mmax": 1
       },
       "declared_types": {},
       "id": "n0018",
       "inputs": {
-        "x": "n0017"
+        "scalars": "n0017",
+        "x": "n0015:out"
       },
-      "op": "core.head_split@1",
+      "op": "core.edge_frame_gate_activation@1",
       "outputs": [
         "out"
       ]
@@ -597,15 +596,17 @@
     {
       "annotations": {},
       "attrs": {
-        "mmax": 1
+        "axis": "alpha_flat",
+        "channel_axis": "alpha_channel",
+        "head_axis": "head",
+        "num_heads": 1
       },
       "declared_types": {},
       "id": "n0019",
       "inputs": {
-        "scalars": "n0016",
-        "x": "n0015:out"
+        "x": "n0016"
       },
-      "op": "core.edge_frame_gate_activation@1",
+      "op": "core.head_split@1",
       "outputs": [
         "out"
       ]
@@ -621,7 +622,7 @@
       "declared_types": {},
       "id": "n0020",
       "inputs": {
-        "x": "n0018"
+        "x": "n0019"
       },
       "op": "core.scalar_layer_norm@1",
       "outputs": [
@@ -638,7 +639,7 @@
       "declared_types": {},
       "id": "n0021",
       "inputs": {
-        "x": "n0019"
+        "x": "n0018"
       },
       "op": "core.so2_linear@1",
       "outputs": [
@@ -912,7 +913,7 @@
         "n0020",
         "n0023",
         "n0024",
-        "n0019",
+        "n0018",
         "n0021",
         "n0005",
         "n0008",
@@ -922,9 +923,9 @@
         "n0004",
         "n0013",
         "n0014",
-        "n0017",
         "n0016",
-        "n0018",
+        "n0017",
+        "n0019",
         "n0022",
         "n0025",
         "n0026",

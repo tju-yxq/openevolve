@@ -532,6 +532,7 @@
     {
       "annotations": {},
       "attrs": {
+        "frame_cache_id": "v3_attention_edge",
         "frame_id": "v3_attention_edge",
         "mmax": 2,
         "use_rotation_mask": false
@@ -605,6 +606,24 @@
     {
       "annotations": {},
       "attrs": {
+        "axis": "alpha_flat",
+        "channel_axis": "alpha_channel",
+        "head_axis": "head",
+        "num_heads": 8
+      },
+      "declared_types": {},
+      "id": "n0018",
+      "inputs": {
+        "x": "n0017"
+      },
+      "op": "core.head_split@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
         "dropout": 0.0,
         "grid_resolution": [
           20,
@@ -615,30 +634,12 @@
         "out_irreps": "64x0+64x1+64x2+64x3+64x4+64x5+64x6"
       },
       "declared_types": {},
-      "id": "n0018",
+      "id": "n0019",
       "inputs": {
         "scalars": "n0016",
         "x": "n0015:out"
       },
       "op": "core.s2_gated_swiglu_merge@1",
-      "outputs": [
-        "out"
-      ]
-    },
-    {
-      "annotations": {},
-      "attrs": {
-        "axis": "alpha_flat",
-        "channel_axis": "alpha_channel",
-        "head_axis": "head",
-        "num_heads": 8
-      },
-      "declared_types": {},
-      "id": "n0019",
-      "inputs": {
-        "x": "n0017"
-      },
-      "op": "core.head_split@1",
       "outputs": [
         "out"
       ]
@@ -655,7 +656,7 @@
       "declared_types": {},
       "id": "n0020",
       "inputs": {
-        "x": "n0018"
+        "x": "n0019"
       },
       "op": "core.so2_linear@1",
       "outputs": [
@@ -673,7 +674,7 @@
       "declared_types": {},
       "id": "n0021",
       "inputs": {
-        "x": "n0019"
+        "x": "n0018"
       },
       "op": "core.scalar_layer_norm@1",
       "outputs": [
@@ -950,7 +951,7 @@
         "n0021",
         "n0023",
         "n0024",
-        "n0018",
+        "n0019",
         "n0020",
         "n0005",
         "n0008",
@@ -962,7 +963,7 @@
         "n0014",
         "n0017",
         "n0016",
-        "n0019",
+        "n0018",
         "n0022",
         "n0025",
         "n0026",

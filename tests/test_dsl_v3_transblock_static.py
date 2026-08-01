@@ -110,11 +110,16 @@ def test_v3_energy_head_uses_explicit_scalar_mlp_and_batch_reduction():
     inference = TypeChecker(registry).check(program)
     report = E3NNGraphBackend(registry).support_report(program)
 
-    assert len(program.nodes) == 8
-    assert program.outputs[0].source == "energy_rescale"
-    assert inference.value_types["energy_rescale"].carrier == "graph"
+    assert len(program.nodes) == 9
+    assert program.outputs[0].source == "energy_squeeze"
+    assert inference.value_types["energy_squeeze"].carrier == "graph"
+    assert inference.value_types["energy_squeeze"].layout.storage == "carrier_scalar"
     assert report.unsupported_nodes == ()
-    assert [node.id for node in program.nodes][-2:] == ["energy_reduce", "energy_rescale"]
+    assert [node.id for node in program.nodes][-3:] == [
+        "energy_reduce",
+        "energy_rescale",
+        "energy_squeeze",
+    ]
 
 
 def test_v3_energy_model_composes_backbone_and_head_without_constructor_bypass():
@@ -126,9 +131,9 @@ def test_v3_energy_model_composes_backbone_and_head_without_constructor_bypass()
     TypeChecker(registry).check(canonical)
     report = E3NNGraphBackend(registry).support_report(program)
 
-    assert len(program.nodes) == 24 + 2 * 62 + 8
-    assert program.outputs[0].source == "head_energy_rescale"
-    assert inference.value_types["head_energy_rescale"].carrier == "graph"
+    assert len(program.nodes) == 24 + 2 * 62 + 9
+    assert program.outputs[0].source == "head_energy_squeeze"
+    assert inference.value_types["head_energy_squeeze"].carrier == "graph"
     assert report.unsupported_nodes == ()
     assert report.composition_errors == ()
     assert program.annotations["constructor_bypass"] is False
@@ -187,9 +192,9 @@ def test_v3_direct_model_shares_final_norm_between_energy_and_force_heads():
     TypeChecker(registry).check(canonical)
     report = E3NNGraphBackend(registry).support_report(program)
 
-    assert len(program.nodes) == 24 + 2 * 62 + 1 + 7 + 31
+    assert len(program.nodes) == 24 + 2 * 62 + 1 + 8 + 31
     assert [(item.name, item.source) for item in program.outputs] == [
-        ("energy", "energy_energy_rescale"),
+        ("energy", "energy_energy_squeeze"),
         ("forces", "force_force_vector"),
     ]
     assert [node.id for node in program.nodes if node.id.endswith("final_norm")] == [
@@ -205,7 +210,8 @@ def test_v3_direct_model_shares_final_norm_between_energy_and_force_heads():
         "force_source_features",
         "force_target_features",
     }
-    assert inference.value_types["energy_energy_rescale"].carrier == "graph"
+    assert inference.value_types["energy_energy_squeeze"].carrier == "graph"
+    assert inference.value_types["energy_energy_squeeze"].layout.storage == "carrier_scalar"
     assert str(inference.value_types["force_force_vector"].irreps) == "1x1"
     assert report.unsupported_nodes == ()
     assert report.composition_errors == ()
@@ -267,7 +273,7 @@ def test_v3_direct_model_generic_lowering_runs_energy_force_forward_and_backward
         },
         {},
     )
-    assert tuple(outputs["energy"].shape) == (1, 1)
+    assert tuple(outputs["energy"].shape) == (1,)
     assert tuple(outputs["forces"].shape) == (4, 3)
     assert torch.isfinite(outputs["energy"]).all()
     assert torch.isfinite(outputs["forces"]).all()

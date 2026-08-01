@@ -685,6 +685,69 @@ def _flatten_invariant_axes(node, inputs, attrs):
     return {"out": replace(x, axes=(), axis_specs=())}, ()
 
 
+def _squeeze_unit_axis(node, inputs, attrs):
+    x = _single(node, inputs, "x")
+    if not isinstance(x, InvariantTensorType):
+        raise DSLValidationError([
+            Diagnostic(
+                "E_UNIT_AXIS_001",
+                "squeeze_unit_axis requires InvariantTensorType input",
+                node_id=node,
+                actual=type(x).__name__,
+            )
+        ])
+    axes = _concrete_invariant_axes(node, x, "squeeze_unit_axis")
+    if len(axes) != 1:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_UNIT_AXIS_002",
+                "the first squeeze_unit_axis version requires exactly one explicit feature axis",
+                node_id=node,
+                expected="1",
+                actual=str(len(axes)),
+            )
+        ])
+    axis_name = str(attrs.get("axis", ""))
+    if axis_name != axes[0].name:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_UNIT_AXIS_003",
+                "squeeze_unit_axis must name the explicit input axis",
+                node_id=node,
+                expected=axes[0].name,
+                actual=axis_name,
+            )
+        ])
+    if axes[0].size != 1 or x.irreps.dimension != 1:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_UNIT_AXIS_004",
+                "squeeze_unit_axis may remove only a statically known length-one trivial axis",
+                node_id=node,
+                expected="axis_size=1,scalar_multiplicity=1",
+                actual="axis_size={},scalar_multiplicity={}".format(
+                    axes[0].size,
+                    x.irreps.dimension,
+                ),
+            )
+        ])
+    output_layout = replace(
+        x.layout,
+        storage="carrier_scalar",
+        resolution_specs=(),
+        truncation_state="full",
+        channel_order=(),
+    )
+    return {
+        "out": replace(
+            x,
+            axes=(),
+            axis_specs=(),
+            layout=output_layout,
+        )
+    }, ()
+
+
 def _irrep_linear(node, inputs, attrs):
     x = _single(node, inputs, "x")
     out = Irreps.parse(str(attrs["out_irreps"]), x.group.family)
@@ -4674,6 +4737,17 @@ _PRIMITIVE_CONTRACTS = {
             "This boundary is explicit before e3nn-style irrep-multiplicity linear maps.",
         ),
     },
+    "core.squeeze_unit_axis": {
+        "description": "Remove one statically known length-one invariant feature axis and expose one scalar per carrier item.",
+        "required_attrs": ("axis",),
+        "motif_parameter_attrs": ("axis",),
+        "semantic_constraints": (
+            "Input is an InvariantTensorType with exactly one explicit axis of static size one and scalar multiplicity one.",
+            "The named axis is removed through the exact tensor isomorphism V tensor R^1 -> V.",
+            "Output uses carrier_scalar storage and runtime shape [carrier], so task API rank is part of the typed contract.",
+            "The operation is a layout adapter and does not alter values, units, carrier identity, or equivariance level.",
+        ),
+    },
     "core.irrep_linear": {
         "description": "Equivariant linear map within representation kinds already present in the input.",
         "required_attrs": ("out_irreps",),
@@ -5450,6 +5524,10 @@ def core_registry() -> PrimitiveRegistry:
         ),
         PrimitiveDefinition("core.constant_scale", 1, ("x",), ("out",), _constant_scale),
         PrimitiveDefinition("core.flatten_invariant_axes", 1, ("x",), ("out",), _flatten_invariant_axes),
+        PrimitiveDefinition(
+            "core.squeeze_unit_axis", 1, ("x",), ("out",), _squeeze_unit_axis,
+            required_attrs=("axis",),
+        ),
         PrimitiveDefinition("core.irrep_linear", 1, ("x",), ("out",), _irrep_linear, backend_keys=("e3nn.linear",)),
         PrimitiveDefinition(
             "core.irrep_linear", 2, ("x",), ("out",), _irrep_linear_v2,

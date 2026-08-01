@@ -119,7 +119,7 @@ def test_explicit_generic_qm9_lowering_builds_runs_and_backpropagates(monkeypatc
     assert model.lowering_plan["details"]["uncertified_nodes"] == []
     assert model.generic_lowering_admission["explicitly_enabled"] is True
     assert model.generic_lowering_admission["formal_ranking_admitted"] is False
-    assert model.lowering_rule_manifest["rule_count"] == 102
+    assert model.lowering_rule_manifest["rule_count"] == 103
 
     model.eval()
     reference = model(features.detach(), positions, batch)

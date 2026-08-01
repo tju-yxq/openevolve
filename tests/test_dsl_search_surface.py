@@ -61,13 +61,13 @@ def _objects():
 def test_canonical_search_surface_exhaustively_classifies_the_registry():
     _program, _task, primitives, motifs, surface, _vocabulary = _objects()
     payload = surface.to_dict()
-    assert len(primitives.names()) == 102
+    assert len(primitives.names()) == 103
     assert payload["counts"] == {
-        "concrete_primitive_entries": 102,
-        "canonical_primitive_families": 47,
+        "concrete_primitive_entries": 103,
+        "canonical_primitive_families": 48,
         "generatable_concrete_primitives": 47,
         "generatable_canonical_families": 26,
-        "completion_only_primitives": 28,
+        "completion_only_primitives": 29,
         "context_only_primitives": 27,
         "generatable_motifs": 2,
         "context_only_motifs": 6,
@@ -84,6 +84,8 @@ def test_canonical_search_surface_exhaustively_classifies_the_registry():
     assert surface.canonical_name("core.invariant_scale@2") == "canonical.typed_multiply"
     assert surface.canonical_name("core.degreewise_invariant_scale@1") == "canonical.typed_multiply"
     assert surface.canonical_name("core.edge_frame_gate_activation@1") == "canonical.invariant_gate"
+    assert surface.role_of("core.squeeze_unit_axis@1") == "completion_only"
+    assert surface.canonical_name("core.squeeze_unit_axis@1") == "canonical.squeeze_unit_axis"
 
 
 def test_active_vocabulary_separates_generation_completion_and_context_roles():

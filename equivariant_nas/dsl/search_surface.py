@@ -72,6 +72,7 @@ _COMPLETION_ONLY_PRIMITIVES = frozenset({
     "core.constant_scale@1",
     "core.endpoint_gather@2",
     "core.flatten_invariant_axes@1",
+    "core.squeeze_unit_axis@1",
     "core.from_edge_frame@1",
     "core.from_edge_frame@2",
     "core.head_merge@1",

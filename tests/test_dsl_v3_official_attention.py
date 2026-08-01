@@ -366,7 +366,7 @@ def test_v3_official_attention_program_is_fully_lowered_and_canonicalization_pre
     program = equiformer_v3_attention_program(spec)
     canonical = canonicalize(program, registry)
     inference = TypeChecker(registry).check(canonical)
-    assert len(registry.names()) == 102
+    assert len(registry.names()) == 103
     assert len(program.nodes) == 30
     assert all("motif." not in node.op for node in program.nodes)
     assert all("equiformer_v3" not in node.op for node in program.nodes)

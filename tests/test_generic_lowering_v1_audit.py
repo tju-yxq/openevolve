@@ -16,8 +16,8 @@ def test_generic_lowering_v1_audit_proves_registry_driven_first_version(tmp_path
     audit = _module().run_audit(tmp_path, run_tests=False)
 
     assert audit["first_version_achieved"]
-    assert audit["generic_rule_count"] == 102
-    assert audit["core_primitive_count"] == 102
+    assert audit["generic_rule_count"] == 103
+    assert audit["core_primitive_count"] == 103
     assert audit["implementation"]["registry_driven"]
     assert audit["implementation"]["large_op_dispatch_removed"]
     assert audit["completion_criteria"]["generic_qm9_path_is_explicitly_reachable"]

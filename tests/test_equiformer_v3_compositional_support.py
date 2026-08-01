@@ -108,7 +108,7 @@ def test_v3_program_expands_to_core_primitives_and_has_generic_support():
     report = backend.support_report(expanded)
 
     assert report.supported
-    assert len(registry.names()) == 102
+    assert len(registry.names()) == 103
     assert all(node.op.startswith("core.") for node in expanded.nodes)
     assert {"core.s2_swiglu", "core.equivariant_merge_norm"}.issubset(
         {node.op for node in expanded.nodes}
@@ -226,8 +226,8 @@ def test_small_v3_program_executes_without_constructor_bypass():
     )
     model = backend.build(program, inference).eval()
     assert model.fused_subgraphs == ()
-    assert model.backend_semantics_version == "e3nn-graph-lowering-registry-v23"
-    assert model.lowering_rule_manifest["rule_count"] == 102
+    assert model.backend_semantics_version == "e3nn-graph-lowering-registry-v24"
+    assert model.lowering_rule_manifest["rule_count"] == 103
 
     context = _graph_context()
     edge_vectors = torch.randn(context["edge_src"].shape[0], 3)

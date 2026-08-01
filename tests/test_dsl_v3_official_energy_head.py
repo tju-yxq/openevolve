@@ -177,8 +177,8 @@ class _OfficialEnergyHead(torch.nn.Module):
         )
         node_energy = self.energy_block(scalar)
         graph_count = int(batch.max().item()) + 1
-        energy = node_energy.new_zeros((graph_count, 1))
-        energy.index_add_(0, batch, node_energy)
+        energy = node_energy.new_zeros(graph_count)
+        energy.index_add_(0, batch, node_energy.reshape(-1))
         return energy / float(self.spec.avg_num_nodes)
 
 
@@ -243,6 +243,7 @@ def test_v3_energy_head_matches_official_initialization_forward_and_gradients():
     )
     actual_forward_rng = torch.random.get_rng_state().clone()
     actual_energy = actual_output["energy"]
+    assert tuple(actual_energy.shape) == tuple(expected_energy.shape) == (2,)
     torch.testing.assert_close(actual_energy, expected_energy, rtol=1.0e-6, atol=1.0e-6)
     assert torch.equal(actual_forward_rng, expected_forward_rng)
 

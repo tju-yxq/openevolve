@@ -179,7 +179,7 @@ def test_v2_motif_executes_without_any_closed_subgraph_fusion():
 
     model = backend.build(program, inference).eval()
     assert model.fused_subgraphs == ()
-    assert model.lowering_rule_manifest["rule_count"] == 102
+    assert model.lowering_rule_manifest["rule_count"] == 103
 
     features = torch.randn(5, irreps.dimension)
     context = _graph_context()

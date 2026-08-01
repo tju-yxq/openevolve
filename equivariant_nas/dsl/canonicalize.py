@@ -15,8 +15,8 @@ from .rewrites import apply_strict_rewrites, strict_rewrite_registry_hash
 from .types import VALUE_TYPE_SCHEMA_VERSION
 
 
-COMPILER_SEMANTICS_VERSION = "evoequilang-23"
-BACKEND_SEMANTICS_VERSION = "backend-neutral-v21"
+COMPILER_SEMANTICS_VERSION = "evoequilang-24"
+BACKEND_SEMANTICS_VERSION = "backend-neutral-v22"
 
 
 def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegistry] = None) -> ArchitectureProgram:

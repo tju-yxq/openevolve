@@ -45,7 +45,7 @@ def test_lowering_registry_is_the_single_supported_primitive_manifest():
 
     assert isinstance(rules, LoweringRuleRegistry)
     assert set(rules.names()) == set(_SUPPORTED)
-    assert manifest["rule_count"] == 102
+    assert manifest["rule_count"] == 103
     assert "core.endpoint_gather@1" in rules.names()
     assert "core.irrep_linear@2" in rules.names()
     assert "core.irrep_layer_norm@1" in rules.names()
@@ -68,7 +68,7 @@ def test_lowering_registry_is_the_single_supported_primitive_manifest():
     assert "core.tensor_product@2" in rules.names()
     assert "core.tensor_product@3" in rules.names()
     assert "core.tensor_product@4" in rules.names()
-    assert sum(manifest["exactness_counts"].values()) == 102
+    assert sum(manifest["exactness_counts"].values()) == 103
     assert all(item["primitive"] in _SUPPORTED for item in manifest["rules"])
     assert all(item["exactness"] for item in manifest["rules"])
     assert all(item["has_executor"] for item in manifest["rules"])
@@ -210,8 +210,8 @@ def test_compiled_model_records_the_exact_lowering_rule_manifest():
     registry = core_registry()
     model = E3NNGraphBackend(registry).build(program, TypeChecker(registry).check(program))
 
-    assert model.backend_semantics_version == "e3nn-graph-lowering-registry-v23"
-    assert model.lowering_rule_manifest["rule_count"] == 102
+    assert model.backend_semantics_version == "e3nn-graph-lowering-registry-v24"
+    assert model.lowering_rule_manifest["rule_count"] == 103
     assert any(
         item["primitive"] == "core.irrep_linear@1" and item["has_module_builder"]
         for item in model.lowering_rule_manifest["rules"]

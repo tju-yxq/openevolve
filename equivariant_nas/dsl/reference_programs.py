@@ -26,6 +26,7 @@ from .types import (
     InvariantTensorType,
     LatticeShiftType,
     LatticeType,
+    RepresentationLayout,
 )
 from .backends.equiformer_v1_constructor import baseline_constructor_parameters
 
@@ -2303,12 +2304,13 @@ def equiformer_v3_energy_head_program(
         carrier=Carrier.GRAPH,
         irreps=Irreps.parse("1x0", "SO3"),
         frame=Frame("invariant"),
-        axes=("energy_channel",),
-        axis_specs=(AxisSpec("energy_channel", 1, FeatureRole.CHANNEL, "independent", 0),),
+        axes=(),
+        axis_specs=(),
         dtype=dtype,
         measure="dimensionless",
         level=EquivarianceLevel.EMPIRICAL,
         feature_role=FeatureRole.CHANNEL,
+        layout=RepresentationLayout(storage="carrier_scalar"),
     )
     nodes = (
         Node(
@@ -2374,6 +2376,12 @@ def equiformer_v3_energy_head_program(
             {"x": ("energy_reduce",)},
             {"factor": 1.0 / float(spec.avg_num_nodes)},
         ),
+        Node(
+            "energy_squeeze",
+            "core.squeeze_unit_axis@1",
+            {"x": ("energy_rescale",)},
+            {"axis": "energy_channel"},
+        ),
     )
     parameters = {
         "equiformer_v3_spec": spec.to_dict(),
@@ -2401,7 +2409,7 @@ def equiformer_v3_energy_head_program(
         task_contract=task_contract,
         inputs=(InputPort("x", hidden_type), InputPort("batch", batch_type)),
         nodes=nodes,
-        outputs=(OutputPort("energy", "energy_rescale", energy_type),),
+        outputs=(OutputPort("energy", "energy_squeeze", energy_type),),
         parameters=parameters,
         program_id="equiformer_v3_energy_head_{}".format(spec.architecture_id()),
         annotations={
@@ -2882,7 +2890,7 @@ def equiformer_v3_direct_model_program(
         outputs=(
             OutputPort(
                 "energy",
-                "energy_energy_rescale",
+                "energy_{}".format(energy_head.outputs[0].source),
                 energy_head.outputs[0].expected_type,
             ),
             OutputPort(
@@ -2997,7 +3005,7 @@ def equiformer_v3_energy_model_program(
         outputs=(
             OutputPort(
                 "energy",
-                "head_energy_rescale",
+                "head_{}".format(energy_head.outputs[0].source),
                 energy_head.outputs[0].expected_type,
             ),
         ),

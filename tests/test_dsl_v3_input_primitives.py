@@ -216,7 +216,7 @@ def test_v3_polynomial_envelope_is_already_exactly_expressible_by_cutoff_envelop
 def test_v3_input_primitives_remain_registered_in_expanded_generic_registry():
     registry = core_registry()
     backend = E3NNGraphBackend(registry)
-    assert len(registry.names()) == 102
+    assert len(registry.names()) == 103
     assert "core.categorical_embedding@1" in registry.names()
     assert "core.fixed_gaussian_radial_basis@1" in registry.names()
-    assert backend.lowering_rules.audit()["rule_count"] == 102
+    assert backend.lowering_rules.audit()["rule_count"] == 103

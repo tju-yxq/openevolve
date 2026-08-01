@@ -158,7 +158,15 @@ class RepresentationLayout:
     channel_order: Tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
-        if self.storage not in ("irrep_major", "l_primary", "m_primary", "grid", "dense", "unspecified"):
+        if self.storage not in (
+            "irrep_major",
+            "l_primary",
+            "m_primary",
+            "grid",
+            "dense",
+            "carrier_scalar",
+            "unspecified",
+        ):
             raise DSLValidationError([Diagnostic("E_LAYOUT_003", "unsupported representation storage", actual=self.storage)])
         if self.truncation_state not in ("full", "m_truncated", "grid_projected", "unspecified"):
             raise DSLValidationError([Diagnostic("E_LAYOUT_004", "unsupported truncation state", actual=self.truncation_state)])

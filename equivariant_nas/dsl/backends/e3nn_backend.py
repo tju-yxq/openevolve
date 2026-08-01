@@ -1813,6 +1813,17 @@ def _execute_invariant_slice(context: RuntimeExecutionContext):
     return value.narrow(-1, int(context.node.attrs["start"]), int(context.node.attrs["length"]))
 
 
+def _execute_squeeze_unit_axis(context: RuntimeExecutionContext):
+    value = context.resolved["x"][0]
+    if value.dim() != 2 or int(value.shape[-1]) != 1:
+        raise RuntimeError(
+            "squeeze_unit_axis expects runtime shape [carrier, 1], received {}".format(
+                tuple(value.shape)
+            )
+        )
+    return value.squeeze(-1)
+
+
 def _execute_invariant_product(context: RuntimeExecutionContext):
     return context.resolved["left"][0] * context.resolved["right"][0]
 
@@ -2653,6 +2664,7 @@ def build_e3nn_lowering_registry(
     add("core.degreewise_invariant_scale@1", _execute_degreewise_invariant_scale, exactness="constructive_exact", runtime_kind_rule=_runtime_dense_inputs)
     add("core.constant_scale@1", _execute_constant_scale, exactness="constructive_exact", runtime_kind_rule=_runtime_preserve("x"))
     add("core.flatten_invariant_axes@1", _execute_identity, exactness="constructive_exact", runtime_kind_rule=_runtime_preserve("x"))
+    add("core.squeeze_unit_axis@1", _execute_squeeze_unit_axis, exactness="constructive_exact", runtime_kind_rule=_runtime_preserve("x"))
     add("core.irrep_linear@1", _execute_module_x, _build_linear, exactness="library_exact")
     add("core.irrep_linear@2", _execute_module_x, _build_linear_rs, exactness="library_exact")
     add("core.irrep_pad@1", _execute_irrep_pad, exactness="constructive_exact", runtime_kind_rule=_runtime_preserve("x"))
@@ -3068,7 +3080,7 @@ _SUPPORTED = frozenset(_DEFAULT_LOWERING_RULES.names())
 
 
 class E3NNGraphBackend:
-    semantic_version = "e3nn-graph-lowering-registry-v23"
+    semantic_version = "e3nn-graph-lowering-registry-v24"
 
     def __init__(
         self,

@@ -236,7 +236,7 @@ def test_v3_so2_linear_contract_rejects_invalid_layouts(program, code):
 def test_v3_so2_linear_rules_are_present_in_generic_lowering_registry():
     registry = core_registry()
     backend = E3NNGraphBackend(registry)
-    assert len(registry.names()) == 102
+    assert len(registry.names()) == 103
     assert backend.lowering_rules.resolve("core.so2_linear@1").exactness == "constructive_exact"
     assert backend.lowering_rules.resolve("core.so2_linear@2").exactness == "constructive_exact"
-    assert backend.lowering_rules.audit()["rule_count"] == 102
+    assert backend.lowering_rules.audit()["rule_count"] == 103

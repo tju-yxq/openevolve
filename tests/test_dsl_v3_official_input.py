@@ -155,7 +155,7 @@ def test_v3_official_input_program_typechecks_and_canonicalization_preserves_rng
     program = equiformer_v3_input_program(spec)
     canonical = canonicalize(program, registry)
     inference = TypeChecker(registry).check(canonical)
-    assert len(registry.names()) == 102
+    assert len(registry.names()) == 103
     assert len(program.nodes) == 24
     assert set(item.op for item in program.nodes).issubset(registry.names())
     assert all("equiformer_v3" not in item.op for item in program.nodes)

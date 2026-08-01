@@ -9,6 +9,7 @@ import random
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
@@ -691,6 +692,7 @@ def evaluate_dsl_candidate_pipeline(
             "failure_stage": "dsl_pipeline",
             "error_type": type(exc).__name__,
             "error": str(exc)[:2000],
+            "traceback": traceback.format_exc()[-12000:],
         })
     finally:
         elapsed = time.perf_counter() - started

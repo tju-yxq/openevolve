@@ -150,6 +150,7 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
             "no official Attention, Block, FFN or model constructor is used by generic Lowering",
         ],
         "pending": [
+            "official energy-head numerical oracle",
             "nonzero stochastic-rate train/eval and RNG oracle",
             "full energy+force model parameter and numerical oracle",
             "checkpoint loader",

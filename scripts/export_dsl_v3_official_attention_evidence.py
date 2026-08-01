@@ -228,7 +228,6 @@ def export(
             "scope_is_single_attention": True,
         },
         "next_required_work": [
-            "validate a multi-layer backbone against the official constructor",
             "validate the energy head and the full energy-force model",
             "align nonzero stochastic paths and train/eval RNG",
             "implement checkpoint import, stress output, and short training alignment",

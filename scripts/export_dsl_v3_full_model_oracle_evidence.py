@@ -8,6 +8,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 
@@ -50,8 +51,8 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
-def _spec() -> EquiformerV3Spec:
-    return EquiformerV3Spec(
+def _spec(*, stochastic: bool = False) -> EquiformerV3Spec:
+    spec = EquiformerV3Spec(
         use_pbc=False,
         use_pbc_single=False,
         otf_graph=False,
@@ -85,10 +86,28 @@ def _spec() -> EquiformerV3Spec:
         avg_num_nodes=5.5,
         avg_degree=3.25,
     )
+    if not stochastic:
+        return spec
+    return replace(
+        spec,
+        alpha_drop=0.13,
+        attn_weights_drop=0.17,
+        value_drop=0.19,
+        drop_path_rate=0.23,
+        proj_drop=0.29,
+        ffn_drop=0.31,
+    )
 
 
-def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
-    spec = _spec()
+def export(
+    repo: Path,
+    v3_root: Path,
+    output: Path,
+    pytest_result: str,
+    *,
+    stochastic: bool = False,
+) -> dict:
+    spec = _spec(stochastic=stochastic)
     registry = core_registry()
     motifs = reference_motif_registry()
     search_surface = default_canonical_search_surface(registry, motifs)
@@ -113,6 +132,33 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
             )
         )
 
+    stochastic_rates = {
+        name: float(getattr(spec, name))
+        for name in (
+            "alpha_drop",
+            "attn_weights_drop",
+            "value_drop",
+            "drop_path_rate",
+            "proj_drop",
+            "ffn_drop",
+        )
+    }
+    if stochastic:
+        modules = dict(model.named_modules())
+        for block_index in range(spec.num_layers):
+            prefix = "node_modules.block{}_attn_gated_activation.activation".format(
+                block_index
+            )
+            scalar_dropout = modules[prefix + ".scalar_act.1"]
+            grid_dropout = modules[prefix + ".grid_drop"]
+            if (
+                float(scalar_dropout.p) != float(spec.value_drop)
+                or float(grid_dropout.p) != float(spec.value_drop)
+            ):
+                raise RuntimeError(
+                    "the V3 value-drop contract requires equal scalar and grid dropout rates"
+                )
+
     frame_cache_ids = sorted(
         {
             str(node.attrs["frame_cache_id"])
@@ -132,7 +178,11 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
     }
     worktree_status = _git(repo, "status", "--short")
     summary = {
-        "status": "official_v3_two_layer_direct_energy_force_model_oracle_passed",
+        "status": (
+            "official_v3_two_layer_stochastic_direct_energy_force_model_oracle_passed"
+            if stochastic
+            else "official_v3_two_layer_direct_energy_force_model_oracle_passed"
+        ),
         "dsl_repository": {
             "branch": _git(repo, "branch", "--show-current"),
             "head": _git(repo, "rev-parse", "HEAD"),
@@ -169,8 +219,23 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
             "energy_storage": output_types["energy"]["layout"]["storage"],
             "forces_runtime_shape": "[node, 3]",
         },
+        "stochastic_contract": {
+            "enabled": stochastic,
+            "rates": stochastic_rates,
+            "train_eval_covered": stochastic,
+            "value_drop_mask_sites_per_block": (
+                ["scalar_swiglu", "s2_grid_product"] if stochastic else []
+            ),
+            "graph_drop_path_sharing": "one mask per graph per invocation",
+            "two_drop_path_invocations_per_block": True,
+        },
         "oracle_pytest_result": pytest_result,
         "oracle_test": "tests/test_dsl_v3_official_direct_model.py",
+        "oracle_test_selection": (
+            "test_v3_two_layer_direct_model_matches_all_official_stochastic_paths"
+            if stochastic
+            else "test_v3_two_layer_direct_model_matches_official_model_end_to_end"
+        ),
         "supporting_contract_tests": [
             "tests/test_dsl_v3_official_energy_head.py",
             "tests/test_dsl_invariant_unit_axis.py",
@@ -184,9 +249,18 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
             "two-graph energy output has the exact official [graph] task layout and carrier_scalar type",
             "energy, direct forces and forward RNG numerically align with the official model",
             "position gradients and all 116 parameter gradients numerically align with the official model",
-        ],
-        "pending": [
-            "nonzero stochastic-rate train/eval and RNG oracle",
+        ]
+        + (
+            [
+                "all six nonzero stochastic rates align in both train and eval modes",
+                "alpha, attention-weight, value, graph-drop-path, projection and FFN dropout calls consume the same forward RNG as the official model",
+                "official value dropout is represented at both scalar SwiGLU and S2-grid product mask sites",
+            ]
+            if stochastic
+            else []
+        ),
+        "pending": (["nonzero stochastic-rate train/eval and RNG oracle"] if not stochastic else [])
+        + [
             "official checkpoint loader and state-dict round trip",
             "stress head",
             "optimizer update and short training trajectory",
@@ -225,6 +299,16 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
             "shared_final_norm": program.parameters["lowering_contract"][
                 "shared_final_norm"
             ],
+            "stochastic_paths": {
+                "rates": stochastic_rates,
+                "alpha_drop": "independent inverted-dropout mask on invariant alpha channels",
+                "attention_weight_drop": "independent inverted-dropout mask after envelope weighting",
+                "value_drop": "two ordered inverted-dropout masks: scalar SwiGLU output, then S2-grid product",
+                "graph_drop_path": "one graph-shared mask for the attention residual branch and a separately sampled graph-shared mask for the FFN residual branch",
+                "projection_drop": "one irrep-instance mask shared across all m components of each type-l channel",
+                "ffn_drop": "ordered scalar-path and S2-grid masks inside the explicit FFN",
+                "eval": "all stochastic primitives are identity maps and consume no mask RNG",
+            },
         },
     )
     _write_json(
@@ -241,6 +325,7 @@ def export(repo: Path, v3_root: Path, output: Path, pytest_result: str) -> dict:
                 "shared_final_norm"
             ],
             "output_types": output_types,
+            "stochastic_rates": stochastic_rates,
             "constructor_bypass": False,
         },
     )
@@ -254,12 +339,14 @@ def main() -> int:
     parser.add_argument("--v3-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--pytest-result", default="1 passed")
+    parser.add_argument("--stochastic", action="store_true")
     args = parser.parse_args()
     summary = export(
         args.repo.resolve(),
         args.v3_root.resolve(),
         args.output.resolve(),
         args.pytest_result,
+        stochastic=args.stochastic,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

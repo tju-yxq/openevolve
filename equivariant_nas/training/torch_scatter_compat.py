@@ -124,6 +124,56 @@ def scatter_fallback(src, index, dim=-1, out=None, dim_size=None, reduce="sum"):
     )
 
 
+def radius_graph_fallback(
+    x,
+    r,
+    batch=None,
+    loop=False,
+    max_num_neighbors=32,
+    flow="source_to_target",
+    num_workers=1,
+    batch_size=None,
+):
+    """Small differentiable-topology-compatible replacement for torch_cluster.radius_graph."""
+
+    del num_workers, batch_size
+    import torch
+
+    if x.ndim != 2:
+        raise ValueError("radius_graph positions must have shape [node, coordinate]")
+    node_count = int(x.shape[0])
+    if batch is None:
+        batch = torch.zeros(node_count, dtype=torch.long, device=x.device)
+    else:
+        batch = batch.to(device=x.device, dtype=torch.long)
+    if batch.ndim != 1 or int(batch.numel()) != node_count:
+        raise ValueError("radius_graph batch must contain one graph id per node")
+    squared_distance = (x[:, None, :] - x[None, :, :]).square().sum(dim=-1)
+    same_graph = batch[:, None].eq(batch[None, :])
+    mask = same_graph & squared_distance.le(float(r) * float(r))
+    if not loop:
+        mask.fill_diagonal_(False)
+    target_source_pairs = []
+    neighbor_limit = int(max_num_neighbors)
+    for target in range(node_count):
+        sources = torch.nonzero(mask[target], as_tuple=False).flatten()
+        if neighbor_limit > 0 and int(sources.numel()) > neighbor_limit:
+            order = torch.argsort(squared_distance[target].index_select(0, sources))
+            sources = sources.index_select(0, order[:neighbor_limit])
+        if sources.numel():
+            targets = torch.full_like(sources, target)
+            target_source_pairs.append((targets, sources))
+    if not target_source_pairs:
+        return torch.empty((2, 0), dtype=torch.long, device=x.device)
+    targets = torch.cat([item[0] for item in target_source_pairs])
+    sources = torch.cat([item[1] for item in target_source_pairs])
+    if flow == "source_to_target":
+        return torch.stack((sources, targets), dim=0)
+    if flow == "target_to_source":
+        return torch.stack((targets, sources), dim=0)
+    raise ValueError("unsupported radius_graph flow: {}".format(flow))
+
+
 def install_torch_scatter_fallback() -> str:
     """Return ``native`` or install a fallback when the binary extension cannot load."""
 
@@ -141,4 +191,18 @@ def install_torch_scatter_fallback() -> str:
             src, index, dim=dim, out=out, dim_size=dim_size, reduce="mean"
         )
         sys.modules["torch_scatter"] = module
+        return "pytorch_fallback"
+
+
+def install_torch_cluster_fallback() -> str:
+    """Return ``native`` or install a radius-graph fallback for an unloadable extension."""
+
+    try:
+        from torch_cluster import radius_graph as native_radius_graph  # noqa: F401
+
+        return "native"
+    except (ImportError, OSError):
+        module = types.ModuleType("torch_cluster")
+        module.radius_graph = radius_graph_fallback
+        sys.modules["torch_cluster"] = module
         return "pytorch_fallback"

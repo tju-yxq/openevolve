@@ -3,9 +3,11 @@ import sys
 import pytest
 
 from equivariant_nas.training.torch_scatter_compat import (
+    install_torch_cluster_fallback,
     install_torch_scatter_fallback,
     install_torchvision_schema_stubs,
     scatter_fallback,
+    radius_graph_fallback,
     trusted_legacy_torch_load,
 )
 
@@ -22,6 +24,25 @@ def test_scatter_fallback_sum_mean_and_gradient():
     assert torch.equal(mean, torch.tensor([[3.0, 4.0], [3.0, 4.0]]))
     summed.sum().backward()
     assert torch.equal(source.grad, torch.ones_like(source))
+
+
+def test_radius_graph_fallback_filters_graphs_self_loops_and_neighbor_count():
+    torch = pytest.importorskip("torch")
+    positions = torch.tensor([[0.0, 0.0], [0.5, 0.0], [0.9, 0.0], [0.0, 0.0]])
+    batch = torch.tensor([0, 0, 0, 1])
+
+    edge_index = radius_graph_fallback(
+        positions,
+        r=1.0,
+        batch=batch,
+        loop=False,
+        max_num_neighbors=1,
+    )
+
+    assert edge_index.shape == (2, 3)
+    assert not torch.any(edge_index[0] == edge_index[1])
+    assert torch.equal(torch.bincount(edge_index[1], minlength=4), torch.tensor([1, 1, 1, 0]))
+    assert torch.all(batch.index_select(0, edge_index[0]) == batch.index_select(0, edge_index[1]))
 
 
 def test_install_fallback_replaces_an_unloadable_extension(monkeypatch):
@@ -41,6 +62,25 @@ def test_install_fallback_replaces_an_unloadable_extension(monkeypatch):
         sys.modules.pop("torch_scatter", None)
         if original is not None:
             sys.modules["torch_scatter"] = original
+
+
+def test_install_cluster_fallback_replaces_an_unloadable_extension(monkeypatch):
+    original = sys.modules.pop("torch_cluster", None)
+    real_import = __import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "torch_cluster":
+            raise OSError("incompatible GLIBC")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", guarded_import)
+    try:
+        assert install_torch_cluster_fallback() == "pytorch_fallback"
+        assert sys.modules["torch_cluster"].radius_graph is radius_graph_fallback
+    finally:
+        sys.modules.pop("torch_cluster", None)
+        if original is not None:
+            sys.modules["torch_cluster"] = original
 
 
 def test_trusted_legacy_torch_load_only_changes_the_implicit_default(monkeypatch):

@@ -19,6 +19,7 @@ import numpy as np
 import torch
 
 from equivariant_nas.training.torch_scatter_compat import (
+    install_torch_cluster_fallback,
     install_torch_scatter_fallback,
     install_torchvision_schema_stubs,
     trusted_legacy_torch_load,
@@ -32,6 +33,7 @@ from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
 
 TORCH_SCATTER_BACKEND = install_torch_scatter_fallback()
+TORCH_CLUSTER_BACKEND = install_torch_cluster_fallback()
 
 EQUIFORMER_ROOT = os.environ.get(
     "EQUIFORMER_ROOT", "/home/20262202788/equiformer"

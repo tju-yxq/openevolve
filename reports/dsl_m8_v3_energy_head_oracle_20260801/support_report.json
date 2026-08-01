@@ -10,7 +10,8 @@
     "n0004": "constructive_exact",
     "n0005": "constructive_exact",
     "n0006": "constructive_exact",
-    "n0007": "constructive_exact"
+    "n0007": "constructive_exact",
+    "n0008": "constructive_exact"
   },
   "runtime_kinds": {
     "input:batch": "index_map",
@@ -30,7 +31,9 @@
     "n0006": "dense_tensor",
     "n0006:out": "dense_tensor",
     "n0007": "dense_tensor",
-    "n0007:out": "dense_tensor"
+    "n0007:out": "dense_tensor",
+    "n0008": "dense_tensor",
+    "n0008:out": "dense_tensor"
   },
   "supported": true,
   "unsupported_nodes": []

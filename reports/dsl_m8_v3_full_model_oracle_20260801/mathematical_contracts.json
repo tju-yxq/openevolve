@@ -1,0 +1,34 @@
+{
+  "energy_unit_axis": {
+    "equivariance": "identity isomorphism on one trivial representation; group action and certification level are unchanged",
+    "map": "V tensor R^1 -> V",
+    "negative_diagnostics": [
+      "E_UNIT_AXIS_001",
+      "E_UNIT_AXIS_003",
+      "E_UNIT_AXIS_004",
+      "runtime shape [carrier, 1] rejection"
+    ],
+    "output_layout": "carrier_scalar",
+    "precondition": "one statically known invariant energy_channel axis of size one",
+    "runtime": "[graph, 1] -> [graph]"
+  },
+  "shared_edge_frame": {
+    "cache": [
+      "v3_model_edge"
+    ],
+    "contract": "one official random auxiliary edge frame is shared across input, both blocks and force head while every to/from proof pair keeps a unique frame_id",
+    "typed_entries": [
+      "block0_v3_attention_edge",
+      "block1_v3_attention_edge",
+      "force_v3_force_head_edge"
+    ]
+  },
+  "shared_final_norm": {
+    "consumers": [
+      "energy_scalar_input",
+      "force_source_features",
+      "force_target_features"
+    ],
+    "node": "final_norm"
+  }
+}

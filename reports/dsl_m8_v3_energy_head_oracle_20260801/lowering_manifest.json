@@ -5,14 +5,14 @@
     "e3nn"
   ],
   "exactness_counts": {
-    "constructive_exact": 67,
+    "constructive_exact": 68,
     "empirical_finite_grid": 2,
     "experimental": 2,
     "library_exact": 23,
     "numerically_tested": 7,
     "stochastic_empirical": 1
   },
-  "rule_count": 102,
+  "rule_count": 103,
   "rules": [
     {
       "dependencies": [
@@ -1175,6 +1175,18 @@
       "has_runtime_kind_rule": false,
       "has_validator": false,
       "primitive": "core.spherical_harmonics@1",
+      "required_context_keys": []
+    },
+    {
+      "dependencies": [],
+      "description": "",
+      "exactness": "constructive_exact",
+      "has_executor": true,
+      "has_module_builder": false,
+      "has_post_build_initializer": false,
+      "has_runtime_kind_rule": true,
+      "has_validator": false,
+      "primitive": "core.squeeze_unit_axis@1",
       "required_context_keys": []
     },
     {

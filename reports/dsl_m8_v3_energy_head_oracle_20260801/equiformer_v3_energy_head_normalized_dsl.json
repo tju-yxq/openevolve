@@ -198,26 +198,30 @@
       "outputs": [
         "out"
       ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "energy_channel"
+      },
+      "declared_types": {},
+      "id": "n0008",
+      "inputs": {
+        "x": "n0007"
+      },
+      "op": "core.squeeze_unit_axis@1",
+      "outputs": [
+        "out"
+      ]
     }
   ],
   "outputs": [
     {
       "name": "energy",
-      "source": "n0007",
+      "source": "n0008",
       "type": {
-        "axes": [
-          "energy_channel"
-        ],
-        "axis_specs": [
-          {
-            "broadcastable": false,
-            "name": "energy_channel",
-            "order": 0,
-            "role": "channel",
-            "sharing": "independent",
-            "size": 1
-          }
-        ],
+        "axes": [],
+        "axis_specs": [],
         "carrier": "graph",
         "dtype": "float32",
         "equivariance_level": 1,
@@ -241,7 +245,7 @@
           "coefficient_order": "canonical",
           "parity_convention": "group_native",
           "resolution_specs": [],
-          "storage": "irrep_major",
+          "storage": "carrier_scalar",
           "truncation_state": "full"
         },
         "measure": "dimensionless",
@@ -323,7 +327,8 @@
         "n0004",
         "n0005",
         "n0006",
-        "n0007"
+        "n0007",
+        "n0008"
       ]
     },
     "parameter_mapping": {

@@ -15803,6 +15803,24 @@
     },
     {
       "annotations": {
+        "composed_from": "equiformer_v3_energy_head_2a06ba93ff817feb",
+        "composition_prefix": "energy_"
+      },
+      "attrs": {
+        "axis": "energy_channel"
+      },
+      "declared_types": {},
+      "id": "n0798",
+      "inputs": {
+        "x": "n0795"
+      },
+      "op": "core.squeeze_unit_axis@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {
         "composed_from": "equiformer_v3_force_head_2a06ba93ff817feb",
         "composition_prefix": "force_"
       },
@@ -15811,7 +15829,7 @@
         "negative_slope": 0.2
       },
       "declared_types": {},
-      "id": "n0798",
+      "id": "n0799",
       "inputs": {
         "x": "n0796"
       },
@@ -15831,9 +15849,9 @@
         "head_axis": "head"
       },
       "declared_types": {},
-      "id": "n0799",
+      "id": "n0800",
       "inputs": {
-        "x": "n0798"
+        "x": "n0799"
       },
       "op": "core.headwise_scalar_contraction@3",
       "outputs": [
@@ -15851,11 +15869,11 @@
         "softcap": null
       },
       "declared_types": {},
-      "id": "n0800",
+      "id": "n0801",
       "inputs": {
         "exp_rescale": "n0035",
         "index": "input:target_segment",
-        "logits": "n0799"
+        "logits": "n0800"
       },
       "op": "core.segment_softmax@3",
       "outputs": [
@@ -15869,9 +15887,9 @@
       },
       "attrs": {},
       "declared_types": {},
-      "id": "n0801",
+      "id": "n0802",
       "inputs": {
-        "left": "n0800",
+        "left": "n0801",
         "right": "n0035"
       },
       "op": "core.invariant_product@1",
@@ -15886,10 +15904,10 @@
       },
       "attrs": {},
       "declared_types": {},
-      "id": "n0802",
+      "id": "n0803",
       "inputs": {
         "value": "n0797",
-        "weight": "n0801"
+        "weight": "n0802"
       },
       "op": "core.invariant_scale@2",
       "outputs": [
@@ -15907,9 +15925,9 @@
         "use_rotation_mask": false
       },
       "declared_types": {},
-      "id": "n0803",
+      "id": "n0804",
       "inputs": {
-        "x": "n0802"
+        "x": "n0803"
       },
       "op": "core.from_edge_frame@2",
       "outputs": [
@@ -15926,10 +15944,10 @@
         "reduce": "sum"
       },
       "declared_types": {},
-      "id": "n0804",
+      "id": "n0805",
       "inputs": {
         "index": "input:target_segment",
-        "x": "n0803"
+        "x": "n0804"
       },
       "op": "core.segment_reduce@1",
       "outputs": [
@@ -15946,9 +15964,9 @@
         "out_irreps": "1x0+1x1+1x2"
       },
       "declared_types": {},
-      "id": "n0805",
+      "id": "n0806",
       "inputs": {
-        "x": "n0804"
+        "x": "n0805"
       },
       "op": "core.so3_linear@1",
       "outputs": [
@@ -15970,9 +15988,9 @@
         ]
       },
       "declared_types": {},
-      "id": "n0806",
+      "id": "n0807",
       "inputs": {
-        "x": "n0805"
+        "x": "n0806"
       },
       "op": "core.irrep_select@2",
       "outputs": [
@@ -15983,21 +16001,10 @@
   "outputs": [
     {
       "name": "energy",
-      "source": "n0795",
+      "source": "n0798",
       "type": {
-        "axes": [
-          "energy_channel"
-        ],
-        "axis_specs": [
-          {
-            "broadcastable": false,
-            "name": "energy_channel",
-            "order": 0,
-            "role": "channel",
-            "sharing": "independent",
-            "size": 1
-          }
-        ],
+        "axes": [],
+        "axis_specs": [],
         "carrier": "graph",
         "dtype": "float32",
         "equivariance_level": 1,
@@ -16021,7 +16028,7 @@
           "coefficient_order": "canonical",
           "parity_convention": "group_native",
           "resolution_specs": [],
-          "storage": "irrep_major",
+          "storage": "carrier_scalar",
           "truncation_state": "full"
         },
         "measure": "dimensionless",
@@ -16030,7 +16037,7 @@
     },
     {
       "name": "forces",
-      "source": "n0806",
+      "source": "n0807",
       "type": {
         "axes": [],
         "axis_specs": [],
@@ -17089,6 +17096,7 @@
         "n0789",
         "n0791",
         "n0795",
+        "n0798",
         "n0032",
         "n0017",
         "n0063",
@@ -17098,8 +17106,8 @@
         "n0147",
         "n0788",
         "n0796",
-        "n0799",
         "n0800",
+        "n0801",
         "n0794",
         "n0797",
         "n0049",
@@ -17113,13 +17121,13 @@
         "n0792",
         "n0790",
         "n0793",
-        "n0798",
-        "n0801",
+        "n0799",
         "n0802",
         "n0803",
         "n0804",
-        "n0806",
-        "n0805"
+        "n0805",
+        "n0807",
+        "n0806"
       ],
       "shared_final_norm": {
         "consumers": [

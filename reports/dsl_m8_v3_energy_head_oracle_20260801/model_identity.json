@@ -1,5 +1,5 @@
 {
-  "architecture_id": "d63de94569200d29",
+  "architecture_id": "4aa78dfa140ed46d",
   "class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
   "input_types": {
     "batch": {
@@ -55,19 +55,8 @@
   },
   "output_types": {
     "energy": {
-      "axes": [
-        "energy_channel"
-      ],
-      "axis_specs": [
-        {
-          "broadcastable": false,
-          "name": "energy_channel",
-          "order": 0,
-          "role": "channel",
-          "sharing": "independent",
-          "size": 1
-        }
-      ],
+      "axes": [],
+      "axis_specs": [],
       "carrier": "graph",
       "dtype": "float32",
       "equivariance_level": 1,
@@ -91,7 +80,7 @@
         "coefficient_order": "canonical",
         "parity_convention": "group_native",
         "resolution_specs": [],
-        "storage": "irrep_major",
+        "storage": "carrier_scalar",
         "truncation_state": "full"
       },
       "measure": "dimensionless",

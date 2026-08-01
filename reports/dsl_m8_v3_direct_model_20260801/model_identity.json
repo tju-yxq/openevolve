@@ -1,24 +1,24 @@
 {
-  "backend_neutral_semantics": "backend-neutral-v21",
-  "backend_semantics": "e3nn-graph-lowering-registry-v23",
+  "backend_neutral_semantics": "backend-neutral-v22",
+  "backend_semantics": "e3nn-graph-lowering-registry-v24",
   "compiled_module_count": 329,
-  "compiler_semantics": "evoequilang-23",
+  "compiler_semantics": "evoequilang-24",
   "constructor_bypass": false,
-  "core_primitive_count": 102,
+  "core_primitive_count": 103,
   "dsl_language_version": "2.9.0",
   "dsl_repository": {
     "branch": "codex/v3-mapping",
-    "head": "70c1da03eb50efd655ffaad2cbac50538857229f",
+    "head": "0c28e9fff44a9ebce5b19cff9e98aa4d34beaf4f",
     "path": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas",
     "worktree_dirty": true,
-    "worktree_status_line_count": 152,
-    "worktree_status_sha256": "1874a49d0e9a2b678567d44b357e708f44cee9d30df6399e88986cc0ab31a02b"
+    "worktree_status_line_count": 151,
+    "worktree_status_sha256": "3f2a7fc92fe4206558e24f445ade75c68f612ed3453435fd68988b99de86366b"
   },
   "evidence_version": "evoequilang-v3-direct-model-evidence@1",
   "graph_class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
-  "lowering_rule_count": 102,
-  "normalized_dsl_architecture_id": "9968c1311664952b",
-  "normalized_node_count": 807,
+  "lowering_rule_count": 103,
+  "normalized_dsl_architecture_id": "bfdb40f91a7d6f5e",
+  "normalized_node_count": 808,
   "official_attention_block_or_model_constructor_used_by_lowering": false,
   "official_v3_repository": {
     "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
@@ -26,18 +26,18 @@
     "path": "C:\\Users\\26517\\Documents\\中关村\\equiformer_v3_official",
     "worktree_dirty": true
   },
-  "parameter_state_sha256": "6514051b851d702cd99265e90e4746fa51c32f49490d4c45b460f1072c54aa9c",
+  "parameter_state_sha256": "65ad7d87b8f561b75e659a6b1a119d916c808014f183c7e439e4132992394449",
   "search_surface_counts": {
-    "canonical_primitive_families": 47,
-    "completion_only_primitives": 28,
-    "concrete_primitive_entries": 102,
+    "canonical_primitive_families": 48,
+    "completion_only_primitives": 29,
+    "concrete_primitive_entries": 103,
     "context_only_motifs": 6,
     "context_only_primitives": 27,
     "generatable_canonical_families": 26,
     "generatable_concrete_primitives": 47,
     "generatable_motifs": 2
   },
-  "search_surface_hash": "2bd0baf13e1172b55d2bc56a90550aabd026ce36e7108e8292a1cf34c7c07160",
+  "search_surface_hash": "dfbdfde1ee66694efe921ada6eae47f836ce7ed11b40d0bb89ad9f0a09f9df92",
   "spec": {
     "alpha_drop": 0.0,
     "attn_activation": "sep-merge_gates2_swiglu",
@@ -1898,16 +1898,16 @@
       8,
       4
     ],
-    "node_modules.n0799.weight": [
+    "node_modules.n0800.weight": [
       2,
       2
     ],
-    "node_modules.n0805.bias": [
+    "node_modules.n0806.bias": [
       1,
       1,
       1
     ],
-    "node_modules.n0805.weight": [
+    "node_modules.n0806.weight": [
       3,
       1,
       2

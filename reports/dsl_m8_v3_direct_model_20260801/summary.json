@@ -10,18 +10,17 @@
   "identity": {
     "compiled_module_count": 329,
     "constructor_bypass": false,
-    "core_primitive_count": 102,
-    "lowering_rule_count": 102,
-    "normalized_dsl_architecture_id": "9968c1311664952b",
-    "normalized_node_count": 807,
-    "parameter_state_sha256": "6514051b851d702cd99265e90e4746fa51c32f49490d4c45b460f1072c54aa9c",
+    "core_primitive_count": 103,
+    "lowering_rule_count": 103,
+    "normalized_dsl_architecture_id": "bfdb40f91a7d6f5e",
+    "normalized_node_count": 808,
+    "parameter_state_sha256": "65ad7d87b8f561b75e659a6b1a119d916c808014f183c7e439e4132992394449",
     "spec_architecture_id": "2a06ba93ff817feb",
     "trainable_parameter_count": 17779,
     "trainable_parameter_tensor_count": 486
   },
   "not_proved": [
-    "full-model parameter-by-parameter equality with the official constructor",
-    "full-model forward and gradient numerical equality with the official constructor",
+    "this production-depth smoke does not itself replace the separate frozen two-layer official full-model oracle",
     "checkpoint loading equality",
     "train/eval RNG equality under nonzero stochastic rates",
     "stress head",
@@ -38,13 +37,10 @@
     "all_parameter_gradients_present": true,
     "energy_finite": true,
     "energy_shape": [
-      1,
       1
     ],
     "energy_value": [
-      [
-        0.013336644507944584
-      ]
+      0.013336644507944584
     ],
     "force_l2_norm": 0.05174225941300392,
     "force_shape": [

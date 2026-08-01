@@ -2,13 +2,10 @@
   "all_parameter_gradients_present": true,
   "energy_finite": true,
   "energy_shape": [
-    1,
     1
   ],
   "energy_value": [
-    [
-      0.013336644507944584
-    ]
+    0.013336644507944584
   ],
   "force_l2_norm": 0.05174225941300392,
   "force_shape": [

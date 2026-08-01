@@ -1,21 +1,35 @@
 {
-  "canonical_architecture_id": "d63de94569200d29",
+  "canonical_architecture_id": "4aa78dfa140ed46d",
   "dsl_repository": {
     "branch": "codex/v3-mapping",
-    "head": "af3be1f220b00b4531faa78554c21fbfcbe1717d",
+    "head": "0c28e9fff44a9ebce5b19cff9e98aa4d34beaf4f",
     "worktree_dirty": true,
-    "worktree_status_sha256": "d0b7365e962fd9754e572dfdb0a0476ca511d114b56903114ce137647cc8c3d1"
+    "worktree_status_sha256": "3f2a7fc92fe4206558e24f445ade75c68f612ed3453435fd68988b99de86366b"
   },
-  "lowering_rules": 102,
-  "normalized_node_count": 8,
+  "layout_contract": {
+    "mathematical_map": "V tensor R^1 -> V",
+    "negative_diagnostics": [
+      "E_UNIT_AXIS_001",
+      "E_UNIT_AXIS_003",
+      "E_UNIT_AXIS_004",
+      "runtime shape [carrier, 1] rejection"
+    ],
+    "runtime_map": "[graph, 1] -> [graph] by exact unit-axis squeeze",
+    "typed_input": "InvariantTensorType[graph, energy_channel=1]",
+    "typed_output": "InvariantTensorType[graph] with carrier_scalar storage"
+  },
+  "lowering_rules": 103,
+  "normalized_node_count": 9,
   "official_v3_repository": {
     "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
     "origin": "https://github.com/atomicarchitects/equiformer_v3.git"
   },
-  "oracle_pytest_result": "1 passed",
-  "oracle_test": "tests/test_dsl_v3_official_energy_head.py",
+  "oracle_pytest_result": "5 passed",
+  "oracle_tests": [
+    "tests/test_dsl_v3_official_energy_head.py",
+    "tests/test_dsl_invariant_unit_axis.py"
+  ],
   "pending": [
-    "full input-plus-backbone-plus-energy-plus-force model oracle",
     "nonzero stochastic-rate train/eval and RNG oracle",
     "checkpoint loader",
     "stress head",
@@ -25,13 +39,14 @@
     "the final merge LayerNorm is represented by a typed primitive node",
     "the scalar projection, SiLU, zero-rate dropout and output projection are represented by typed primitive nodes",
     "node energies are reduced through an explicit node-to-graph batch map and divided by avg_num_nodes",
+    "the length-one energy channel is explicitly squeezed to the official [graph] task layout with carrier_scalar storage",
     "same-seed construction and initialization RNG equality",
     "bijective mapping of every trainable energy-head parameter",
     "official forward and forward-RNG numerical alignment",
     "node-feature and all-parameter gradient numerical alignment",
     "generic Lowering does not call the official energy-head or model constructor"
   ],
-  "registry_entries": 102,
+  "registry_entries": 103,
   "spec_architecture_id": "1ae79baaa7c1bc73",
   "status": "official_v3_energy_head_oracle_passed",
   "trainable_parameter_count": 33,

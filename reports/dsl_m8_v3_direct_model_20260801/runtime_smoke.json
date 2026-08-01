@@ -1,0 +1,22 @@
+{
+  "all_parameter_gradients_present": true,
+  "energy_finite": true,
+  "energy_shape": [
+    1,
+    1
+  ],
+  "energy_value": [
+    [
+      0.013336642645299435
+    ]
+  ],
+  "force_l2_norm": 0.05174225568771362,
+  "force_shape": [
+    4,
+    3
+  ],
+  "forces_finite": true,
+  "parameter_gradient_tensor_count": 486,
+  "parameter_tensor_count": 486,
+  "position_gradient_finite": true
+}

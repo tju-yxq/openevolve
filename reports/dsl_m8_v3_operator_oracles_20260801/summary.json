@@ -1,0 +1,149 @@
+{
+  "dsl_repository": {
+    "branch": "codex/v3-mapping",
+    "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+    "worktree_dirty": true,
+    "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+  },
+  "lowering_rules": 102,
+  "official_v3_repository": {
+    "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "origin": "https://github.com/atomicarchitects/equiformer_v3.git"
+  },
+  "oracle_pytest_result": "4 passed",
+  "oracle_tests": [
+    "tests/test_dsl_v3_official_ffn.py",
+    "tests/test_dsl_v3_official_attention.py::test_v3_official_transblock_matches_initialization_forward_and_all_gradients",
+    "tests/test_dsl_v3_official_attention.py::test_v3_official_direct_force_head_matches_parameters_forward_and_all_gradients"
+  ],
+  "pending": [
+    "nonzero stochastic-rate train/eval and RNG oracle",
+    "multi-layer backbone official numerical oracle",
+    "full energy+force model parameter and numerical oracle",
+    "checkpoint loader",
+    "stress head",
+    "training trajectory"
+  ],
+  "programs": {
+    "direct_force_head": {
+      "canonical_architecture_id": "1029ef4d93d125ef",
+      "constructor_bypass": false,
+      "node_count": 31,
+      "parameter_mapping": {
+        "node_modules.alpha_dot.weight": "alpha_dot",
+        "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+        "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+        "node_modules.projection.bias": "proj.bias",
+        "node_modules.projection.weight": "proj.weight",
+        "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+        "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+        "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+        "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+        "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+        "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+        "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+        "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+        "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+        "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+        "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+        "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+        "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+        "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+        "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+        "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+        "node_modules.source_embedding.weight": "source_embedding.weight",
+        "node_modules.target_embedding.weight": "target_embedding.weight"
+      },
+      "program_id": "equiformer_v3_force_head_18d8d24a9949a2c1",
+      "runtime_composition_errors": 0,
+      "trainable_parameter_count": 974,
+      "trainable_parameter_tensor_count": 23,
+      "unsupported_lowering_nodes": 0
+    },
+    "feed_forward": {
+      "canonical_architecture_id": "3d4d443e6ee33071",
+      "constructor_bypass": false,
+      "node_count": 23,
+      "parameter_mapping": {
+        "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+        "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+        "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+        "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+        "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+        "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+        "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+        "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+        "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+        "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+      },
+      "program_id": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
+      "runtime_composition_errors": 0,
+      "trainable_parameter_count": 175,
+      "trainable_parameter_tensor_count": 10,
+      "unsupported_lowering_nodes": 0
+    },
+    "transblock": {
+      "canonical_architecture_id": "96b281611c8960df",
+      "constructor_bypass": false,
+      "node_count": 61,
+      "parameter_mapping": {
+        "attention": {
+          "node_modules.alpha_dot.weight": "alpha_dot",
+          "node_modules.alpha_norm.layer_norm.bias": "alpha_norm.bias",
+          "node_modules.alpha_norm.layer_norm.weight": "alpha_norm.weight",
+          "node_modules.projection.bias": "proj.bias",
+          "node_modules.projection.weight": "proj.weight",
+          "node_modules.radial_linear0.linear.bias": "rad_func.net.0.bias",
+          "node_modules.radial_linear0.linear.weight": "rad_func.net.0.weight",
+          "node_modules.radial_linear1.linear.bias": "rad_func.net.3.bias",
+          "node_modules.radial_linear1.linear.weight": "rad_func.net.3.weight",
+          "node_modules.radial_linear2.linear.bias": "rad_func.net.6.bias",
+          "node_modules.radial_linear2.linear.weight": "rad_func.net.6.weight",
+          "node_modules.radial_norm0.layer_norm.bias": "rad_func.net.1.bias",
+          "node_modules.radial_norm0.layer_norm.weight": "rad_func.net.1.weight",
+          "node_modules.radial_norm1.layer_norm.bias": "rad_func.net.4.bias",
+          "node_modules.radial_norm1.layer_norm.weight": "rad_func.net.4.weight",
+          "node_modules.so2_linear1.fc_m0.bias": "so2_linear_1.fc_m0.bias",
+          "node_modules.so2_linear1.fc_m0.weight": "so2_linear_1.fc_m0.weight",
+          "node_modules.so2_linear1.so2_m_linear.0.fc.weight": "so2_linear_1.so2_m_linear.0.fc.weight",
+          "node_modules.so2_linear2.fc_m0.bias": "so2_linear_2.fc_m0.bias",
+          "node_modules.so2_linear2.fc_m0.weight": "so2_linear_2.fc_m0.weight",
+          "node_modules.so2_linear2.so2_m_linear.0.fc.weight": "so2_linear_2.so2_m_linear.0.fc.weight",
+          "node_modules.source_embedding.weight": "source_embedding.weight",
+          "node_modules.target_embedding.weight": "target_embedding.weight"
+        },
+        "drop_path": "attn_drop_path/ffn_drop_path",
+        "feed_forward": {
+          "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+          "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+          "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+          "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+          "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+          "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+          "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+          "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+          "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+          "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+        },
+        "norm_1": "norm1",
+        "norm_2": "norm2",
+        "proj_drop": "attn_proj_drop/ffn_proj_drop"
+      },
+      "program_id": "equiformer_v3_transblock_18d8d24a9949a2c1",
+      "runtime_composition_errors": 0,
+      "trainable_parameter_count": 1435,
+      "trainable_parameter_tensor_count": 37,
+      "unsupported_lowering_nodes": 0
+    }
+  },
+  "proved": [
+    "same-seed module construction and parameter initialization",
+    "bijective trainable parameter mapping",
+    "official forward numerical alignment",
+    "input and all-parameter gradient numerical alignment",
+    "no official Attention, Block, FFN or model constructor is used by generic Lowering"
+  ],
+  "registry_entries": 102,
+  "spec_architecture_id": "18d8d24a9949a2c1",
+  "status": "official_v3_ffn_transblock_force_oracles_passed"
+}

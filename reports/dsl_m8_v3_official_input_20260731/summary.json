@@ -1,0 +1,51 @@
+{
+  "identity": {
+    "backend_neutral_semantics": "backend-neutral-v21",
+    "backend_semantics": "e3nn-graph-lowering-registry-v23",
+    "compiler_semantics": "evoequilang-23",
+    "constructor_bypass": false,
+    "core_primitive_count": 102,
+    "dsl_language_version": "2.1.0",
+    "dsl_repository": {
+      "branch": "codex/v3-mapping",
+      "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+      "path": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas",
+      "worktree_dirty": true,
+      "worktree_status_line_count": 142,
+      "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+    },
+    "lowering_rule_count": 102,
+    "normalized_dsl_architecture_id": "4dedc6327402d0f2",
+    "normalized_node_count": 24,
+    "official_block_or_model_class_used_by_lowering": false,
+    "official_v3_repository": {
+      "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+      "origin": "https://github.com/atomicarchitects/equiformer_v3.git",
+      "path": "C:\\Users\\26517\\Documents\\中关村\\equiformer_v3_official"
+    },
+    "spec_architecture_id": "b94ce8b3f571cd5d",
+    "trainable_parameter_count": 231040,
+    "trainable_parameter_tensor_count": 13
+  },
+  "outside_this_evidence_scope": [
+    "EquivariantGraphAttention",
+    "FeedForwardNetwork",
+    "TransBlockV3",
+    "energy/force/stress heads",
+    "checkpoint loader",
+    "end-to-end training"
+  ],
+  "parameter_mapping_coverage": 1.0,
+  "scope": [
+    "atomic categorical embedding",
+    "explicit source-target and PBC edge geometry",
+    "fixed Gaussian radial basis",
+    "polynomial envelope",
+    "source/target atom edge embeddings",
+    "three-layer official RadialFunction",
+    "axisymmetric inverse-Wigner lift",
+    "target segment sum and average-degree rescale",
+    "atom plus edge-degree node initialization"
+  ],
+  "status": "official_v3_input_and_edge_degree_exact"
+}

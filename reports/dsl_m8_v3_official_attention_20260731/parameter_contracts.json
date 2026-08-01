@@ -1,0 +1,777 @@
+{
+  "n0000": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "category",
+          "role": "categorical_vocabulary",
+          "size": 128,
+          "source_axis": ""
+        },
+        {
+          "name": "channel",
+          "role": "embedding_channel",
+          "size": 128,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0000.weight"
+      ],
+      "external_port": "",
+      "initializer": "normal_0_1_then_uniform_at_scheduled_barrier",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0001": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "category",
+          "role": "categorical_vocabulary",
+          "size": 128,
+          "source_axis": ""
+        },
+        {
+          "name": "channel",
+          "role": "embedding_channel",
+          "size": 128,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0001.weight"
+      ],
+      "external_port": "",
+      "initializer": "normal_0_1_then_uniform_at_scheduled_barrier",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0006": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_feature",
+          "role": "output_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        },
+        {
+          "name": "in_feature",
+          "role": "input_feature",
+          "size": 384,
+          "source_axis": "edge_input"
+        }
+      ],
+      "backend_parameter_name": "linear.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0006.linear.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_then_uniform_fan_in_deferred",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_feature",
+          "role": "output_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "linear.bias",
+      "bias_irreps": "128x0",
+      "checkpoint_names": [
+        "n0006.linear.bias"
+      ],
+      "external_port": "",
+      "initializer": "uniform_fan_in_then_zeros_deferred",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0007": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "feature",
+          "role": "normalized_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "layer_norm.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0007.layer_norm.weight"
+      ],
+      "external_port": "",
+      "initializer": "ones",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "feature",
+          "role": "normalized_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "layer_norm.bias",
+      "bias_irreps": "128x0",
+      "checkpoint_names": [
+        "n0007.layer_norm.bias"
+      ],
+      "external_port": "",
+      "initializer": "zeros",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0009": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_feature",
+          "role": "output_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        },
+        {
+          "name": "in_feature",
+          "role": "input_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "linear.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0009.linear.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_then_uniform_fan_in_deferred",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_feature",
+          "role": "output_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "linear.bias",
+      "bias_irreps": "128x0",
+      "checkpoint_names": [
+        "n0009.linear.bias"
+      ],
+      "external_port": "",
+      "initializer": "uniform_fan_in_then_zeros_deferred",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0010": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "feature",
+          "role": "normalized_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "layer_norm.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0010.layer_norm.weight"
+      ],
+      "external_port": "",
+      "initializer": "ones",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "feature",
+          "role": "normalized_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "layer_norm.bias",
+      "bias_irreps": "128x0",
+      "checkpoint_names": [
+        "n0010.layer_norm.bias"
+      ],
+      "external_port": "",
+      "initializer": "zeros",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0012": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_feature",
+          "role": "output_feature",
+          "size": 1792,
+          "source_axis": "degree_channel"
+        },
+        {
+          "name": "in_feature",
+          "role": "input_feature",
+          "size": 128,
+          "source_axis": "edge_hidden"
+        }
+      ],
+      "backend_parameter_name": "linear.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0012.linear.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_then_uniform_fan_in_deferred",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_feature",
+          "role": "output_feature",
+          "size": 1792,
+          "source_axis": "degree_channel"
+        }
+      ],
+      "backend_parameter_name": "linear.bias",
+      "bias_irreps": "1792x0",
+      "checkpoint_names": [
+        "n0012.linear.bias"
+      ],
+      "external_port": "",
+      "initializer": "uniform_fan_in_then_zeros_deferred",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0015": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_m0",
+          "role": "m0_output",
+          "size": 1600,
+          "source_axis": ""
+        },
+        {
+          "name": "in_m0",
+          "role": "m0_input",
+          "size": 1792,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "fc_m0.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0015.fc_m0.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "fc_m0_weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_m0",
+          "role": "m0_output",
+          "size": 1600,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "fc_m0.bias",
+      "bias_irreps": "1600xm0",
+      "checkpoint_names": [
+        "n0015.fc_m0.bias"
+      ],
+      "external_port": "",
+      "initializer": "zeros",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "fc_m0_bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "complex_out",
+          "role": "so2_complex_output",
+          "size": 1536,
+          "source_axis": ""
+        },
+        {
+          "name": "in",
+          "role": "so2_order_input",
+          "size": 1536,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "so2_m_linear.0.fc.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0015.so2_m_linear.0.fc.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_times_inv_sqrt2",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "m1_weight",
+      "rescale": 0.7071067811865475,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "complex_out",
+          "role": "so2_complex_output",
+          "size": 1280,
+          "source_axis": ""
+        },
+        {
+          "name": "in",
+          "role": "so2_order_input",
+          "size": 1280,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "so2_m_linear.1.fc.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0015.so2_m_linear.1.fc.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_times_inv_sqrt2",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "m2_weight",
+      "rescale": 0.7071067811865475,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0020": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_m0",
+          "role": "m0_output",
+          "size": 896,
+          "source_axis": ""
+        },
+        {
+          "name": "in_m0",
+          "role": "m0_input",
+          "size": 448,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "fc_m0.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0020.fc_m0.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_prefix_64_rows_times_0.70710678118654757",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "fc_m0_weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "out_m0",
+          "role": "m0_output",
+          "size": 896,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "fc_m0.bias",
+      "bias_irreps": "896xm0",
+      "checkpoint_names": [
+        "n0020.fc_m0.bias"
+      ],
+      "external_port": "",
+      "initializer": "zeros",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "fc_m0_bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "complex_out",
+          "role": "so2_complex_output",
+          "size": 1536,
+          "source_axis": ""
+        },
+        {
+          "name": "in",
+          "role": "so2_order_input",
+          "size": 384,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "so2_m_linear.0.fc.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0020.so2_m_linear.0.fc.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_times_inv_sqrt2",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "m1_weight",
+      "rescale": 0.7071067811865475,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "complex_out",
+          "role": "so2_complex_output",
+          "size": 1280,
+          "source_axis": ""
+        },
+        {
+          "name": "in",
+          "role": "so2_order_input",
+          "size": 320,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "so2_m_linear.1.fc.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0020.so2_m_linear.1.fc.weight"
+      ],
+      "external_port": "",
+      "initializer": "kaiming_uniform_times_inv_sqrt2",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "m2_weight",
+      "rescale": 0.7071067811865475,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0021": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "feature",
+          "role": "normalized_feature",
+          "size": 64,
+          "source_axis": "alpha_channel"
+        }
+      ],
+      "backend_parameter_name": "layer_norm.weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0021.layer_norm.weight"
+      ],
+      "external_port": "",
+      "initializer": "ones",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [
+        "head"
+      ],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "feature",
+          "role": "normalized_feature",
+          "size": 64,
+          "source_axis": "alpha_channel"
+        }
+      ],
+      "backend_parameter_name": "layer_norm.bias",
+      "bias_irreps": "64x0",
+      "checkpoint_names": [
+        "n0021.layer_norm.bias"
+      ],
+      "external_port": "",
+      "initializer": "zeros",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [
+        "head"
+      ],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0023": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "head",
+          "role": "head",
+          "size": 8,
+          "source_axis": "head"
+        },
+        {
+          "name": "in_feature",
+          "role": "input_feature",
+          "size": 64,
+          "source_axis": "alpha_channel"
+        }
+      ],
+      "backend_parameter_name": "weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0023.alpha_dot",
+        "n0023.weight"
+      ],
+      "external_port": "",
+      "initializer": "normal_0_1_then_uniform_fan_in",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ],
+  "n0030": [
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "degree",
+          "role": "irrep_degree",
+          "size": 7,
+          "source_axis": ""
+        },
+        {
+          "name": "out_channel",
+          "role": "output_channel",
+          "size": 128,
+          "source_axis": ""
+        },
+        {
+          "name": "in_channel",
+          "role": "input_channel",
+          "size": 128,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "weight",
+      "bias_irreps": "",
+      "checkpoint_names": [
+        "n0030.weight"
+      ],
+      "external_port": "",
+      "initializer": "normal_0_1_then_uniform_fan_in",
+      "is_bias": false,
+      "kind": "parameter_contract",
+      "name": "weight",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    },
+    {
+      "architecture_identity": "contract_only",
+      "axes": [
+        {
+          "name": "singleton_batch",
+          "role": "broadcast",
+          "size": 1,
+          "source_axis": ""
+        },
+        {
+          "name": "singleton_coefficient",
+          "role": "l0_only",
+          "size": 1,
+          "source_axis": ""
+        },
+        {
+          "name": "out_channel",
+          "role": "output_channel",
+          "size": 128,
+          "source_axis": ""
+        }
+      ],
+      "backend_parameter_name": "bias",
+      "bias_irreps": "128x0",
+      "checkpoint_names": [
+        "n0030.bias"
+      ],
+      "external_port": "",
+      "initializer": "zeros",
+      "is_bias": true,
+      "kind": "parameter_contract",
+      "name": "bias",
+      "rescale": 1.0,
+      "schema_version": "evoequilang-parameter-contract-v1@1",
+      "sharing_axes": [],
+      "storage": "internal",
+      "trainable": true
+    }
+  ]
+}

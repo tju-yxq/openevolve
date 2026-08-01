@@ -1,0 +1,563 @@
+{
+  "annotations": {
+    "constructor_bypass": false,
+    "grid_equivariance_certification": "finite_grid_empirical",
+    "numerical_scope": "official FeedForwardNetwork use_grid_mlp sep-merge_gates2_swiglu expressed by typed Grid primitives",
+    "official_source_commit": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "reference_backend": "equiformer_v3_official_feed_forward"
+  },
+  "constraints": [],
+  "inputs": [
+    {
+      "name": "x",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "dtype": "float32",
+        "equivariance_level": 2,
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "none",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "3x0+3x1+3x2",
+        "kind": "equivariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    }
+  ],
+  "language_version": "2.3.0",
+  "nodes": [
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "scalar_channel",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0000",
+      "inputs": {
+        "x": "input:x"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "bias": true,
+        "out_irreps": "4x0+4x1+4x2"
+      },
+      "declared_types": {},
+      "id": "n0001",
+      "inputs": {
+        "x": "input:x"
+      },
+      "op": "core.so3_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "gate_input_channel",
+        "feature_role": "gate"
+      },
+      "declared_types": {},
+      "id": "n0002",
+      "inputs": {
+        "x": "input:x"
+      },
+      "op": "core.select_scalars@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "grid_resolution": [
+          8,
+          8
+        ],
+        "mmax": 2,
+        "normalization": "component",
+        "quadrature": "e3nn_s2grid",
+        "sampling": "equiangular",
+        "use_m_primary": false
+      },
+      "declared_types": {},
+      "id": "n0003",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.grid_project@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "scalar_channel",
+        "bias": true,
+        "out_axis": "scalar_pair",
+        "out_features": 8
+      },
+      "declared_types": {},
+      "id": "n0004",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "gate_input_channel",
+        "bias": true,
+        "out_axis": "gate_channel",
+        "out_features": 4,
+        "output_axis_role": "gate",
+        "output_feature_role": "gate"
+      },
+      "declared_types": {},
+      "id": "n0005",
+      "inputs": {
+        "x": "n0002"
+      },
+      "op": "core.scalar_linear@4",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "activation": "sigmoid"
+      },
+      "declared_types": {},
+      "id": "n0006",
+      "inputs": {
+        "x": "n0005"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "bias": false,
+        "out_channels": 8
+      },
+      "declared_types": {},
+      "id": "n0007",
+      "inputs": {
+        "x": "n0003"
+      },
+      "op": "core.grid_channel_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "scalar_gate",
+        "feature_role": "gate",
+        "length": 4,
+        "start": 0
+      },
+      "declared_types": {},
+      "id": "n0008",
+      "inputs": {
+        "x": "n0004"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "scalar_up",
+        "feature_role": "value",
+        "length": 4,
+        "start": 4
+      },
+      "declared_types": {},
+      "id": "n0009",
+      "inputs": {
+        "x": "n0004"
+      },
+      "op": "core.invariant_slice@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0010",
+      "inputs": {
+        "x": "n0008"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "left_channels": 4
+      },
+      "declared_types": {},
+      "id": "n0011",
+      "inputs": {
+        "x": "n0007"
+      },
+      "op": "core.grid_split@1",
+      "outputs": [
+        "left",
+        "right"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0012",
+      "inputs": {
+        "left": "n0010",
+        "right": "n0009"
+      },
+      "op": "core.invariant_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0013",
+      "inputs": {
+        "left": "n0011:left",
+        "right": "n0006"
+      },
+      "op": "core.grid_pointwise_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0014",
+      "inputs": {
+        "left": "n0013",
+        "right": "n0011:right"
+      },
+      "op": "core.grid_pointwise_product@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "p": 0.0
+      },
+      "declared_types": {},
+      "id": "n0015",
+      "inputs": {
+        "x": "n0012"
+      },
+      "op": "core.scalar_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "probability": 0.0
+      },
+      "declared_types": {},
+      "id": "n0016",
+      "inputs": {
+        "x": "n0014"
+      },
+      "op": "core.grid_dropout@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0017",
+      "inputs": {
+        "x": "n0015"
+      },
+      "op": "core.flatten_invariant_axes@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "bias": false,
+        "out_channels": 4
+      },
+      "declared_types": {},
+      "id": "n0018",
+      "inputs": {
+        "x": "n0016"
+      },
+      "op": "core.grid_channel_linear@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "out_irreps": "4x0+4x1+4x2"
+      },
+      "declared_types": {},
+      "id": "n0019",
+      "inputs": {
+        "x": "n0017"
+      },
+      "op": "core.irrep_pad@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "out_irreps": "4x0+4x1+4x2"
+      },
+      "declared_types": {},
+      "id": "n0020",
+      "inputs": {
+        "x": "n0018"
+      },
+      "op": "core.grid_unproject@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0021",
+      "inputs": {
+        "left": "n0020",
+        "right": "n0019"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "bias": true,
+        "l0_weight_scale": 0.7071067811865476,
+        "out_irreps": "3x0+3x1+3x2"
+      },
+      "declared_types": {},
+      "id": "n0022",
+      "inputs": {
+        "x": "n0021"
+      },
+      "op": "core.so3_linear@2",
+      "outputs": [
+        "out"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "source": "n0022",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "dtype": "float32",
+        "equivariance_level": 1,
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "none",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "3x0+3x1+3x2",
+        "kind": "equivariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    }
+  ],
+  "parameters": {
+    "equiformer_v3_spec": {
+      "alpha_drop": 0.0,
+      "attn_activation": "sep-merge_gates2_swiglu",
+      "attn_alpha_channels": 2,
+      "attn_eps": 1e-16,
+      "attn_grid_resolution": [
+        8,
+        4
+      ],
+      "attn_hidden_channels": 2,
+      "attn_mask_rate": 0.0,
+      "attn_value_channels": 2,
+      "attn_weights_drop": 0.0,
+      "avg_degree": 3.25,
+      "avg_num_nodes": 77.81317,
+      "direct_prediction": true,
+      "drop_path_rate": 0.0,
+      "edge_channels": 5,
+      "enforce_max_neighbors_strictly": true,
+      "ffn_activation": "sep-merge_gates2_swiglu",
+      "ffn_drop": 0.0,
+      "ffn_grid_resolution": [
+        8,
+        8
+      ],
+      "ffn_hidden_channels": 4,
+      "gradient_checkpointing_block_list": [],
+      "lmax": 2,
+      "max_neighbors": 8,
+      "max_num_elements": 32,
+      "max_radius": 4.5,
+      "mmax": 1,
+      "norm_type": "merge_layer_norm",
+      "num_channels": 3,
+      "num_heads": 1,
+      "num_layers": 1,
+      "num_radial_basis": 6,
+      "otf_graph": false,
+      "proj_drop": 0.0,
+      "regress_forces": true,
+      "regress_stress": false,
+      "softcap": null,
+      "use_add_merge": false,
+      "use_atom_edge_embedding": true,
+      "use_attn_renorm": true,
+      "use_envelope": true,
+      "use_gate_force_head": true,
+      "use_grid_mlp": true,
+      "use_head_reg": false,
+      "use_pbc": false,
+      "use_pbc_single": false,
+      "use_rad_l_parametrization": true,
+      "value_drop": 0.0
+    },
+    "lowering_contract": {
+      "deferred_initialization": "bias_zero_only_for_scalar_linear_v4; l0_scale_at_so3_linear2_construction",
+      "grid_semantics": "e3nn_s2grid_finite_sampling_with_explicit_project_unproject_boundary",
+      "initializer_schedule": [
+        {
+          "after_node": "n0022",
+          "nodes": [
+            "n0004",
+            "n0005"
+          ]
+        }
+      ],
+      "module_construction_order": [
+        "n0001",
+        "n0000",
+        "n0004",
+        "n0008",
+        "n0009",
+        "n0010",
+        "n0012",
+        "n0015",
+        "n0003",
+        "n0002",
+        "n0005",
+        "n0006",
+        "n0007",
+        "n0011",
+        "n0013",
+        "n0014",
+        "n0016",
+        "n0018",
+        "n0020",
+        "n0017",
+        "n0019",
+        "n0021",
+        "n0022"
+      ]
+    },
+    "parameter_mapping": {
+      "node_modules.gate_linear.linear.bias": "grid_mlp.gating_linear.bias",
+      "node_modules.gate_linear.linear.weight": "grid_mlp.gating_linear.weight",
+      "node_modules.grid_linear1.weight": "grid_mlp.grid_linear_1.weight",
+      "node_modules.grid_linear2.weight": "grid_mlp.grid_linear_2.weight",
+      "node_modules.scalar_linear.linear.bias": "scalar_mlp.0.linear.bias",
+      "node_modules.scalar_linear.linear.weight": "scalar_mlp.0.linear.weight",
+      "node_modules.so3_linear1.bias": "so3_linear_1.bias",
+      "node_modules.so3_linear1.weight": "so3_linear_1.weight",
+      "node_modules.so3_linear2.bias": "so3_linear_2.bias",
+      "node_modules.so3_linear2.weight": "so3_linear_2.weight"
+    }
+  },
+  "program_id": "equiformer_v3_feed_forward_18d8d24a9949a2c1",
+  "task_contract": "equiformer_v3_official_feed_forward"
+}

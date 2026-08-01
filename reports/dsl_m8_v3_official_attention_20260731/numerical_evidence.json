@@ -1,0 +1,26 @@
+{
+  "limitation": "the real OC20-width program is exported and lowered here; numerical oracle alignment is calibrated on the frozen small configuration to keep the evidence repeatable on CPU",
+  "oracle_scope": "frozen nontrivial small EquivariantGraphAttention with the same official operator branches",
+  "pytest_summary": "6 passed; operator 4 passed; joint 81 passed; full 351 passed, 3 skipped",
+  "registered_tolerances": {
+    "forward_atol": 3e-05,
+    "forward_rtol": 3e-05,
+    "initialization_atol": 0.0,
+    "initialization_rtol": 0.0,
+    "input_gradient_atol": 5e-05,
+    "input_gradient_rtol": 5e-05,
+    "parameter_gradient_atol": 7e-05,
+    "parameter_gradient_rtol": 7e-05
+  },
+  "test_file": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas\\tests\\test_dsl_v3_official_attention.py",
+  "test_file_sha256": "2046cd4985c7f6f3e961de7a60023fd7fddc18843d05fe495bd06d7345665ebe",
+  "verified": [
+    "canonicalization preserves parameter initialization exactly",
+    "all DSL parameters bijectively map to official attention parameters",
+    "same-seed initialization matches exactly",
+    "forward output matches official attention",
+    "node, radial, and envelope input gradients match",
+    "all parameter gradients match",
+    "unsupported constructor branches are explicitly rejected"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "attention_logits": "LayerNorm(alpha) -> SmoothLeakyReLU -> per-head scalar contraction",
+  "degree_scaling": "radial coefficients are sliced by degree and broadcast only within the corresponding SO(3) degree block",
+  "edge_conditioning": "source/target species embeddings concatenate with radial edge features and feed an explicit three-layer RadialFunction",
+  "equivariance": "all non-invariant features remain in typed SO(3) representations; scalar attention weights only multiply complete representation blocks",
+  "frame_rotation": "global SO(3) coefficients rotate into the edge frame by the official Wigner-D convention and return by its inverse",
+  "graph_softmax": "detached segment max -> exponentiation with envelope rescale/dropout/mask/softcap -> epsilon-normalized target segment sum",
+  "projection": "official degree-wise SO3Linear parameterization with bias restricted to l=0",
+  "so2_path": "SO2Linear1 -> explicit alpha/scalar split -> gated S2 SwiGLU merge -> SO2Linear2",
+  "value_path": "envelope is multiplied a second time, head weights scale equivariant values, inverse rotation restores the global frame, and target segment reduction aggregates messages"
+}

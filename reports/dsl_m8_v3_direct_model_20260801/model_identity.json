@@ -1,0 +1,1917 @@
+{
+  "backend_neutral_semantics": "backend-neutral-v21",
+  "backend_semantics": "e3nn-graph-lowering-registry-v23",
+  "compiled_module_count": 329,
+  "compiler_semantics": "evoequilang-23",
+  "constructor_bypass": false,
+  "core_primitive_count": 102,
+  "dsl_language_version": "2.9.0",
+  "dsl_repository": {
+    "branch": "codex/v3-mapping",
+    "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+    "path": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas",
+    "worktree_dirty": true,
+    "worktree_status_line_count": 142,
+    "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+  },
+  "evidence_version": "evoequilang-v3-direct-model-evidence@1",
+  "graph_class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
+  "lowering_rule_count": 102,
+  "normalized_dsl_architecture_id": "b4ac695d93450a51",
+  "normalized_node_count": 807,
+  "official_attention_block_or_model_constructor_used_by_lowering": false,
+  "official_v3_repository": {
+    "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "origin": "https://github.com/atomicarchitects/equiformer_v3.git",
+    "path": "C:\\Users\\26517\\Documents\\中关村\\equiformer_v3_official",
+    "worktree_dirty": true
+  },
+  "parameter_state_sha256": "58777105341569e4898fcf94318bfb9cd4ae650d8f57e70960bc955779937427",
+  "search_surface_counts": {
+    "canonical_primitive_families": 47,
+    "completion_only_primitives": 28,
+    "concrete_primitive_entries": 102,
+    "context_only_motifs": 6,
+    "context_only_primitives": 27,
+    "generatable_canonical_families": 26,
+    "generatable_concrete_primitives": 47,
+    "generatable_motifs": 2
+  },
+  "search_surface_hash": "2bd0baf13e1172b55d2bc56a90550aabd026ce36e7108e8292a1cf34c7c07160",
+  "spec": {
+    "alpha_drop": 0.0,
+    "attn_activation": "sep-merge_gates2_swiglu",
+    "attn_alpha_channels": 2,
+    "attn_eps": 1e-16,
+    "attn_grid_resolution": [
+      8,
+      4
+    ],
+    "attn_hidden_channels": 2,
+    "attn_mask_rate": 0.0,
+    "attn_value_channels": 1,
+    "attn_weights_drop": 0.1,
+    "avg_degree": 23.395238876342773,
+    "avg_num_nodes": 77.81317,
+    "direct_prediction": true,
+    "drop_path_rate": 0.05,
+    "edge_channels": 4,
+    "enforce_max_neighbors_strictly": true,
+    "ffn_activation": "sep-merge_gates2_swiglu",
+    "ffn_drop": 0.0,
+    "ffn_grid_resolution": [
+      8,
+      8
+    ],
+    "ffn_hidden_channels": 4,
+    "gradient_checkpointing_block_list": [],
+    "lmax": 2,
+    "max_neighbors": 8,
+    "max_num_elements": 32,
+    "max_radius": 4.5,
+    "mmax": 1,
+    "norm_type": "merge_layer_norm",
+    "num_channels": 3,
+    "num_heads": 2,
+    "num_layers": 12,
+    "num_radial_basis": 8,
+    "otf_graph": false,
+    "proj_drop": 0.0,
+    "regress_forces": true,
+    "regress_stress": false,
+    "softcap": null,
+    "use_add_merge": false,
+    "use_atom_edge_embedding": true,
+    "use_attn_renorm": true,
+    "use_envelope": true,
+    "use_gate_force_head": true,
+    "use_grid_mlp": true,
+    "use_head_reg": false,
+    "use_pbc": false,
+    "use_pbc_single": false,
+    "use_rad_l_parametrization": true,
+    "value_drop": 0.0
+  },
+  "spec_architecture_id": "2a06ba93ff817feb",
+  "trainable_parameter_count": 17779,
+  "trainable_parameter_shapes": {
+    "node_modules.n0003.weight": [
+      32,
+      3
+    ],
+    "node_modules.n0005.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0006.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0007.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0008.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0009.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0010.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0011.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0012.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0013.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0014.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0015.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0016.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0017.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0018.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0020.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0021.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0022.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0023.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0024.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0025.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0026.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0027.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0028.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0029.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0030.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0031.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0032.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0033.weight": [
+      32,
+      4
+    ],
+    "node_modules.n0051.linear.bias": [
+      4
+    ],
+    "node_modules.n0051.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0052.linear.bias": [
+      4
+    ],
+    "node_modules.n0052.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0053.linear.bias": [
+      4
+    ],
+    "node_modules.n0053.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0054.linear.bias": [
+      4
+    ],
+    "node_modules.n0054.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0055.linear.bias": [
+      4
+    ],
+    "node_modules.n0055.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0056.linear.bias": [
+      4
+    ],
+    "node_modules.n0056.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0057.linear.bias": [
+      4
+    ],
+    "node_modules.n0057.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0058.linear.bias": [
+      4
+    ],
+    "node_modules.n0058.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0059.linear.bias": [
+      4
+    ],
+    "node_modules.n0059.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0060.linear.bias": [
+      4
+    ],
+    "node_modules.n0060.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0061.linear.bias": [
+      4
+    ],
+    "node_modules.n0061.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0062.linear.bias": [
+      4
+    ],
+    "node_modules.n0062.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0063.linear.bias": [
+      4
+    ],
+    "node_modules.n0063.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0064.linear.bias": [
+      4
+    ],
+    "node_modules.n0064.linear.weight": [
+      4,
+      16
+    ],
+    "node_modules.n0065.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0065.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0066.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0066.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0067.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0067.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0068.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0068.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0069.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0069.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0070.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0070.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0071.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0071.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0072.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0072.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0073.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0073.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0074.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0074.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0075.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0075.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0076.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0076.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0077.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0077.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0078.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0078.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0093.linear.bias": [
+      4
+    ],
+    "node_modules.n0093.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0094.linear.bias": [
+      4
+    ],
+    "node_modules.n0094.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0095.linear.bias": [
+      4
+    ],
+    "node_modules.n0095.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0096.linear.bias": [
+      4
+    ],
+    "node_modules.n0096.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0097.linear.bias": [
+      4
+    ],
+    "node_modules.n0097.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0098.linear.bias": [
+      4
+    ],
+    "node_modules.n0098.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0099.linear.bias": [
+      4
+    ],
+    "node_modules.n0099.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0100.linear.bias": [
+      4
+    ],
+    "node_modules.n0100.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0101.linear.bias": [
+      4
+    ],
+    "node_modules.n0101.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0102.linear.bias": [
+      4
+    ],
+    "node_modules.n0102.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0103.linear.bias": [
+      4
+    ],
+    "node_modules.n0103.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0104.linear.bias": [
+      4
+    ],
+    "node_modules.n0104.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0105.linear.bias": [
+      4
+    ],
+    "node_modules.n0105.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0106.linear.bias": [
+      4
+    ],
+    "node_modules.n0106.linear.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0107.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0107.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0108.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0108.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0109.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0109.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0110.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0110.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0111.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0111.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0112.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0112.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0113.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0113.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0114.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0114.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0115.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0115.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0116.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0116.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0117.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0117.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0118.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0118.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0119.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0119.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0120.layer_norm.bias": [
+      4
+    ],
+    "node_modules.n0120.layer_norm.weight": [
+      4
+    ],
+    "node_modules.n0135.linear.bias": [
+      18
+    ],
+    "node_modules.n0135.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0136.linear.bias": [
+      18
+    ],
+    "node_modules.n0136.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0137.linear.bias": [
+      18
+    ],
+    "node_modules.n0137.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0138.linear.bias": [
+      18
+    ],
+    "node_modules.n0138.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0139.linear.bias": [
+      18
+    ],
+    "node_modules.n0139.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0140.linear.bias": [
+      18
+    ],
+    "node_modules.n0140.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0141.linear.bias": [
+      18
+    ],
+    "node_modules.n0141.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0142.linear.bias": [
+      18
+    ],
+    "node_modules.n0142.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0143.linear.bias": [
+      18
+    ],
+    "node_modules.n0143.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0144.linear.bias": [
+      18
+    ],
+    "node_modules.n0144.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0145.linear.bias": [
+      18
+    ],
+    "node_modules.n0145.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0146.linear.bias": [
+      18
+    ],
+    "node_modules.n0146.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0147.linear.bias": [
+      18
+    ],
+    "node_modules.n0147.linear.weight": [
+      18,
+      4
+    ],
+    "node_modules.n0148.linear.bias": [
+      9
+    ],
+    "node_modules.n0148.linear.weight": [
+      9,
+      4
+    ],
+    "node_modules.n0154.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0154.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0160.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0160.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0160.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0165.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0165.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0166.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0166.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0166.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0168.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0175.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0175.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0179.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0179.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0182.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0182.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0183.linear.bias": [
+      8
+    ],
+    "node_modules.n0183.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0184.linear.bias": [
+      4
+    ],
+    "node_modules.n0184.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0187.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0198.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0202.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0202.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0206.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0206.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0212.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0212.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0212.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0217.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0217.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0218.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0218.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0218.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0220.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0227.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0227.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0231.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0231.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0234.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0234.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0235.linear.bias": [
+      4
+    ],
+    "node_modules.n0235.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0236.linear.bias": [
+      8
+    ],
+    "node_modules.n0236.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0240.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0250.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0254.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0254.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0258.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0258.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0264.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0264.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0264.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0269.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0269.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0269.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0270.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0270.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0272.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0279.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0279.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0283.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0283.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0284.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0284.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0287.linear.bias": [
+      4
+    ],
+    "node_modules.n0287.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0288.linear.bias": [
+      8
+    ],
+    "node_modules.n0288.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0292.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0302.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0306.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0306.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0310.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0310.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0316.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0316.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0316.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0321.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0321.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0322.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0322.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0322.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0324.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0331.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0331.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0335.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0335.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0336.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0336.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0339.linear.bias": [
+      8
+    ],
+    "node_modules.n0339.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0340.linear.bias": [
+      4
+    ],
+    "node_modules.n0340.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0342.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0355.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0358.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0358.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0362.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0362.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0368.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0368.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0368.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0373.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0373.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0374.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0374.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0374.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0376.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0383.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0383.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0387.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0387.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0390.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0390.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0391.linear.bias": [
+      4
+    ],
+    "node_modules.n0391.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0393.linear.bias": [
+      8
+    ],
+    "node_modules.n0393.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0397.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0407.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0410.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0410.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0414.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0414.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0420.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0420.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0420.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0425.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0425.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0426.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0426.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0426.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0428.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0435.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0435.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0439.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0439.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0441.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0441.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0444.linear.bias": [
+      4
+    ],
+    "node_modules.n0444.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0445.linear.bias": [
+      8
+    ],
+    "node_modules.n0445.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0448.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0459.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0462.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0462.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0466.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0466.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0472.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0472.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0472.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0477.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0477.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0477.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0478.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0478.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0480.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0487.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0487.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0491.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0491.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0492.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0492.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0495.linear.bias": [
+      4
+    ],
+    "node_modules.n0495.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0496.linear.bias": [
+      8
+    ],
+    "node_modules.n0496.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0499.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0511.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0514.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0514.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0518.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0518.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0524.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0524.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0524.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0529.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0529.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0530.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0530.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0530.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0532.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0539.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0539.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0543.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0543.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0544.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0544.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0548.linear.bias": [
+      4
+    ],
+    "node_modules.n0548.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0549.linear.bias": [
+      8
+    ],
+    "node_modules.n0549.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0550.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0563.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0566.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0566.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0570.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0570.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0576.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0576.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0576.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0581.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0581.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0581.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0582.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0582.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0584.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0591.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0591.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0595.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0595.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0596.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0596.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0600.linear.bias": [
+      4
+    ],
+    "node_modules.n0600.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0601.linear.bias": [
+      8
+    ],
+    "node_modules.n0601.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0603.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0614.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0618.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0618.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0622.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0622.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0628.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0628.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0628.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0633.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0633.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0634.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0634.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0634.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0636.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0643.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0643.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0647.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0647.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0650.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0650.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0651.linear.bias": [
+      4
+    ],
+    "node_modules.n0651.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0653.linear.bias": [
+      8
+    ],
+    "node_modules.n0653.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0654.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0667.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0670.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0670.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0674.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0674.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0680.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0680.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0680.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0685.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0685.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0685.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0686.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0686.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0688.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0695.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0695.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0699.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0699.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0702.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0702.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0704.linear.bias": [
+      4
+    ],
+    "node_modules.n0704.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0705.linear.bias": [
+      8
+    ],
+    "node_modules.n0705.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0707.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0718.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0722.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0722.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0726.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0726.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0732.fc_m0.bias": [
+      22
+    ],
+    "node_modules.n0732.fc_m0.weight": [
+      22,
+      18
+    ],
+    "node_modules.n0732.so2_m_linear.0.fc.weight": [
+      16,
+      12
+    ],
+    "node_modules.n0737.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0737.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0737.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0738.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0738.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0740.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0747.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0747.weight": [
+      3,
+      3,
+      2
+    ],
+    "node_modules.n0751.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0751.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0754.bias": [
+      1,
+      1,
+      4
+    ],
+    "node_modules.n0754.weight": [
+      3,
+      4,
+      3
+    ],
+    "node_modules.n0755.linear.bias": [
+      4
+    ],
+    "node_modules.n0755.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0757.linear.bias": [
+      8
+    ],
+    "node_modules.n0757.linear.weight": [
+      8,
+      3
+    ],
+    "node_modules.n0758.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0770.weight": [
+      4,
+      4
+    ],
+    "node_modules.n0774.bias": [
+      1,
+      1,
+      3
+    ],
+    "node_modules.n0774.weight": [
+      3,
+      3,
+      4
+    ],
+    "node_modules.n0778.norm.affine_bias": [
+      3
+    ],
+    "node_modules.n0778.norm.affine_weight": [
+      3,
+      3
+    ],
+    "node_modules.n0783.linear.bias": [
+      4
+    ],
+    "node_modules.n0783.linear.weight": [
+      4,
+      3
+    ],
+    "node_modules.n0788.fc_m0.bias": [
+      14
+    ],
+    "node_modules.n0788.fc_m0.weight": [
+      14,
+      18
+    ],
+    "node_modules.n0788.so2_m_linear.0.fc.weight": [
+      8,
+      12
+    ],
+    "node_modules.n0789.linear.bias": [
+      1
+    ],
+    "node_modules.n0789.linear.weight": [
+      1,
+      4
+    ],
+    "node_modules.n0796.fc_m0.bias": [
+      6
+    ],
+    "node_modules.n0796.fc_m0.weight": [
+      6,
+      6
+    ],
+    "node_modules.n0796.so2_m_linear.0.fc.weight": [
+      8,
+      4
+    ],
+    "node_modules.n0797.layer_norm.bias": [
+      2
+    ],
+    "node_modules.n0797.layer_norm.weight": [
+      2
+    ],
+    "node_modules.n0799.weight": [
+      2,
+      2
+    ],
+    "node_modules.n0805.bias": [
+      1,
+      1,
+      1
+    ],
+    "node_modules.n0805.weight": [
+      3,
+      1,
+      2
+    ]
+  },
+  "trainable_parameter_tensor_count": 486
+}

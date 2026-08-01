@@ -1,0 +1,37 @@
+{
+  "canonical_program_mapping": {
+    "node_modules.n0000.weight": "sphere_embedding.weight",
+    "node_modules.n0004.weight": "edge_degree_embedding.target_embedding.weight",
+    "node_modules.n0007.weight": "edge_degree_embedding.source_embedding.weight",
+    "node_modules.n0012.linear.bias": "edge_degree_embedding.rad_func.net.0.bias",
+    "node_modules.n0012.linear.weight": "edge_degree_embedding.rad_func.net.0.weight",
+    "node_modules.n0013.layer_norm.bias": "edge_degree_embedding.rad_func.net.1.bias",
+    "node_modules.n0013.layer_norm.weight": "edge_degree_embedding.rad_func.net.1.weight",
+    "node_modules.n0015.linear.bias": "edge_degree_embedding.rad_func.net.3.bias",
+    "node_modules.n0015.linear.weight": "edge_degree_embedding.rad_func.net.3.weight",
+    "node_modules.n0016.layer_norm.bias": "edge_degree_embedding.rad_func.net.4.bias",
+    "node_modules.n0016.layer_norm.weight": "edge_degree_embedding.rad_func.net.4.weight",
+    "node_modules.n0018.linear.bias": "edge_degree_embedding.rad_func.net.6.bias",
+    "node_modules.n0018.linear.weight": "edge_degree_embedding.rad_func.net.6.weight"
+  },
+  "coverage": 1.0,
+  "deterministic_buffers_are_regenerated": true,
+  "mapped_parameter_tensor_count": 13,
+  "original_program_mapping": {
+    "node_modules.atom_embedding.weight": "sphere_embedding.weight",
+    "node_modules.radial_linear0.linear.bias": "edge_degree_embedding.rad_func.net.0.bias",
+    "node_modules.radial_linear0.linear.weight": "edge_degree_embedding.rad_func.net.0.weight",
+    "node_modules.radial_linear1.linear.bias": "edge_degree_embedding.rad_func.net.3.bias",
+    "node_modules.radial_linear1.linear.weight": "edge_degree_embedding.rad_func.net.3.weight",
+    "node_modules.radial_linear2.linear.bias": "edge_degree_embedding.rad_func.net.6.bias",
+    "node_modules.radial_linear2.linear.weight": "edge_degree_embedding.rad_func.net.6.weight",
+    "node_modules.radial_norm0.layer_norm.bias": "edge_degree_embedding.rad_func.net.1.bias",
+    "node_modules.radial_norm0.layer_norm.weight": "edge_degree_embedding.rad_func.net.1.weight",
+    "node_modules.radial_norm1.layer_norm.bias": "edge_degree_embedding.rad_func.net.4.bias",
+    "node_modules.radial_norm1.layer_norm.weight": "edge_degree_embedding.rad_func.net.4.weight",
+    "node_modules.source_edge_embedding.weight": "edge_degree_embedding.source_embedding.weight",
+    "node_modules.target_edge_embedding.weight": "edge_degree_embedding.target_embedding.weight"
+  },
+  "trainable_parameter_tensor_count": 13,
+  "unmapped_parameter_names": []
+}

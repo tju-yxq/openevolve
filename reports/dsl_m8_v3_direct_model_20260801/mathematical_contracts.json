@@ -1,0 +1,22 @@
+{
+  "edge_frame_gate_activation": {
+    "gate_count": "lmax * channels invariant scalars, one per non-scalar degree and channel",
+    "input": "uniform l=0..lmax SO(3) coefficients in one m-primary edge frame",
+    "negative_test": "E_V3_EDGE_GATE_004 rejects a gate-count mismatch",
+    "transformation": "invariant gates scale fixed-degree edge-frame coefficients and preserve the represented SO(3) type"
+  },
+  "grid_invariant_product": {
+    "certification": "finite-grid empirical equivariance, not analytic exactness",
+    "input": "finite S2 samples [carrier, grid_point, channel] and invariant [carrier, channel] gates",
+    "runtime_broadcast": "invariant feature axes are flattened and singleton sampling axes are inserted explicitly"
+  },
+  "shared_final_norm": {
+    "consumers": [
+      "n0781",
+      "n0780",
+      "n0779"
+    ],
+    "node": "n0778",
+    "statement": "one SO(3)-equivariant final normalization result is aliased to both task heads"
+  }
+}

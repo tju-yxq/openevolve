@@ -1,0 +1,191 @@
+{
+  "claims": {
+    "all_nodes_are_core_primitives": true,
+    "all_parameters_bijectively_mapped": true,
+    "base_attention_without_weight_dropout_has_30_nodes": true,
+    "generic_primitive_lowering_used": true,
+    "normalized_attention_dsl_exported": true,
+    "official_constructor_bypass_used": false,
+    "official_small_attention_initialization_forward_and_gradients_aligned": true,
+    "real_official_yaml_imported": true,
+    "real_yaml_weight_dropout_is_an_explicit_extra_node": true,
+    "scope_is_single_attention": true
+  },
+  "identity": {
+    "backend_neutral_semantics": "backend-neutral-v21",
+    "backend_semantics": "e3nn-graph-lowering-registry-v23",
+    "compiler_semantics": "evoequilang-23",
+    "constructor_bypass": false,
+    "core_primitive_count": 102,
+    "dsl_language_version": "2.2.0",
+    "dsl_repository": {
+      "branch": "codex/v3-mapping",
+      "head": "4a1383e55069c71877f2a71d2fc44ab1ad807c31",
+      "path": "C:\\Users\\26517\\Documents\\中关村\\equivariant-nas",
+      "worktree_dirty": true,
+      "worktree_status_line_count": 142,
+      "worktree_status_sha256": "850a5a4cabd91595caa10ffd296a336770d517efef9cfe238a525019a0f7c9b2"
+    },
+    "evidence_version": "evoequilang-v3-official-attention-evidence@1",
+    "graph_class": "equivariant_nas.dsl.backends.e3nn_backend.E3NNGraphBackend.build.<locals>.CompiledE3NNGraph",
+    "lowering_rule_count": 102,
+    "normalized_dsl_architecture_id": "7365ad65b6957d9f",
+    "normalized_node_count": 31,
+    "normalized_node_ops": [
+      "core.categorical_embedding@2",
+      "core.categorical_embedding@2",
+      "core.endpoint_gather@2",
+      "core.endpoint_gather@2",
+      "core.equivariant_channel_concat@1",
+      "core.invariant_concat@1",
+      "core.scalar_linear@3",
+      "core.scalar_layer_norm@1",
+      "core.scalar_activation@1",
+      "core.scalar_linear@3",
+      "core.scalar_layer_norm@1",
+      "core.scalar_activation@1",
+      "core.scalar_linear@3",
+      "core.degreewise_invariant_scale@1",
+      "core.to_edge_frame@2",
+      "core.so2_linear@2",
+      "core.invariant_slice@1",
+      "core.invariant_slice@1",
+      "core.s2_gated_swiglu_merge@1",
+      "core.head_split@1",
+      "core.so2_linear@1",
+      "core.scalar_layer_norm@1",
+      "core.scalar_activation@1",
+      "core.headwise_scalar_contraction@3",
+      "core.segment_softmax@3",
+      "core.invariant_product@1",
+      "core.scalar_dropout@1",
+      "core.invariant_scale@2",
+      "core.from_edge_frame@2",
+      "core.segment_reduce@1",
+      "core.so3_linear@1"
+    ],
+    "official_attention_or_block_class_used_by_lowering": false,
+    "official_config": {
+      "path": "C:\\Users\\26517\\Documents\\中关村\\equiformer_v3_official\\experimental\\configs\\oc20\\2M\\equiformer_v3\\experiments\\base_N@8-L@6-C@128-attn-hidden@64-ffn@512-envelope-num-rbf@128_merge-layer-norm_gates2-gridmlp_use-gate-force-head_wd@1e-3-grad-clip@100_lin-ref-e@4.yml",
+      "sha256": "be4cd470bca6c9a4aed3f335cfc91f816c916935ff1fe6aa4d587a7a1654320c",
+      "spec_architecture_id": "b94ce8b3f571cd5d"
+    },
+    "official_v3_repository": {
+      "head": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+      "origin": "https://github.com/atomicarchitects/equiformer_v3.git",
+      "path": "C:\\Users\\26517\\Documents\\中关村\\equiformer_v3_official",
+      "source_sha256": {
+        "experimental/models/equiformer_v3/edge_rot_mat.py": "a836bb183f62e6627386d2c48e27f46cda6d18442425011eb600d68f1c5d5411",
+        "experimental/models/equiformer_v3/layer_norm.py": "013bebc842adbbaffb85bcdaea7b91efbd6a55872eca6b99a9d9142a153f3241",
+        "experimental/models/equiformer_v3/radial_function.py": "aa2180f5da10fd153de905e241593ab9a03ccc3c1c8e4550a735d0e4333bd4e6",
+        "experimental/models/equiformer_v3/so3.py": "af0910b9cbb035b942168179d130ca08e6ae9c4dab1693e72533a517cefeab97",
+        "experimental/models/equiformer_v3/transformer_block.py": "aa162e86b466010fc22c9007108fb94a7fb4e1c816a84a989ee67183cb89177b"
+      },
+      "worktree_dirty": true
+    },
+    "trainable_parameter_count": 8713920,
+    "trainable_parameter_shapes": {
+      "node_modules.n0000.weight": [
+        128,
+        128
+      ],
+      "node_modules.n0001.weight": [
+        128,
+        128
+      ],
+      "node_modules.n0006.linear.bias": [
+        128
+      ],
+      "node_modules.n0006.linear.weight": [
+        128,
+        384
+      ],
+      "node_modules.n0007.layer_norm.bias": [
+        128
+      ],
+      "node_modules.n0007.layer_norm.weight": [
+        128
+      ],
+      "node_modules.n0009.linear.bias": [
+        128
+      ],
+      "node_modules.n0009.linear.weight": [
+        128,
+        128
+      ],
+      "node_modules.n0010.layer_norm.bias": [
+        128
+      ],
+      "node_modules.n0010.layer_norm.weight": [
+        128
+      ],
+      "node_modules.n0012.linear.bias": [
+        1792
+      ],
+      "node_modules.n0012.linear.weight": [
+        1792,
+        128
+      ],
+      "node_modules.n0015.fc_m0.bias": [
+        1600
+      ],
+      "node_modules.n0015.fc_m0.weight": [
+        1600,
+        1792
+      ],
+      "node_modules.n0015.so2_m_linear.0.fc.weight": [
+        1536,
+        1536
+      ],
+      "node_modules.n0015.so2_m_linear.1.fc.weight": [
+        1280,
+        1280
+      ],
+      "node_modules.n0020.fc_m0.bias": [
+        896
+      ],
+      "node_modules.n0020.fc_m0.weight": [
+        896,
+        448
+      ],
+      "node_modules.n0020.so2_m_linear.0.fc.weight": [
+        1536,
+        384
+      ],
+      "node_modules.n0020.so2_m_linear.1.fc.weight": [
+        1280,
+        320
+      ],
+      "node_modules.n0021.layer_norm.bias": [
+        64
+      ],
+      "node_modules.n0021.layer_norm.weight": [
+        64
+      ],
+      "node_modules.n0023.weight": [
+        8,
+        64
+      ],
+      "node_modules.n0030.bias": [
+        1,
+        1,
+        128
+      ],
+      "node_modules.n0030.weight": [
+        7,
+        128,
+        128
+      ]
+    },
+    "trainable_parameter_tensor_count": 25
+  },
+  "next_required_work": [
+    "validate a multi-layer backbone against the official constructor",
+    "validate the energy head and the full energy-force model",
+    "align nonzero stochastic paths and train/eval RNG",
+    "implement checkpoint import, stress output, and short training alignment"
+  ],
+  "parameter_mapping_coverage": 1.0,
+  "pytest_summary": "6 passed; operator 4 passed; joint 81 passed; full 351 passed, 3 skipped",
+  "status": "official_v3_single_attention_primitive_lowering_complete"
+}

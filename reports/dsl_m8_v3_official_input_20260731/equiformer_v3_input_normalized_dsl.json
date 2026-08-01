@@ -1,0 +1,884 @@
+{
+  "annotations": {
+    "constructor_bypass": false,
+    "numerical_scope": "official input embedding and EdgeDegreeEmbedding expressed by core primitives",
+    "official_source_commit": "a7300c58df683dc99cb48027d5bfd4c887486c48",
+    "parameter_mapping": {
+      "node_modules.atom_embedding.weight": "sphere_embedding.weight",
+      "node_modules.radial_linear0.linear.bias": "edge_degree_embedding.rad_func.net.0.bias",
+      "node_modules.radial_linear0.linear.weight": "edge_degree_embedding.rad_func.net.0.weight",
+      "node_modules.radial_linear1.linear.bias": "edge_degree_embedding.rad_func.net.3.bias",
+      "node_modules.radial_linear1.linear.weight": "edge_degree_embedding.rad_func.net.3.weight",
+      "node_modules.radial_linear2.linear.bias": "edge_degree_embedding.rad_func.net.6.bias",
+      "node_modules.radial_linear2.linear.weight": "edge_degree_embedding.rad_func.net.6.weight",
+      "node_modules.radial_norm0.layer_norm.bias": "edge_degree_embedding.rad_func.net.1.bias",
+      "node_modules.radial_norm0.layer_norm.weight": "edge_degree_embedding.rad_func.net.1.weight",
+      "node_modules.radial_norm1.layer_norm.bias": "edge_degree_embedding.rad_func.net.4.bias",
+      "node_modules.radial_norm1.layer_norm.weight": "edge_degree_embedding.rad_func.net.4.weight",
+      "node_modules.source_edge_embedding.weight": "edge_degree_embedding.source_embedding.weight",
+      "node_modules.target_edge_embedding.weight": "edge_degree_embedding.target_embedding.weight"
+    },
+    "reference_backend": "equiformer_v3_official_input"
+  },
+  "constraints": [],
+  "inputs": [
+    {
+      "name": "atomic_numbers",
+      "type": {
+        "carrier": "node",
+        "dtype": "int64",
+        "feature_role": "species",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "categorical_tensor",
+        "labels": [],
+        "schema_version": "evoequilang-value-types-v2@1",
+        "vocabulary_size": 128
+      }
+    },
+    {
+      "name": "positions",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "coordinate_dimension": 3,
+        "dtype": "float32",
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "affine_point",
+        "measure": "angstrom",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "source_index",
+      "type": {
+        "allows_empty_targets": true,
+        "endpoint": "source",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "node",
+        "target_carrier": "edge",
+        "target_size": null
+      }
+    },
+    {
+      "name": "target_index",
+      "type": {
+        "allows_empty_targets": true,
+        "endpoint": "target",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "node",
+        "target_carrier": "edge",
+        "target_size": null
+      }
+    },
+    {
+      "name": "target_segment",
+      "type": {
+        "allows_empty_targets": true,
+        "endpoint": "segment",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "index_dtype": "int64",
+        "kind": "index_map",
+        "schema_version": "evoequilang-value-types-v2@1",
+        "sorted_by_target": false,
+        "source_carrier": "edge",
+        "target_carrier": "node",
+        "target_size": null
+      }
+    },
+    {
+      "name": "lattice",
+      "type": {
+        "carrier": "graph",
+        "dtype": "float32",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "handedness": "right",
+        "kind": "lattice",
+        "lattice_id": "v3_cell",
+        "matrix_convention": "row_vectors",
+        "measure": "angstrom",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "lattice_shift",
+      "type": {
+        "carrier": "edge",
+        "convention": "source_image",
+        "dtype": "int64",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "lattice_shift",
+        "lattice_id": "v3_cell",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    }
+  ],
+  "language_version": "2.1.0",
+  "nodes": [
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "channel",
+        "dtype": "float32",
+        "embedding_dim": 128
+      },
+      "declared_types": {},
+      "id": "n0000",
+      "inputs": {
+        "x": "input:atomic_numbers"
+      },
+      "op": "core.categorical_embedding@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0001",
+      "inputs": {
+        "index": "input:source_index",
+        "x": "input:atomic_numbers"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0002",
+      "inputs": {
+        "index": "input:target_index",
+        "x": "input:atomic_numbers"
+      },
+      "op": "core.endpoint_gather@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0003",
+      "inputs": {
+        "lattice": "input:lattice",
+        "lattice_shift": "input:lattice_shift",
+        "positions": "input:positions",
+        "source_index": "input:source_index",
+        "target_index": "input:target_index"
+      },
+      "op": "core.periodic_displacement@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 128,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0004",
+      "inputs": {
+        "x": "n0002"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0005",
+      "inputs": {
+        "vector": "n0003"
+      },
+      "op": "core.distance@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0006",
+      "inputs": {
+        "x": "n0000"
+      },
+      "op": "core.flatten_invariant_axes@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "edge_channel",
+        "dtype": "float32",
+        "embedding_dim": 128,
+        "init_max": 0.001,
+        "init_min": -0.001
+      },
+      "declared_types": {},
+      "id": "n0007",
+      "inputs": {
+        "x": "n0001"
+      },
+      "op": "core.categorical_embedding@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "radial_basis",
+        "basis_width_scalar": 2.0,
+        "construction_dtype": "float32",
+        "num_basis": 128,
+        "start": 0.0,
+        "stop": 12.0
+      },
+      "declared_types": {},
+      "id": "n0008",
+      "inputs": {
+        "distance": "n0005"
+      },
+      "op": "core.fixed_gaussian_radial_basis@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "cutoff": 12.0,
+        "order": 5
+      },
+      "declared_types": {},
+      "id": "n0009",
+      "inputs": {
+        "x": "n0005"
+      },
+      "op": "core.cutoff_envelope@2",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "out_irreps": "128x0+128x1+128x2+128x3+128x4+128x5+128x6"
+      },
+      "declared_types": {},
+      "id": "n0010",
+      "inputs": {
+        "x": "n0006"
+      },
+      "op": "core.irrep_pad@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "edge_input",
+        "feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0011",
+      "inputs": {
+        "xs": [
+          "n0008",
+          "n0007",
+          "n0004"
+        ]
+      },
+      "op": "core.invariant_concat@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "edge_input",
+        "bias": true,
+        "out_axis": "edge_hidden",
+        "out_features": 128,
+        "output_axis_role": "channel",
+        "output_feature_role": "channel"
+      },
+      "declared_types": {},
+      "id": "n0012",
+      "inputs": {
+        "x": "n0011"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0013",
+      "inputs": {
+        "x": "n0012"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0014",
+      "inputs": {
+        "x": "n0013"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_features": 128
+      },
+      "declared_types": {},
+      "id": "n0015",
+      "inputs": {
+        "x": "n0014"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "affine": true,
+        "axis": "edge_hidden",
+        "bias": true,
+        "epsilon": 1e-05
+      },
+      "declared_types": {},
+      "id": "n0016",
+      "inputs": {
+        "x": "n0015"
+      },
+      "op": "core.scalar_layer_norm@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "activation": "silu"
+      },
+      "declared_types": {},
+      "id": "n0017",
+      "inputs": {
+        "x": "n0016"
+      },
+      "op": "core.scalar_activation@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "axis": "edge_hidden",
+        "bias": true,
+        "out_axis": "degree_channel",
+        "out_features": 896,
+        "output_axis_role": "coefficient",
+        "output_feature_role": "coefficient"
+      },
+      "declared_types": {},
+      "id": "n0018",
+      "inputs": {
+        "x": "n0017"
+      },
+      "op": "core.scalar_linear@3",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0019",
+      "inputs": {
+        "value": "n0018",
+        "weight": "n0009"
+      },
+      "op": "core.invariant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "mmax": 2,
+        "out_irreps": "128x0+128x1+128x2+128x3+128x4+128x5+128x6",
+        "use_rotation_mask": false
+      },
+      "declared_types": {},
+      "id": "n0020",
+      "inputs": {
+        "amplitudes": "n0019",
+        "direction": "n0003"
+      },
+      "op": "core.axisymmetric_spherical_lift@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "normalization": "none",
+        "reduce": "sum"
+      },
+      "declared_types": {},
+      "id": "n0021",
+      "inputs": {
+        "index": "input:target_segment",
+        "x": "n0020"
+      },
+      "op": "core.segment_reduce@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {
+        "factor": 0.042743739667954334
+      },
+      "declared_types": {},
+      "id": "n0022",
+      "inputs": {
+        "x": "n0021"
+      },
+      "op": "core.constant_scale@1",
+      "outputs": [
+        "out"
+      ]
+    },
+    {
+      "annotations": {},
+      "attrs": {},
+      "declared_types": {},
+      "id": "n0023",
+      "inputs": {
+        "left": "n0010",
+        "right": "n0022"
+      },
+      "op": "core.residual_add@2",
+      "outputs": [
+        "out"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "node_embedding",
+      "source": "n0023",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "node",
+        "dtype": "float32",
+        "equivariance_level": 2,
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "128x0+128x1+128x2+128x3+128x4+128x5+128x6",
+        "kind": "equivariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "source_atomic_numbers",
+      "source": "n0001",
+      "type": {
+        "carrier": "edge",
+        "dtype": "int64",
+        "feature_role": "species",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "categorical_tensor",
+        "labels": [],
+        "schema_version": "evoequilang-value-types-v2@1",
+        "vocabulary_size": 128
+      }
+    },
+    {
+      "name": "target_atomic_numbers",
+      "source": "n0002",
+      "type": {
+        "carrier": "edge",
+        "dtype": "int64",
+        "feature_role": "species",
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "kind": "categorical_tensor",
+        "labels": [],
+        "schema_version": "evoequilang-value-types-v2@1",
+        "vocabulary_size": 128
+      }
+    },
+    {
+      "name": "edge_radial",
+      "source": "n0008",
+      "type": {
+        "axes": [
+          "radial_basis"
+        ],
+        "axis_specs": [
+          {
+            "broadcastable": false,
+            "name": "radial_basis",
+            "order": 0,
+            "role": "basis",
+            "sharing": "independent",
+            "size": 128
+          }
+        ],
+        "carrier": "edge",
+        "dtype": "float32",
+        "equivariance_level": 2,
+        "feature_role": "basis",
+        "frame": {
+          "kind": "invariant",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "128x0",
+        "kind": "invariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "edge_vector",
+      "source": "n0003",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "edge",
+        "dtype": "float32",
+        "equivariance_level": 2,
+        "frame": {
+          "kind": "global",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "1x1",
+        "kind": "equivariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "angstrom",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    },
+    {
+      "name": "edge_envelope",
+      "source": "n0009",
+      "type": {
+        "axes": [],
+        "axis_specs": [],
+        "carrier": "edge",
+        "dtype": "float32",
+        "equivariance_level": 2,
+        "feature_role": "channel",
+        "frame": {
+          "kind": "invariant",
+          "reference": ""
+        },
+        "group": {
+          "dimension": 3,
+          "family": "SO3",
+          "order": 0,
+          "periodicity": "lattice",
+          "permutation": "node_set",
+          "translation": "relative_coordinates"
+        },
+        "irreps": "1x0",
+        "kind": "invariant_tensor",
+        "layout": {
+          "channel_order": [],
+          "coefficient_order": "canonical",
+          "parity_convention": "group_native",
+          "resolution_specs": [],
+          "storage": "irrep_major",
+          "truncation_state": "full"
+        },
+        "measure": "dimensionless",
+        "schema_version": "evoequilang-value-types-v2@1"
+      }
+    }
+  ],
+  "parameters": {
+    "equiformer_v3_spec": {
+      "alpha_drop": 0.0,
+      "attn_activation": "sep-merge_gates2_swiglu",
+      "attn_alpha_channels": 64,
+      "attn_eps": 1e-16,
+      "attn_grid_resolution": [
+        20,
+        8
+      ],
+      "attn_hidden_channels": 64,
+      "attn_mask_rate": 0.0,
+      "attn_value_channels": 16,
+      "attn_weights_drop": 0.1,
+      "avg_degree": 23.395238876342773,
+      "avg_num_nodes": 77.81317,
+      "direct_prediction": true,
+      "drop_path_rate": 0.05,
+      "edge_channels": 128,
+      "enforce_max_neighbors_strictly": true,
+      "ffn_activation": "sep-merge_gates2_swiglu",
+      "ffn_drop": 0.0,
+      "ffn_grid_resolution": [
+        20,
+        20
+      ],
+      "ffn_hidden_channels": 512,
+      "gradient_checkpointing_block_list": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "lmax": 6,
+      "max_neighbors": 20,
+      "max_num_elements": 128,
+      "max_radius": 12.0,
+      "mmax": 2,
+      "norm_type": "merge_layer_norm",
+      "num_channels": 128,
+      "num_heads": 8,
+      "num_layers": 8,
+      "num_radial_basis": 128,
+      "otf_graph": true,
+      "proj_drop": 0.0,
+      "regress_forces": true,
+      "regress_stress": false,
+      "softcap": null,
+      "use_add_merge": false,
+      "use_atom_edge_embedding": true,
+      "use_attn_renorm": true,
+      "use_envelope": true,
+      "use_gate_force_head": true,
+      "use_grid_mlp": true,
+      "use_head_reg": false,
+      "use_pbc": true,
+      "use_pbc_single": false,
+      "use_rad_l_parametrization": true,
+      "value_drop": 0.0
+    },
+    "input_adapter": {
+      "edge_vector": "pos[source]-pos[target]+official_cell_offset",
+      "pbc_lattice_shift": "official_cell_offsets"
+    },
+    "lowering_contract": {
+      "deferred_initialization": "post_all_module_construction_in_declared_order",
+      "initializer_schedule": [
+        {
+          "after_node": "n0004",
+          "nodes": [
+            "n0007",
+            "n0004"
+          ]
+        }
+      ],
+      "module_construction_order": [
+        "n0000",
+        "n0008",
+        "n0009",
+        "n0020",
+        "n0001",
+        "n0002",
+        "n0007",
+        "n0004",
+        "n0011",
+        "n0012",
+        "n0013",
+        "n0014",
+        "n0015",
+        "n0016",
+        "n0017",
+        "n0018",
+        "n0019",
+        "n0021",
+        "n0022",
+        "n0006",
+        "n0010",
+        "n0023",
+        "n0003",
+        "n0005"
+      ]
+    }
+  },
+  "program_id": "equiformer_v3_input_b94ce8b3f571cd5d",
+  "task_contract": "equiformer_v3_official_input"
+}

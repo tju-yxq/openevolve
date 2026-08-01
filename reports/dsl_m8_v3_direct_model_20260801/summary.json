@@ -1,0 +1,60 @@
+{
+  "evidence_files": {
+    "lowering_manifest": "lowering_manifest.json",
+    "mathematical_contracts": "mathematical_contracts.json",
+    "model_identity": "model_identity.json",
+    "normalized_dsl": "equiformer_v3_direct_model_normalized_dsl.json",
+    "runtime_smoke": "runtime_smoke.json",
+    "support_report": "support_report.json"
+  },
+  "identity": {
+    "compiled_module_count": 329,
+    "constructor_bypass": false,
+    "core_primitive_count": 102,
+    "lowering_rule_count": 102,
+    "normalized_dsl_architecture_id": "b4ac695d93450a51",
+    "normalized_node_count": 807,
+    "parameter_state_sha256": "58777105341569e4898fcf94318bfb9cd4ae650d8f57e70960bc955779937427",
+    "spec_architecture_id": "2a06ba93ff817feb",
+    "trainable_parameter_count": 17779,
+    "trainable_parameter_tensor_count": 486
+  },
+  "not_proved": [
+    "full-model parameter-by-parameter equality with the official constructor",
+    "full-model forward and gradient numerical equality with the official constructor",
+    "checkpoint loading equality",
+    "train/eval RNG equality under nonzero stochastic rates",
+    "stress head",
+    "end-to-end optimizer/training trajectory equality"
+  ],
+  "proved": [
+    "complete direct energy+force graph is represented by typed primitive nodes",
+    "one final equivariant normalization is shared by both heads",
+    "canonicalized graph has complete generic Lowering coverage",
+    "generic Lowering builds and executes energy and force outputs without an official block/model constructor",
+    "one backward pass reaches positions and every trainable parameter tensor"
+  ],
+  "runtime_smoke": {
+    "all_parameter_gradients_present": true,
+    "energy_finite": true,
+    "energy_shape": [
+      1,
+      1
+    ],
+    "energy_value": [
+      [
+        0.013336642645299435
+      ]
+    ],
+    "force_l2_norm": 0.05174225568771362,
+    "force_shape": [
+      4,
+      3
+    ],
+    "forces_finite": true,
+    "parameter_gradient_tensor_count": 486,
+    "parameter_tensor_count": 486,
+    "position_gradient_finite": true
+  },
+  "status": "v3_direct_energy_force_primitive_lowering_runtime_smoke_passed"
+}

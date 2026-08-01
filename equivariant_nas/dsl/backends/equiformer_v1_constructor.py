@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any, Dict, Tuple
 
-from ...spec import ArchitectureSpec
+from .equiformer_v1_spec import ArchitectureSpec
 from ..diagnostics import DSLValidationError, Diagnostic
 from ..factors import equiformer_v1_capability_profile
 
@@ -27,9 +27,9 @@ def _allowed_paths() -> Tuple[str, ...]:
 
 
 def effective_v1_spec(program) -> ArchitectureSpec:
-    if program.annotations.get("legacy_backend") != "equiformer_v1":
+    if program.annotations.get("reference_backend") != "equiformer_v1":
         raise DSLValidationError([Diagnostic("E_V1_CONSTRUCTOR_001", "program is not an imported Equiformer V1 architecture")])
-    base = ArchitectureSpec.from_dict(program.annotations["legacy_architecture_spec"])
+    base = ArchitectureSpec.from_dict(program.annotations["equiformer_v1_spec"])
     allowed = set(_allowed_paths())
     unknown = sorted(key for key in program.parameters if key.startswith("constructor.") and key not in allowed)
     if unknown:
@@ -59,7 +59,7 @@ def effective_v1_spec(program) -> ArchitectureSpec:
 
 
 def changed_constructor_parameters(program) -> Tuple[str, ...]:
-    base = ArchitectureSpec.from_dict(program.annotations["legacy_architecture_spec"])
+    base = ArchitectureSpec.from_dict(program.annotations["equiformer_v1_spec"])
     baseline = baseline_constructor_parameters(base)
     return tuple(sorted(
         key for key in _allowed_paths()
@@ -68,7 +68,7 @@ def changed_constructor_parameters(program) -> Tuple[str, ...]:
 
 
 def restored_constructor_parameters(program):
-    base = ArchitectureSpec.from_dict(program.annotations["legacy_architecture_spec"])
+    base = ArchitectureSpec.from_dict(program.annotations["equiformer_v1_spec"])
     parameters = dict(program.parameters)
     parameters.update(baseline_constructor_parameters(base))
     return replace(program, parameters=parameters)

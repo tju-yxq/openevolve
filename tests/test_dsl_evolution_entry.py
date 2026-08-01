@@ -52,7 +52,7 @@ def test_used_factor_patch_signatures_only_include_valid_validation_only_choices
 
 def _manifest_with_capabilities(constructor_capability):
     return {
-        "compiler_semantics_version": "evoequilang-3",
+        "compiler_semantics_version": "evoequilang-4",
         "rewrite_registry_hash": "rules-a",
         "region_registry": [
             {"factor_id": "F2.2", "region_id": "radial", "backend_capability": constructor_capability},

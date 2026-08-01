@@ -12,13 +12,13 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ..budget import BudgetExceeded, BudgetLedger
-from ..evaluation import BASELINE_PARAMETERS
+from ..budget import BudgetLedger
+from .constants import BASELINE_PARAMETERS
 from .compiler import Compiler
 from .registry import core_registry
 from .reference_motifs import reference_motif_registry
 from .serialization import load_program, load_task_contract
-from .backends import build_qm9_dsl_model
+from .backends.qm9_model import build_qm9_dsl_model
 
 
 def _count_parameters(model) -> int:
@@ -218,6 +218,7 @@ def evaluate_dsl_candidate_pipeline(
     lr_schedule_origin_step: int = 0,
     equiformer_v2_root: str = "",
     task_contract_path: str = "",
+    allow_experimental_generic_lowering: bool = False,
 ) -> Dict[str, Any]:
     project = Path(project_root)
     if equiformer_root not in sys.path:
@@ -228,6 +229,11 @@ def evaluate_dsl_candidate_pipeline(
     compiler = Compiler(core_registry(), reference_motif_registry())
     artifact = compiler.analyze(program, task)
     lowering = compiler.plan_lowering(program, task)
+    formal_ranking_admitted = lowering.mode in {
+        "exact_reference",
+        "exact_constructor",
+        "exact_hybrid",
+    }
     architecture_id = artifact.architecture_id
     subset_fingerprint = ""
     if train_subset_file:
@@ -281,6 +287,7 @@ def evaluate_dsl_candidate_pipeline(
         "backend_semantics_version": lowering.backend_semantics_version,
         "allow_data_transition": bool(allow_data_transition),
         "resume_model_only": bool(resume_model_only),
+        "allow_experimental_generic_lowering": bool(allow_experimental_generic_lowering),
     }
     protocol_id = hashlib.sha256(json.dumps(protocol, sort_keys=True).encode("utf-8")).hexdigest()[:10]
     run_dir = project / "runs" / "dsl_candidates" / architecture_id / (
@@ -323,6 +330,12 @@ def evaluate_dsl_candidate_pipeline(
         "test_evaluated": False,
         "lowering_plan": lowering.to_dict(),
         "lowering_plan_hash": lowering.content_hash(),
+        "experimental_generic_lowering": bool(
+            lowering.mode == "experimental_node_graph"
+            and allow_experimental_generic_lowering
+        ),
+        "selection_eligible": formal_ranking_admitted,
+        "formal_ranking_admitted": formal_ranking_admitted,
     }
     resolved_budget = float(gpu_budget_hours) if gpu_budget_hours is not None else float(
         os.environ.get("NAS_GPU_BUDGET_HOURS", "5.0")
@@ -360,6 +373,7 @@ def evaluate_dsl_candidate_pipeline(
             equiformer_root=equiformer_root,
             equiformer_v2_root=equiformer_v2_root or None,
             task=task,
+            allow_experimental_generic_lowering=allow_experimental_generic_lowering,
         )
         parameter_count = _count_parameters(model)
         parameter_ratio = parameter_count / BASELINE_PARAMETERS
@@ -387,6 +401,7 @@ def evaluate_dsl_candidate_pipeline(
             "backend_family": getattr(model, "backend_family", lowering.backend_family),
             "backend_semantics": getattr(model, "backend_semantics_version", lowering.backend_semantics_version),
             "lowering_mode": getattr(model, "lowering_mode", lowering.mode),
+            "generic_lowering_admission": getattr(model, "generic_lowering_admission", {}),
         })
         if parameter_ratio > parameter_ratio_limit:
             raise ValueError(
@@ -490,6 +505,8 @@ def evaluate_dsl_candidate_pipeline(
                 command.extend(["--dsl-task-contract", str(Path(task_contract_path).resolve())])
             if equiformer_v2_root:
                 command.extend(["--equiformer-v2-root", equiformer_v2_root])
+            if allow_experimental_generic_lowering:
+                command.append("--allow-experimental-generic-lowering")
             if train_subset_file:
                 command.extend(["--train-subset-file", train_subset_file])
             if effective_resume:
@@ -555,6 +572,7 @@ def evaluate_dsl_candidate_pipeline(
                     equiformer_root=equiformer_root,
                     equiformer_v2_root=equiformer_v2_root or None,
                     task=task,
+                    allow_experimental_generic_lowering=allow_experimental_generic_lowering,
                 ).to("cuda")
                 checkpoint = torch.load(train_dir / "checkpoint_last.pth", map_location="cpu")
                 audited.load_state_dict(checkpoint["model"])

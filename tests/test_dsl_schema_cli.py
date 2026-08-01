@@ -7,7 +7,7 @@ import pytest
 from equivariant_nas.dsl import import_equiformer_v1
 from equivariant_nas.dsl.schema import architecture_program_schema
 from equivariant_nas.dsl.serialization import save_program
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
 
 
 def test_exported_json_schema_accepts_reference_program():

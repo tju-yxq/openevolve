@@ -14,8 +14,8 @@ from equivariant_nas.dsl import import_equiformer_v1
 from equivariant_nas.dsl import ResourceContract, TaskContract
 from equivariant_nas.dsl.schema import architecture_program_schema
 from equivariant_nas.dsl.serialization import save_program, save_task_contract
-from equivariant_nas.evaluation import BASELINE_PARAMETERS
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
+from equivariant_nas.dsl.constants import BASELINE_PARAMETERS
 
 
 def main():

@@ -1,10 +1,12 @@
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
 from equivariant_nas.dsl import (
     ArchitectureProgram,
     Carrier,
+    Compiler,
     EquivariantType,
     GroupSpec,
     InputPort,
@@ -18,7 +20,7 @@ from equivariant_nas.dsl import (
     reference_motif_registry,
 )
 from equivariant_nas.dsl.backends import E3NNGraphBackend, EquiformerV2GraphBackend, find_v2_fusion_patterns
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
 
 
 def test_v1_representation_flow_is_covered_by_node_backend_operations():
@@ -27,16 +29,15 @@ def test_v1_representation_flow_is_covered_by_node_backend_operations():
     assert not report.unsupported_nodes
     # Local orchestration environments may intentionally omit e3nn.
     assert set(report.missing_dependencies).issubset({"torch", "e3nn"})
+    assert dict(report.node_exactness)
+    assert set(dict(report.node_exactness)) == {node.id for node in program.nodes}
 
 
-def test_v2_so2_path_is_rejected_until_its_numerical_backend_is_available():
-    source = import_equiformer_v1(baseline_spec())
-    # Presence of a V2 primitive is enough to prove support reporting is explicit.
-    from dataclasses import replace
-    changed_node = replace(source.nodes[1], op="core.so2_convolution")
-    changed = replace(source, nodes=source.nodes[:1] + (changed_node,) + source.nodes[2:])
+def test_v2_so2_path_reports_its_reference_dependency_when_root_is_missing():
+    changed = _expanded_v2_program()
     report = E3NNGraphBackend(core_registry()).support_report(changed)
-    assert (changed_node.id, "core.so2_convolution@1") in report.unsupported_nodes
+    assert not report.unsupported_nodes
+    assert "equiformer_v2_reference" in report.missing_dependencies
 
 
 def _expanded_v2_program():
@@ -71,11 +72,18 @@ def test_v2_graph_backend_recognizes_only_the_closed_edge_frame_pattern(tmp_path
     package.mkdir(parents=True)
     for name in ("so3.py", "so2_ops.py", "edge_rot_mat.py", "activation.py"):
         (package / name).write_text("", encoding="utf-8")
-    report = EquiformerV2GraphBackend(registry, str(tmp_path)).support_report(program, inference)
+    backend = EquiformerV2GraphBackend(registry, str(tmp_path))
+    report = backend.support_report(program, inference)
     assert not report.unsupported_nodes
+    exactness = dict(report.node_exactness)
+    assert all(exactness[node_id] == "library_exact_fusion" for node_id in patterns[0].node_ids)
+    plan = Compiler(registry).plan_lowering(program, graph_backend=backend)
+    assert plan.backend_family == "equiformer_v2_graph"
+    assert plan.details["backend_support"]["supported"] is True
+    assert set(patterns[0].node_ids) <= set(plan.details["certified_nodes"])
 
 
-def test_v2_fusion_rejects_an_intermediate_value_with_an_external_consumer(tmp_path):
+def test_v2_backend_falls_back_to_independent_rules_for_an_external_consumer():
     program = _expanded_v2_program()
     registry = core_registry()
     base_inference = TypeChecker(registry).check(program)
@@ -88,5 +96,9 @@ def test_v2_fusion_rejects_an_intermediate_value_with_an_external_consumer(tmp_p
     )
     inference = TypeChecker(registry).check(branched)
     assert not find_v2_fusion_patterns(branched, inference)
-    report = EquiformerV2GraphBackend(registry, str(tmp_path)).support_report(branched, inference)
-    assert any(node_id == so2.id for node_id, _ in report.unsupported_nodes)
+    root = str(Path(__file__).resolve().parents[2] / "equiformer_v3")
+    if not Path(root).is_dir():
+        pytest.skip("Equiformer V2 reference source is unavailable")
+    report = EquiformerV2GraphBackend(registry, root).support_report(branched, inference)
+    assert not report.unsupported_nodes
+    assert report.supported

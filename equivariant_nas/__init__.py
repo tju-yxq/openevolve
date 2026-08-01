@@ -1,6 +1,5 @@
-"""Symmetry-preserving architecture self-evolution for Equiformer."""
+"""Typed, symmetry-preserving architecture evolution for Equiformer."""
 
-from .spec import ArchitectureSpec, EvolutionFactor
+from .dsl import ArchitectureProgram, Compiler, DSLGenerationEngine, TypedPatch
 
-__all__ = ["ArchitectureSpec", "EvolutionFactor"]
-
+__all__ = ["ArchitectureProgram", "Compiler", "DSLGenerationEngine", "TypedPatch"]

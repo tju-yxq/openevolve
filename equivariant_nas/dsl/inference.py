@@ -8,15 +8,17 @@ from typing import Dict, List, Mapping, MutableMapping, Optional, Sequence, Tupl
 from .ast import ArchitectureProgram, Node
 from .diagnostics import DSLValidationError, Diagnostic
 from .obligations import ObligationKind, ProofObligation
+from .parameters import ParameterContract
 from .registry import PrimitiveRegistry
-from .types import EquivariantType
+from .types import ValueType, value_type_group_families
 
 
 @dataclass(frozen=True)
 class InferenceResult:
-    value_types: Mapping[str, EquivariantType]
+    value_types: Mapping[str, ValueType]
     node_order: Tuple[str, ...]
     obligations: Tuple[ProofObligation, ...]
+    parameter_contracts: Mapping[str, Tuple[ParameterContract, ...]]
 
     @property
     def open_obligations(self) -> Tuple[ProofObligation, ...]:
@@ -42,14 +44,16 @@ class TypeChecker:
                     repairs=("rewire a live consumer or program output to the intended node", "remove the dead subgraph"),
                 )
             ])
-        values: Dict[str, EquivariantType] = {
+        values: Dict[str, ValueType] = {
             "input:{}".format(item.name): item.value_type for item in program.inputs
         }
         obligations: List[ProofObligation] = []
+        parameter_contracts: Dict[str, Tuple[ParameterContract, ...]] = {}
 
         for node_id in order:
             node = node_by_id[node_id]
             definition = self.registry.resolve(node.op)
+            attrs = definition.canonical_attrs(node.id, node.attrs)
             resolved = {
                 port: tuple(self._resolve_reference(ref, values, node) for ref in refs)
                 for port, refs in node.inputs.items()
@@ -66,14 +70,17 @@ class TypeChecker:
                     )
                 ])
             input_families = {
-                value.group.family for port_values in resolved.values() for value in port_values
+                family
+                for port_values in resolved.values()
+                for value in port_values
+                for family in value_type_group_families(value)
             }
             unsupported = input_families - set(definition.group_families)
             if unsupported:
                 raise DSLValidationError([
                     Diagnostic("E_GROUP_008", "primitive does not support input group", node_id=node.id, details={"groups": sorted(unsupported)})
                 ])
-            inferred, created = definition.type_rule(node.id, resolved, node.attrs)
+            inferred, created = definition.type_rule(node.id, resolved, attrs)
             if set(inferred) != set(definition.output_ports):
                 raise DSLValidationError([
                     Diagnostic("E_REGISTRY_003", "primitive type rule returned incorrect output ports", node_id=node.id)
@@ -104,6 +111,12 @@ class TypeChecker:
                 values["{}:{}".format(node.id, output_name)] = output_type
                 if len(node.outputs) == 1:
                     values[node.id] = output_type
+            parameter_contracts[node.id] = definition.infer_parameter_contracts(
+                node.id,
+                resolved,
+                inferred,
+                attrs,
+            )
             obligations.extend(created)
 
         output_obligations = []
@@ -139,14 +152,12 @@ class TypeChecker:
                     details={"obligations": [item.to_dict() for item in open_items]},
                 )
             ])
-        return InferenceResult(values, tuple(order), tuple(obligations))
+        return InferenceResult(values, tuple(order), tuple(obligations), parameter_contracts)
 
     @staticmethod
-    def _resolve_reference(reference: str, values: Mapping[str, EquivariantType], node: Optional[Node]) -> EquivariantType:
+    def _resolve_reference(reference: str, values: Mapping[str, ValueType], node: Optional[Node]) -> ValueType:
         if reference in values:
             return values[reference]
-        if ":" not in reference and "{}:out".format(reference) in values:
-            return values["{}:out".format(reference)]
         raise DSLValidationError([
             Diagnostic(
                 "E_REF_001",

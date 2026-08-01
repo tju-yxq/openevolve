@@ -131,6 +131,7 @@ class DSLGenerationEngine:
                     task_contract_hash=self.task.content_hash(),
                     expected_parent_id=parent_id,
                     validate_child_with_core_registry=False,
+                    allowed_new_ops=self.vocabulary.visible,
                 )
                 child = self.compiler.analyze(child_program, self.task)
                 if child.architecture_id == parent_id or self.store.candidate_exists(child.architecture_id):
@@ -160,7 +161,7 @@ class DSLGenerationEngine:
                         child_program,
                         diagnostics,
                         self.compiler.primitives,
-                        allowed_ops=tuple(name for name in self.vocabulary.visible if name.startswith("core.")),
+                        allowed_ops=self.vocabulary.completion_ops(),
                         authorized_scope=tuple(plan["scope"]),
                     )
                     if child_program is not None and diagnostics
@@ -379,6 +380,7 @@ class DSLGenerationEngine:
                     task_contract_hash=self.task.content_hash(),
                     expected_parent_id=parent_id,
                     validate_child_with_core_registry=False,
+                    allowed_new_ops=self.vocabulary.visible,
                 )
                 region_audit = validate_region_transition(parent_program, child_program, region)
                 child = self.compiler.analyze(child_program, self.task)
@@ -431,7 +433,7 @@ class DSLGenerationEngine:
                         child_program,
                         diagnostics,
                         self.compiler.primitives,
-                        allowed_ops=tuple(name for name in self.vocabulary.visible if name.startswith("core.")),
+                        allowed_ops=self.vocabulary.completion_ops(),
                         authorized_scope=tuple(region.editable_targets),
                     )
                     if child_program is not None and diagnostics

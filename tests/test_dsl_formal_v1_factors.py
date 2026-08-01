@@ -16,7 +16,7 @@ from equivariant_nas.dsl import (
     v1_region_registry,
 )
 from equivariant_nas.dsl.backends.equiformer_v1_constructor import effective_v1_spec
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
 from scripts.run_dsl_evolution import _validate_root_isolated_factor_transition
 
 

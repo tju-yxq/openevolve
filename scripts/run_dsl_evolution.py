@@ -14,6 +14,7 @@ from pathlib import Path
 from equivariant_nas.dsl import (
     BACKEND_SEMANTICS_VERSION,
     COMPILER_SEMANTICS_VERSION,
+    VALUE_TYPE_SCHEMA_VERSION,
     Compiler,
     DSLGenerationEngine,
     EvidenceItem,
@@ -22,6 +23,7 @@ from equivariant_nas.dsl import (
     LanguageEvolutionPreregistration,
     MotifDiscoveryPolicy,
     core_registry,
+    default_canonical_search_surface,
     reference_motif_registry,
     select_active_vocabulary,
     strict_rewrite_registry_hash,
@@ -704,7 +706,18 @@ async def run(args):
         _now(),
         {"search": "open-evolve-typed-dsl"},
     )
-    vocabulary = select_active_vocabulary(language, task.group, primitives, motifs)
+    search_surface = (
+        None
+        if args.legacy_full_registry_vocabulary
+        else default_canonical_search_surface(primitives, motifs)
+    )
+    vocabulary = select_active_vocabulary(
+        language,
+        task.group,
+        primitives,
+        motifs,
+        search_surface=search_surface,
+    )
     store = EvidenceStore(str(output / "evidence.sqlite"))
     store.register_language(language, motifs)
 
@@ -739,9 +752,15 @@ async def run(args):
         _ensure_language_preregistration(output, language_preregistration, database_has_programs=bool(database.programs))
     compiler_manifest = {
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
+        "value_type_schema_version": VALUE_TYPE_SCHEMA_VERSION,
         "backend_semantics_version": BACKEND_SEMANTICS_VERSION,
         "rewrite_registry_hash": strict_rewrite_registry_hash(),
         "language_registry_hash": language.registry_hash(),
+        "search_surface": (
+            search_surface.to_dict()
+            if search_surface is not None
+            else {"version": "legacy-full-registry", "content_hash": ""}
+        ),
         "task_contract_hash": task.content_hash(),
         "language_preregistration_hash": language_preregistration.content_hash() if language_preregistration else "",
         "initial_lowering_plan": compiler.plan_lowering(initial_program, task).to_dict(),
@@ -1020,6 +1039,7 @@ async def run(args):
             "task_contract_hash": task.content_hash(),
             "language_registry_hash": language.registry_hash(),
             "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
+            "value_type_schema_version": VALUE_TYPE_SCHEMA_VERSION,
             "rewrite_registry_hash": strict_rewrite_registry_hash(),
             "updated_at": _now(),
         }
@@ -1059,6 +1079,7 @@ async def run(args):
         "task_contract_hash": task.content_hash(),
         "language_registry_hash": language.registry_hash(),
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
+        "value_type_schema_version": VALUE_TYPE_SCHEMA_VERSION,
         "rewrite_registry_hash": strict_rewrite_registry_hash(),
         "status": (
             "stopped"
@@ -1121,6 +1142,14 @@ def get_parser():
     parser.add_argument("--language-cycle-index", type=int, default=0)
     parser.add_argument("--language-boundary-id", default="")
     parser.add_argument("--language-holdout-modulus", type=int, default=5)
+    parser.add_argument(
+        "--legacy-full-registry-vocabulary",
+        action="store_true",
+        help=(
+            "Expose the entire versioned execution registry to the LLM for historical reproduction. "
+            "New searches default to the canonical search surface."
+        ),
+    )
     return parser
 
 

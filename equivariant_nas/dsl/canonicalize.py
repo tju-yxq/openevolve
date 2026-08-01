@@ -5,16 +5,18 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import replace
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional
 
-from .ast import ArchitectureProgram, Node
+from .ast import ArchitectureProgram
 from .inference import TypeChecker
+from .parameters import PARAMETER_CONTRACT_SCHEMA_VERSION
 from .registry import PrimitiveRegistry
 from .rewrites import apply_strict_rewrites, strict_rewrite_registry_hash
+from .types import VALUE_TYPE_SCHEMA_VERSION
 
 
-COMPILER_SEMANTICS_VERSION = "evoequilang-3"
-BACKEND_SEMANTICS_VERSION = "backend-neutral-v1"
+COMPILER_SEMANTICS_VERSION = "evoequilang-23"
+BACKEND_SEMANTICS_VERSION = "backend-neutral-v21"
 
 
 def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegistry] = None) -> ArchitectureProgram:
@@ -30,7 +32,10 @@ def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegis
     for node in strictly_rewritten.nodes:
         qualified = node.op if "@" in node.op else "{}@1".format(node.op)
         inputs = {name: tuple(refs) for name, refs in node.inputs.items()}
-        normalized.append(replace(node, op=qualified, inputs=inputs))
+        attrs = dict(node.attrs)
+        if registry is not None:
+            attrs = registry.resolve(qualified).canonical_attrs(node.id, attrs)
+        normalized.append(replace(node, op=qualified, inputs=inputs, attrs=attrs))
     candidate = replace(strictly_rewritten, nodes=tuple(normalized))
     if registry is not None:
         TypeChecker(registry, require_closed_obligations=False)._topological_order(candidate, {node.id: node for node in candidate.nodes})
@@ -91,7 +96,52 @@ def canonicalize(program: ArchitectureProgram, registry: Optional[PrimitiveRegis
         for node in ordered
     )
     canonical_outputs = tuple(replace(item, source=rewrite(item.source)) for item in candidate.outputs)
-    return replace(candidate, nodes=canonical_nodes, outputs=canonical_outputs)
+    parameters = dict(candidate.parameters)
+    lowering_contract = parameters.get("lowering_contract")
+    if isinstance(lowering_contract, Mapping):
+        lowering_contract = dict(lowering_contract)
+        raw_order = lowering_contract.get("module_construction_order")
+        if isinstance(raw_order, (list, tuple)):
+            lowering_contract["module_construction_order"] = [
+                rename.get(str(node_id), str(node_id)) for node_id in raw_order
+            ]
+        raw_schedule = lowering_contract.get("initializer_schedule")
+        if isinstance(raw_schedule, (list, tuple)):
+            rewritten_schedule = []
+            for item in raw_schedule:
+                if not isinstance(item, Mapping):
+                    rewritten_schedule.append(item)
+                    continue
+                event = dict(item)
+                if "after_node" in event:
+                    event["after_node"] = rename.get(str(event["after_node"]), str(event["after_node"]))
+                if isinstance(event.get("nodes"), (list, tuple)):
+                    event["nodes"] = [
+                        rename.get(str(node_id), str(node_id)) for node_id in event["nodes"]
+                    ]
+                rewritten_schedule.append(event)
+            lowering_contract["initializer_schedule"] = rewritten_schedule
+        raw_shared_norm = lowering_contract.get("shared_final_norm")
+        if isinstance(raw_shared_norm, Mapping):
+            shared_norm = dict(raw_shared_norm)
+            if "node" in shared_norm:
+                shared_norm["node"] = rename.get(
+                    str(shared_norm["node"]),
+                    str(shared_norm["node"]),
+                )
+            if isinstance(shared_norm.get("consumers"), (list, tuple)):
+                shared_norm["consumers"] = [
+                    rename.get(str(node_id), str(node_id))
+                    for node_id in shared_norm["consumers"]
+                ]
+            lowering_contract["shared_final_norm"] = shared_norm
+        parameters["lowering_contract"] = lowering_contract
+    return replace(
+        candidate,
+        nodes=canonical_nodes,
+        outputs=canonical_outputs,
+        parameters=parameters,
+    )
 
 
 def semantic_dict(program: ArchitectureProgram, registry: Optional[PrimitiveRegistry] = None) -> Dict[str, Any]:
@@ -111,20 +161,43 @@ def architecture_id(
     program: ArchitectureProgram,
     registry: Optional[PrimitiveRegistry] = None,
     *,
-    kernel_registry_hash: str = "builtin-core-v1",
+    kernel_registry_hash: Optional[str] = None,
     compiler_version: str = COMPILER_SEMANTICS_VERSION,
     task_contract_hash: str = "unresolved-task-contract",
     backend_semantics_version: str = BACKEND_SEMANTICS_VERSION,
     rewrite_registry_hash: str = "",
+    value_type_schema_version: Optional[str] = VALUE_TYPE_SCHEMA_VERSION,
 ) -> str:
+    canonical_program = canonicalize(program, registry)
+    canonical_data = canonical_program.to_dict()
+    canonical_data.pop("program_id", None)
+    canonical_data.pop("annotations", None)
+    for node in canonical_data["nodes"]:
+        node.pop("annotations", None)
+    parameter_contracts = {}
+    if registry is not None:
+        inference = TypeChecker(registry, require_closed_obligations=False).check(canonical_program)
+        parameter_contracts = {
+            node_id: [
+                contract.to_dict()
+                for contract in contracts
+                if contract.architecture_identity != "excluded"
+            ]
+            for node_id, contracts in sorted(inference.parameter_contracts.items())
+            if any(contract.architecture_identity != "excluded" for contract in contracts)
+        }
     payload = {
-        "canonical_ast": canonical_json(program, registry),
+        "canonical_ast": json.dumps(canonical_data, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
         "language_version": program.language_version,
-        "kernel_registry_hash": kernel_registry_hash,
+        "kernel_registry_hash": kernel_registry_hash or (registry.content_hash() if registry is not None else "builtin-core-v1"),
         "compiler_version": compiler_version,
         "rewrite_registry_hash": rewrite_registry_hash or strict_rewrite_registry_hash(),
         "task_contract_hash": task_contract_hash,
         "backend_semantics_version": backend_semantics_version,
+        "parameter_contract_schema_version": PARAMETER_CONTRACT_SCHEMA_VERSION,
+        "parameter_contracts": parameter_contracts,
     }
+    if value_type_schema_version is not None:
+        payload["value_type_schema_version"] = str(value_type_schema_version)
     text = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]

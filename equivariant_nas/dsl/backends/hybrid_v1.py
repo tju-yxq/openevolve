@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from ...spec import ArchitectureSpec
+from .equiformer_v1_spec import ArchitectureSpec
 from ..ast import ArchitectureProgram
 from ..diagnostics import DSLValidationError, Diagnostic
 
@@ -21,7 +21,7 @@ class V1ReadoutHybridSpec:
 def parse_v1_readout_hybrid(program: ArchitectureProgram) -> Optional[V1ReadoutHybridSpec]:
     """Recognize the only modified V1 topology certified by the showcase backend."""
 
-    if program.annotations.get("legacy_backend") != "equiformer_v1":
+    if program.annotations.get("reference_backend") != "equiformer_v1":
         return None
     nodes = {node.id: node for node in program.nodes}
     pool = nodes.get("graph_pool")
@@ -37,7 +37,7 @@ def parse_v1_readout_hybrid(program: ArchitectureProgram) -> Optional[V1ReadoutH
     if not source.startswith("block") or not source[5:].isdigit():
         return None
     block_index = int(source[5:])
-    spec = ArchitectureSpec.from_dict(program.annotations["legacy_architecture_spec"])
+    spec = ArchitectureSpec.from_dict(program.annotations["equiformer_v1_spec"])
     if block_index < 0 or block_index >= spec.macro.num_layers - 1:
         return None
     if len(program.outputs) != 1 or program.outputs[0].source not in ("graph_pool", "graph_pool:out"):

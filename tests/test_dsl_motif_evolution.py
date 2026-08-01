@@ -91,15 +91,9 @@ def test_typed_discovery_anti_unifies_only_registered_safe_attributes_and_replay
 
 
 def test_undeclared_attribute_difference_is_not_promoted_into_the_language():
-    _, primitives, _, _, candidates = _objects("implementation_hint", ("a", "b", "c"))
-    report = discover_motif_proposals(candidates, primitives)
-    assert report.rejected_clusters
-    assert all(not item.motif.required_attrs for item in report.proposals)
-    assert any(
-        "not declared safe" in reason
-        for reasons in report.rejected_clusters.values()
-        for reason in reasons
-    )
+    with pytest.raises(DSLValidationError) as error:
+        _objects("implementation_hint", ("a", "b", "c"))
+    assert any(item.code == "E_ATTR_005" for item in error.value.diagnostics)
 
 
 def test_description_length_never_double_counts_overlapping_occurrences():

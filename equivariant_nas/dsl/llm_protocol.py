@@ -9,7 +9,7 @@ from typing import Any, Dict, Mapping, Sequence, Tuple
 from .ast import ArchitectureProgram
 from .completion import program_completion_frontier
 from .diagnostics import DSLValidationError, Diagnostic
-from .language import VocabularyDecision, describe_active_vocabulary
+from .language import VocabularyDecision, describe_active_vocabulary, describe_vocabulary_names
 from .motifs import MotifRegistry
 from .patch import TypedPatch, patch_protocol_schema
 from .registry import PrimitiveRegistry
@@ -81,6 +81,71 @@ def _visible_evidence(task: TaskContract, evidence: Sequence[EvidenceItem]) -> T
     return tuple(visible)
 
 
+def _llm_visible_vocabulary(vocabulary: VocabularyDecision) -> Tuple[str, ...]:
+    if not vocabulary.search_surface_version:
+        return vocabulary.visible
+    motifs = tuple(name for name in vocabulary.visible if name.startswith("motif."))
+    return tuple(sorted(tuple(vocabulary.canonical_families) + motifs))
+
+
+def _llm_vocabulary_contracts(
+    vocabulary: VocabularyDecision,
+    primitives: PrimitiveRegistry,
+    motifs: MotifRegistry,
+) -> Tuple[Mapping[str, Any], ...]:
+    flat = describe_active_vocabulary(vocabulary, primitives, motifs)
+    if not vocabulary.search_surface_version:
+        return flat
+    by_name = {str(item["name"]): item for item in flat}
+    grouped = []
+    for canonical, realizations in sorted(vocabulary.canonical_families.items()):
+        grouped.append({
+            "kind": "canonical_family",
+            "name": canonical,
+            "novelty_identity": canonical,
+            "realizations": [by_name[name] for name in realizations],
+            "selection_rule": (
+                "choose one concrete realization whose typed ports, attrs, layout, and parameter contract "
+                "match the intended program location; realization version alone is not architectural novelty"
+            ),
+        })
+    grouped.extend(
+        by_name[name]
+        for name in sorted(by_name)
+        if name.startswith("motif.")
+    )
+    return tuple(grouped)
+
+
+def _parent_operator_contracts(
+    parent: ArchitectureProgram,
+    primitives: PrimitiveRegistry,
+    motifs: MotifRegistry,
+) -> Tuple[Mapping[str, Any], ...]:
+    names = []
+    for node in parent.nodes:
+        definition = motifs.resolve(node.op) if node.op.startswith("motif.") else primitives.resolve(node.op)
+        names.append(definition.qualified_name)
+    return describe_vocabulary_names(tuple(sorted(set(names))), primitives, motifs)
+
+
+def _search_surface_context(
+    parent: ArchitectureProgram,
+    vocabulary: VocabularyDecision,
+    primitives: PrimitiveRegistry,
+    motifs: MotifRegistry,
+) -> Mapping[str, Any]:
+    return {
+        "search_surface_version": vocabulary.search_surface_version,
+        "search_surface_hash": vocabulary.search_surface_hash,
+        "canonical_search_families": {
+            name: list(values) for name, values in sorted(vocabulary.canonical_families.items())
+        },
+        "completion_only_vocabulary": list(vocabulary.completion_only),
+        "parent_operator_contracts": list(_parent_operator_contracts(parent, primitives, motifs)),
+    }
+
+
 def planner_prompt(
     task: TaskContract,
     parent: ArchitectureProgram,
@@ -107,9 +172,9 @@ def planner_prompt(
         # here because they are semantic-hash labels, not editable source ids.
         "parent_program": parent.to_dict(),
         "evidence": [item.to_dict() for item in visible],
-        "visible_vocabulary": list(vocabulary.visible),
+        "visible_vocabulary": list(_llm_visible_vocabulary(vocabulary)),
         "vocabulary_contracts": (
-            list(describe_active_vocabulary(vocabulary, primitives, motifs))
+            list(_llm_vocabulary_contracts(vocabulary, primitives, motifs))
             if primitives is not None and motifs is not None
             else []
         ),
@@ -120,7 +185,7 @@ def planner_prompt(
                     parent,
                     task.output_type,
                     primitives,
-                    allowed_ops=tuple(name for name in vocabulary.visible if name.startswith("core.")),
+                    allowed_ops=vocabulary.completion_ops(),
                     max_steps=3,
                 )
             )
@@ -144,6 +209,8 @@ def planner_prompt(
             "risk": "main correctness or optimization risk",
         },
     }
+    if primitives is not None and motifs is not None:
+        payload.update(_search_surface_context(parent, vocabulary, primitives, motifs))
     return {"system": system, "user": json.dumps(payload, ensure_ascii=False, sort_keys=True)}
 
 
@@ -234,7 +301,7 @@ def region_critic_prompt(
             if "output:" + item.name in region.editable_targets
         ],
         "evidence": [item.to_dict() for item in visible],
-        "allowed_vocabulary_contracts": list(describe_active_vocabulary(vocabulary, primitives, motifs)),
+        "allowed_vocabulary_contracts": list(_llm_vocabulary_contracts(vocabulary, primitives, motifs)),
         "response_schema": {
             "factor_id": region.factor_id,
             "region_id": region.region_id,
@@ -248,6 +315,7 @@ def region_critic_prompt(
             "acceptance_metrics": ["validation-only measurements that could falsify the claim"],
         },
     }
+    payload.update(_search_surface_context(parent, vocabulary, primitives, motifs))
     return {
         "system": (
             "You are the independent leaf-factor critic. Analyze only the selected factor, region, and declared boundary. "
@@ -404,14 +472,14 @@ def synthesizer_prompt(
         "language_version": parent.language_version,
         "parent_program": parent.to_dict(),
         "plan": dict(plan),
-        "visible_vocabulary": list(vocabulary.visible),
+        "visible_vocabulary": list(_llm_visible_vocabulary(vocabulary)),
         "task_completion_frontier": (
             list(
                 program_completion_frontier(
                     parent,
                     task.output_type,
                     primitives,
-                    allowed_ops=tuple(name for name in vocabulary.visible if name.startswith("core.")),
+                    allowed_ops=vocabulary.completion_ops(),
                     max_steps=3,
                 )
             )
@@ -419,13 +487,15 @@ def synthesizer_prompt(
             else []
         ),
         "vocabulary_contracts": (
-            list(describe_active_vocabulary(vocabulary, primitives, motifs))
+            list(_llm_vocabulary_contracts(vocabulary, primitives, motifs))
             if primitives is not None and motifs is not None
             else []
         ),
         "authoritative_patch_schema": patch_protocol_schema(parent_architecture_id, parent.language_version, tuple(plan["scope"])),
         "worked_edit_example": worked_example,
     }
+    if primitives is not None and motifs is not None:
+        payload.update(_search_surface_context(parent, vocabulary, primitives, motifs))
     return {"system": system, "user": json.dumps(payload, ensure_ascii=False, sort_keys=True)}
 
 
@@ -459,9 +529,9 @@ def repair_prompt(
         "failed_patch": failed_patch.to_dict(),
         "rejected_response": rejected_response[:12000],
         "diagnostics": [item.to_dict() for item in diagnostics],
-        "visible_vocabulary": list(vocabulary.visible),
+        "visible_vocabulary": list(_llm_visible_vocabulary(vocabulary)),
         "vocabulary_contracts": (
-            list(describe_active_vocabulary(vocabulary, primitives, motifs))
+            list(_llm_vocabulary_contracts(vocabulary, primitives, motifs))
             if primitives is not None and motifs is not None
             else []
         ),
@@ -486,6 +556,8 @@ def repair_prompt(
             "A completion suggestion is optional advice, not permission to widen scope or alter the scientific hypothesis.",
         ],
     }
+    if parent is not None and primitives is not None and motifs is not None:
+        payload.update(_search_surface_context(parent, vocabulary, primitives, motifs))
     return {"system": system, "user": json.dumps(payload, ensure_ascii=False, sort_keys=True)}
 
 

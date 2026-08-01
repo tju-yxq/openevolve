@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 from .diagnostics import DSLValidationError, Diagnostic
-from .types import EquivariantType
+from .types import ValueType, value_type_from_dict
 
 
 def _strict_fields(data: Mapping[str, Any], allowed, kind: str) -> None:
@@ -20,12 +20,12 @@ def _strict_fields(data: Mapping[str, Any], allowed, kind: str) -> None:
 @dataclass(frozen=True)
 class InputPort:
     name: str
-    value_type: EquivariantType
+    value_type: ValueType
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "InputPort":
         _strict_fields(data, ("name", "type"), "input")
-        return cls(str(data["name"]), EquivariantType.from_dict(data["type"]))
+        return cls(str(data["name"]), value_type_from_dict(data["type"]))
 
     def to_dict(self) -> Dict[str, Any]:
         return {"name": self.name, "type": self.value_type.to_dict()}
@@ -38,7 +38,7 @@ class Node:
     inputs: Mapping[str, Tuple[str, ...]]
     attrs: Mapping[str, Any] = field(default_factory=dict)
     outputs: Tuple[str, ...] = ("out",)
-    declared_types: Mapping[str, EquivariantType] = field(default_factory=dict)
+    declared_types: Mapping[str, ValueType] = field(default_factory=dict)
     annotations: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -64,7 +64,7 @@ class Node:
             else:
                 raise DSLValidationError([Diagnostic("E_AST_005", "node input must be a reference or reference list", node_id=str(data.get("id", "")), port=str(port))])
         declared = {
-            str(name): EquivariantType.from_dict(value)
+            str(name): value_type_from_dict(value)
             for name, value in data.get("declared_types", {}).items()
         }
         return cls(
@@ -98,12 +98,12 @@ class Node:
 class OutputPort:
     name: str
     source: str
-    expected_type: EquivariantType
+    expected_type: ValueType
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "OutputPort":
         _strict_fields(data, ("name", "source", "type"), "output")
-        return cls(str(data["name"]), str(data["source"]), EquivariantType.from_dict(data["type"]))
+        return cls(str(data["name"]), str(data["source"]), value_type_from_dict(data["type"]))
 
     def to_dict(self) -> Dict[str, Any]:
         return {"name": self.name, "source": self.source, "type": self.expected_type.to_dict()}

@@ -17,7 +17,7 @@ from equivariant_nas.dsl import (
     validate_region_transition,
     v1_region_registry,
 )
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
 
 
 class FakeEnsemble:

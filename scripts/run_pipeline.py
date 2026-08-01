@@ -2,7 +2,7 @@
 import argparse
 import json
 
-from equivariant_nas.pipeline import evaluate_candidate_pipeline
+from equivariant_nas.dsl.pipeline import evaluate_dsl_candidate_pipeline
 
 
 def main():
@@ -24,8 +24,13 @@ def main():
     parser.add_argument("--allow-data-transition", action="store_true")
     parser.add_argument("--resume-model-only", action="store_true")
     parser.add_argument("--lr-schedule-origin-step", type=int, default=0)
+    parser.add_argument(
+        "--allow-experimental-generic-lowering",
+        action="store_true",
+        help="Enable audit-only generic graph Lowering; never implied for formal ranking.",
+    )
     args = parser.parse_args()
-    result = evaluate_candidate_pipeline(
+    result = evaluate_dsl_candidate_pipeline(
         program_path=args.program,
         project_root=args.project_root,
         equiformer_root=args.equiformer_root,
@@ -42,7 +47,8 @@ def main():
         resume_model_only=args.resume_model_only,
         lr_schedule_origin_step=args.lr_schedule_origin_step,
         equiformer_v2_root=args.equiformer_v2_root,
-        dsl_task_contract=args.dsl_task_contract,
+        task_contract_path=args.dsl_task_contract,
+        allow_experimental_generic_lowering=args.allow_experimental_generic_lowering,
     )
     print(json.dumps(result, sort_keys=True))
 

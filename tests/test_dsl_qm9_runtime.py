@@ -8,8 +8,8 @@ pytest.importorskip("e3nn")
 pytest.importorskip("torch_cluster")
 
 from equivariant_nas.dsl import Compiler, core_registry, import_equiformer_v1, reference_motif_registry
-from equivariant_nas.dsl.backends import build_qm9_dsl_model
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends.qm9_model import build_qm9_dsl_model
+from equivariant_nas.dsl.backends import baseline_spec
 
 
 def test_imported_v1_representation_flow_runs_with_qm9_signature_and_gradients():

@@ -52,7 +52,7 @@ class RegionDefinition:
 def v1_region_registry(program: ArchitectureProgram) -> Tuple[RegionDefinition, ...]:
     """Return the currently certified regions for an imported V1 program."""
 
-    if program.annotations.get("legacy_backend") != "equiformer_v1":
+    if program.annotations.get("reference_backend") != "equiformer_v1":
         return ()
     block_ids = tuple(
         node.id for node in program.nodes

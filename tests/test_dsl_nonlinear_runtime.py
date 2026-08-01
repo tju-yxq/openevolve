@@ -59,7 +59,7 @@ def test_norm_activation_is_rotation_equivariant_with_mixed_degrees():
         "1.0.0",
         "norm_activation_runtime",
         (InputPort("x", value_type),),
-        (Node("activation", "core.norm_activation", {"x": ("input:x",)}, {"function": "silu"}),),
+        (Node("activation", "core.norm_activation", {"x": ("input:x",)}, {"activation": "silu"}),),
         (OutputPort("out", "activation", value_type),),
     )
     model = _compile(program).eval()
@@ -72,7 +72,6 @@ def test_norm_activation_is_rotation_equivariant_with_mixed_degrees():
 
 
 def test_segment_softmax_is_invariant_to_edge_order_within_segments():
-    pytest.importorskip("torch_geometric")
     group = GroupSpec.so3()
     logits_type = EquivariantType(group, Carrier.EDGE, Irreps.parse("1x0", "SO3"))
     program = ArchitectureProgram(

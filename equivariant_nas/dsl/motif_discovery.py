@@ -523,13 +523,13 @@ def _build_proposal(
     group_families = tuple(sorted({item.value_type.group.family for occurrence in ordered for item in occurrence.boundary_inputs + occurrence.boundary_outputs}))
     canonical_form_hash = hashlib.sha256(representative.canonical_form.encode("utf-8")).hexdigest()
     motif = MotifDefinition(
-        "motif.learned_{}".format(canonical_form_hash[:12]),
-        1,
-        tuple(item.name for item in representative.boundary_inputs),
-        output_bindings,
-        tuple(template_nodes),
-        tuple(required_attrs),
-        group_families,
+        name="motif.learned_{}".format(canonical_form_hash[:12]),
+        version=1,
+        input_ports=tuple(item.name for item in representative.boundary_inputs),
+        output_bindings=output_bindings,
+        template_nodes=tuple(template_nodes),
+        required_attrs=tuple(required_attrs),
+        group_families=group_families,
         provenance={
             "discovery_policy": policy.policy_version,
             "discovery_policy_hash": policy.content_hash(),
@@ -623,13 +623,30 @@ def discover_motif_proposals(
         if len(items) < selected.min_occurrences:
             continue
         non_overlapping = []
-        occupied_by_architecture: Dict[str, Set[str]] = {}
-        for occurrence in sorted(items, key=lambda item: item.occurrence_id):
-            occupied = occupied_by_architecture.setdefault(occurrence.architecture_id, set())
-            if occupied.intersection(occurrence.node_ids):
-                continue
-            non_overlapping.append(occurrence)
-            occupied.update(occurrence.node_ids)
+        items_by_architecture: Dict[str, List[TypedSubgraphOccurrence]] = {}
+        for occurrence in items:
+            items_by_architecture.setdefault(occurrence.architecture_id, []).append(occurrence)
+        for architecture_id, architecture_items in sorted(
+            items_by_architecture.items(),
+            key=lambda item: (
+                by_architecture[item[0]].lineage_id,
+                by_architecture[item[0]].task_id,
+                item[0],
+            ),
+        ):
+            node_order = by_architecture[architecture_id].artifact.inference.node_order
+            position = {node_id: index for index, node_id in enumerate(node_order)}
+
+            def occurrence_order(occurrence: TypedSubgraphOccurrence):
+                ranks = tuple(sorted(position[node_id] for node_id in occurrence.node_ids))
+                return (max(ranks), min(ranks), len(ranks), ranks, occurrence.occurrence_id)
+
+            occupied: Set[str] = set()
+            for occurrence in sorted(architecture_items, key=occurrence_order):
+                if occupied.intersection(occurrence.node_ids):
+                    continue
+                non_overlapping.append(occurrence)
+                occupied.update(occurrence.node_ids)
         if len(non_overlapping) < selected.min_occurrences:
             rejected[cluster_hash] = ("cluster has fewer than two non-overlapping occurrences",)
             continue

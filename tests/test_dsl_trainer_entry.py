@@ -15,11 +15,12 @@ def test_fixed_step_trainer_accepts_a_dsl_program_path():
         "/pinned/equiformer_v2",
         "--dsl-task-contract",
         "qm9-alpha-task.json",
+        "--allow-experimental-generic-lowering",
     ])
     assert args.dsl_program == "candidate.json"
-    assert args.architecture_spec is None
     assert args.equiformer_v2_root == "/pinned/equiformer_v2"
     assert args.dsl_task_contract == "qm9-alpha-task.json"
+    assert args.allow_experimental_generic_lowering is True
 
 
 def test_fixed_step_trainer_exposes_explicit_final_evaluation_only_mode():

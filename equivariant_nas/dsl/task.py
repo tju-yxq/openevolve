@@ -4,12 +4,42 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Tuple
 
 from .diagnostics import DSLValidationError, Diagnostic
 from .groups import GroupSpec
-from .types import EquivariantType
+from .types import ValueType, value_type_from_dict, value_type_groups
+
+
+class ScientificSemanticsError(ValueError):
+    """Raised when generated reasoning contradicts frozen task semantics."""
+
+
+def validate_qm9_alpha_reasoning(text: str) -> None:
+    """Reject recurring physical misconceptions before synthesis."""
+
+    lowered = " ".join(str(text).lower().split())
+    normalized = lowered.replace("not a rank-2 tensor target", "scalar target")
+    normalized = normalized.replace("not a rank 2 tensor target", "scalar target")
+    normalized = normalized.replace("not tensor-valued", "scalar")
+    forbidden = (
+        (r"\b(rank[- ]?2|second[- ]order) tensor target\b", "alpha mislabeled as tensor target"),
+        (r"\btensor-valued target\b", "alpha mislabeled as tensor-valued"),
+        (
+            r"\b(irreps_head|head_tensor_channels|head_vector_channels)\b.{0,80}\boutput head\b",
+            "internal attention irreps mislabeled as output head",
+        ),
+        (
+            r"\b(higher[- ]order|l\s*[>=]+\s*1|l\s*[>=]+\s*2|tensor_channels)\b.{0,120}"
+            r"\b(cannot|can't|never|no)\b.{0,50}\b(help|contribute|improve|serve|benefit)\b",
+            "hidden non-scalar irreps declared intrinsically useless",
+        ),
+    )
+    for pattern, message in forbidden:
+        if re.search(pattern, normalized):
+            raise ScientificSemanticsError(message)
 
 
 def task_reasoning_context(task: "TaskContract") -> Mapping[str, Any]:
@@ -30,8 +60,6 @@ def validate_task_reasoning(task: "TaskContract", payload: Mapping[str, Any]) ->
 
     if task.task_id != "qm9_alpha":
         return
-    from ..semantics import ScientificSemanticsError, validate_qm9_alpha_reasoning
-
     try:
         validate_qm9_alpha_reasoning(json.dumps(dict(payload), ensure_ascii=False, sort_keys=True))
     except ScientificSemanticsError as exc:
@@ -85,14 +113,15 @@ class ResourceContract:
 class TaskContract:
     task_id: str
     group: GroupSpec
-    output_type: EquivariantType
+    output_type: ValueType
     training_protocol_hash: str
     resource_contract: ResourceContract
     allowed_evidence_splits: Tuple[str, ...] = ("train", "validation")
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.output_type.group != self.group:
+        output_groups = set(value_type_groups(self.output_type))
+        if output_groups and output_groups != {self.group}:
             raise DSLValidationError([Diagnostic("E_TASK_001", "task output type uses a different group")])
         if "test" in self.allowed_evidence_splits:
             raise DSLValidationError([Diagnostic("E_TASK_002", "candidate-generation contracts must not expose the test split")])
@@ -127,7 +156,7 @@ class TaskContract:
         return cls(
             str(data["task_id"]),
             GroupSpec.from_dict(data["group"]),
-            EquivariantType.from_dict(data["output_type"]),
+            value_type_from_dict(data["output_type"]),
             str(data["training_protocol_hash"]),
             ResourceContract.from_dict(data["resource_contract"]),
             tuple(str(item) for item in data.get("allowed_evidence_splits", ("train", "validation"))),

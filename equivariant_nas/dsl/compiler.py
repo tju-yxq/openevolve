@@ -1,4 +1,4 @@
-"""Compiler facade and conservative legacy Equiformer V1 adapter."""
+"""Compiler facade and certified Equiformer V1 reference lowering."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import hashlib
 import json
 from typing import Any, Mapping, Optional, Tuple
 
-from ..builder import build_equiformer
-from ..spec import ArchitectureSpec
+from .backends.equiformer_v1_builder import build_equiformer
+from .backends.equiformer_v1_spec import ArchitectureSpec
 from .ast import ArchitectureProgram, Node
 from .canonicalize import architecture_id
 from .diagnostics import DSLValidationError, Diagnostic
@@ -85,7 +85,7 @@ class Compiler:
             rewrite_registry_hash=rewrite_result.registry_hash,
         )
 
-    def lower_legacy_equiformer_v1(
+    def lower_equiformer_v1_reference(
         self,
         program: ArchitectureProgram,
         equiformer_root: str,
@@ -95,9 +95,9 @@ class Compiler:
     ):
         artifact = self.analyze(program)
         annotations = program.annotations
-        if annotations.get("legacy_backend") != "equiformer_v1":
-            raise DSLValidationError([Diagnostic("E_BACKEND_001", "program is not registered for the legacy V1 backend")])
-        lock = str(annotations.get("legacy_lock_architecture_id", ""))
+        if annotations.get("reference_backend") != "equiformer_v1":
+            raise DSLValidationError([Diagnostic("E_BACKEND_001", "program is not registered for the certified V1 reference backend")])
+        lock = str(annotations.get("reference_lock_architecture_id", ""))
         if artifact.architecture_id != lock:
             raise DSLValidationError([
                 Diagnostic(
@@ -105,34 +105,78 @@ class Compiler:
                     "the imported V1 graph changed and cannot use constructor-locked lowering",
                     expected=lock,
                     actual=artifact.architecture_id,
-                    repairs=("use node-level lowering for the modified operations", "re-import an unchanged legacy spec"),
+                    repairs=("use node-level lowering for the modified operations", "re-import an unchanged certified V1 spec"),
                 )
             ])
-        spec = ArchitectureSpec.from_dict(annotations["legacy_architecture_spec"])
+        spec = ArchitectureSpec.from_dict(annotations["equiformer_v1_spec"])
         return build_equiformer(spec, equiformer_root, task_mean=task_mean, task_std=task_std, atomref=atomref)
 
     def plan_lowering(
         self,
         program: ArchitectureProgram,
         task: Optional[TaskContract] = None,
+        *,
+        graph_backend=None,
     ) -> LoweringPlan:
         """Choose an explicit executable semantics before any model is built."""
 
         artifact = self.analyze(program, task)
-        if program.annotations.get("legacy_backend") != "equiformer_v1":
+        if program.annotations.get("reference_backend") != "equiformer_v1":
+            from .backends.e3nn_backend import E3NNGraphBackend
+            from .backends.lowering import CERTIFIED_EXACTNESS
+
+            backend = graph_backend or E3NNGraphBackend(self.primitives)
+            if not hasattr(backend, "support_report"):
+                raise DSLValidationError([
+                    Diagnostic(
+                        "E_LOWERING_003",
+                        "generic graph backend must expose a support report",
+                        actual=type(backend).__name__,
+                    )
+                ])
+            support = backend.support_report(artifact.expanded_program)
+            exactness = dict(support.node_exactness)
+            unsupported_ids = {node_id for node_id, _ in support.unsupported_nodes}
+            unsupported_ids.update(node_id for node_id, _ in support.composition_errors)
+            for node in artifact.expanded_program.nodes:
+                if node.id not in unsupported_ids and node.id not in exactness:
+                    exactness[node.id] = "unclassified"
+            certified_nodes = tuple(sorted(
+                node_id
+                for node_id, level in exactness.items()
+                if level in CERTIFIED_EXACTNESS
+            ))
+            uncertified_nodes = tuple(sorted(
+                node_id
+                for node_id, level in exactness.items()
+                if level not in CERTIFIED_EXACTNESS
+            ))
+            support_details = support.to_dict()
+            support_details["node_exactness"] = dict(sorted(exactness.items()))
+            semantics = getattr(backend, "semantic_version", "experimental-graph-backend")
+            if hasattr(backend, "e3nn_backend"):
+                semantics = "{}+{}".format(
+                    backend.e3nn_backend.semantic_version,
+                    semantics,
+                )
             return LoweringPlan(
                 "experimental_node_graph",
-                "e3nn_graph",
-                "e3nn-graph-experimental-v1",
+                support.backend,
+                semantics,
                 supported_regions=(),
+                unsupported_nodes=tuple(sorted(unsupported_ids)),
                 details={
                     "architecture_id": artifact.architecture_id,
                     "reason": "generic graph primitives require per-operation numerical certification before formal ranking",
+                    "backend_support": support_details,
+                    "certified_nodes": list(certified_nodes),
+                    "uncertified_nodes": list(uncertified_nodes),
+                    "rule_exactness": exactness,
                 },
             )
 
         unresolved = self.analyze(program)
-        lock = str(program.annotations.get("legacy_lock_architecture_id", ""))
+        lock = str(program.annotations.get("reference_lock_architecture_id", ""))
         if lock and unresolved.architecture_id == lock:
             return LoweringPlan(
                 "exact_reference",
@@ -140,7 +184,7 @@ class Compiler:
                 "equiformer-v1-official-constructor-v1",
                 reference_model_identity="official_equiformer_v1_graph_attention_transformer",
                 supported_regions=("reference_model",),
-                details={"legacy_lock_architecture_id": lock},
+                details={"reference_lock_architecture_id": lock},
             )
 
         from .backends.equiformer_v1_constructor import (
@@ -169,7 +213,7 @@ class Compiler:
                 reference_model_identity="official_equiformer_v1_graph_attention_transformer",
                 supported_regions=supported,
                 details={
-                    "legacy_lock_architecture_id": lock,
+                    "reference_lock_architecture_id": lock,
                     "changed_constructor_parameters": list(changed_parameters),
                 },
             )
@@ -201,7 +245,7 @@ class Compiler:
                     unsupported_nodes=tuple(node.id for node in program.nodes),
                     details={
                         "reason": "readout-shaped graph also changed structure outside the certified region",
-                        "legacy_lock_architecture_id": lock,
+                        "reference_lock_architecture_id": lock,
                         "restored_architecture_id": restored_id,
                     },
                 )
@@ -222,7 +266,7 @@ class Compiler:
             unsupported_nodes=tuple(node.id for node in program.nodes),
             details={
                 "reason": "modified imported V1 graph has no certified exact or hybrid lowering",
-                "legacy_lock_architecture_id": lock,
+                "reference_lock_architecture_id": lock,
                 "actual_architecture_id": unresolved.architecture_id,
             },
         )

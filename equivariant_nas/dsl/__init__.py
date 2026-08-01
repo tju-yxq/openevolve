@@ -11,51 +11,69 @@ from .factors import CapabilityProfile, LeafFactorDefinition, equiformer_v1_capa
 from .groups import GroupSpec
 from .inference import InferenceResult, TypeChecker
 from .irreps import Irrep, Irreps
-from .language import LanguageVersion, VocabularyDecision, describe_active_vocabulary, select_active_vocabulary
+from .language import LanguageVersion, VocabularyDecision, describe_active_vocabulary, describe_vocabulary_names, select_active_vocabulary
 from .language_evolution import LanguageEvolutionBoundary, LanguageEvolutionPreregistration, LanguageEvolutionResult, MotifAdmissionRecord, run_language_evolution_boundary
 from .llm_protocol import EvidenceItem, parse_patch_response, parse_planner_response, parse_region_critic_response, parse_region_router_response, planner_prompt, region_critic_prompt, region_critic_repair_prompt, region_router_prompt, repair_prompt, synthesizer_prompt
 from .motifs import MotifDefinition, MotifRegistry, expand_motifs
+from .migration import ExplicitTopologyMigrationManifest, ExplicitTopologyMigrationResult, MIGRATION_POLICY_VERSION, TypeMigrationManifest, TypeMigrationResult, legacy_equivariant_view, migrate_message_flow_to_explicit_topology, migrate_program_v1_to_v2, migrate_task_contract_v1_to_v2, migrate_value_type_v1_to_v2
 from .motif_discovery import CandidateLineageEvidence, LanguageReplayResult, MotifDiscoveryPolicy, MotifDiscoveryReport, MotifProposal, TypedSubgraphOccurrence, discover_motif_proposals, enumerate_typed_subgraphs, fold_occurrence, replay_motif_proposal
 from .patch import PatchEdit, TypedPatch, apply_typed_patch, patch_protocol_schema
+from .parameters import PARAMETER_CONTRACT_SCHEMA_VERSION, ParameterAxis, ParameterContract
 from .reference_motifs import reference_motif_registry
-from .reference_programs import import_equiformer_v1
+from .reference_programs import equiformer_v3_attention_program, equiformer_v3_backbone_program, equiformer_v3_direct_model_program, equiformer_v3_energy_head_program, equiformer_v3_energy_model_program, equiformer_v3_feed_forward_program, equiformer_v3_force_head_program, equiformer_v3_input_program, equiformer_v3_transblock_program, import_equiformer_v1, import_equiformer_v3
 from .repair_completion import completion_repair_suggestions
 from .regions import RegionDefinition, frozen_complement_hash, validate_region_transition, v1_region_registry
 from .rewrites import RewriteRuleDescriptor, RewriteStep, StrictRewriteResult, apply_strict_rewrites, strict_rewrite_registry_hash
 from .registry import PrimitiveRegistry, core_registry
 from .task import ResourceContract, TaskContract, task_reasoning_context, validate_task_reasoning
 from .search import DSLGenerationEngine, GenerationResult
-from .types import Carrier, EquivarianceLevel, EquivariantType, Frame
+from .search_surface import CanonicalSearchSurface, SEARCH_SURFACE_VERSION, default_canonical_search_surface
+from .types import AffinePointType, AxisSpec, Carrier, CategoricalTensorType, EquivarianceLevel, EquivariantTensorType, EquivariantType, FeatureRole, Frame, GraphTopologyType, GridSpec, GridTensorType, IndexMapType, InvariantTensorType, LatticeShiftType, LatticeType, RecordType, RepresentationLayout, ResolutionSpec, TupleType, VALUE_TYPE_SCHEMA_VERSION, ValueType, value_type_from_dict
 
 __all__ = [
     "ArchitectureProgram",
+    "AffinePointType",
+    "AxisSpec",
     "BACKEND_SEMANTICS_VERSION",
     "Carrier",
+    "CategoricalTensorType",
     "AvailableValue",
     "CompletionAction",
     "CompletionDistance",
     "CostEstimate",
     "Compiler",
+    "CanonicalSearchSurface",
     "LoweringPlan",
     "COMPILER_SEMANTICS_VERSION",
     "DSLValidationError",
     "DSLGenerationEngine",
     "Diagnostic",
     "EquivarianceLevel",
+    "EquivariantTensorType",
     "EquivariantType",
+    "ExplicitTopologyMigrationManifest",
+    "ExplicitTopologyMigrationResult",
     "EvidenceItem",
     "EvidenceStore",
     "CapabilityProfile",
     "LeafFactorDefinition",
     "Frame",
+    "FeatureRole",
     "HoleSink",
     "GroupSpec",
+    "GraphTopologyType",
+    "GridSpec",
+    "GridTensorType",
     "GenerationResult",
     "InferenceResult",
     "InputPort",
+    "IndexMapType",
+    "InvariantTensorType",
     "Irrep",
     "Irreps",
     "LanguageVersion",
+    "LatticeShiftType",
+    "LatticeType",
     "LanguageEvolutionBoundary",
     "LanguageEvolutionPreregistration",
     "LanguageEvolutionResult",
@@ -66,20 +84,33 @@ __all__ = [
     "MotifDiscoveryReport",
     "MotifProposal",
     "MotifRegistry",
+    "MIGRATION_POLICY_VERSION",
     "Node",
     "OutputPort",
     "PrimitiveRegistry",
     "PatchEdit",
+    "PARAMETER_CONTRACT_SCHEMA_VERSION",
+    "ParameterAxis",
+    "ParameterContract",
     "TypedPatch",
     "TypedHole",
     "TypedSubgraphOccurrence",
     "TypeChecker",
     "ResourceContract",
+    "RecordType",
+    "RepresentationLayout",
+    "ResolutionSpec",
     "RegionDefinition",
     "RewriteRuleDescriptor",
     "RewriteStep",
     "StrictRewriteResult",
+    "SEARCH_SURFACE_VERSION",
     "TaskContract",
+    "TupleType",
+    "TypeMigrationManifest",
+    "TypeMigrationResult",
+    "VALUE_TYPE_SCHEMA_VERSION",
+    "ValueType",
     "task_reasoning_context",
     "validate_task_reasoning",
     "architecture_id",
@@ -97,12 +128,29 @@ __all__ = [
     "program_completion_frontier",
     "core_registry",
     "describe_active_vocabulary",
+    "describe_vocabulary_names",
+    "default_canonical_search_surface",
     "enforce_static_resource_contract",
     "estimate_static_cost",
     "equiformer_v1_capability_profile",
     "factor_by_region",
     "expand_motifs",
     "import_equiformer_v1",
+    "import_equiformer_v3",
+    "equiformer_v3_input_program",
+    "equiformer_v3_attention_program",
+    "equiformer_v3_backbone_program",
+    "equiformer_v3_direct_model_program",
+    "equiformer_v3_energy_head_program",
+    "equiformer_v3_energy_model_program",
+    "equiformer_v3_feed_forward_program",
+    "equiformer_v3_force_head_program",
+    "equiformer_v3_transblock_program",
+    "legacy_equivariant_view",
+    "migrate_program_v1_to_v2",
+    "migrate_message_flow_to_explicit_topology",
+    "migrate_task_contract_v1_to_v2",
+    "migrate_value_type_v1_to_v2",
     "reference_motif_registry",
     "replay_motif_proposal",
     "parse_patch_response",
@@ -121,6 +169,7 @@ __all__ = [
     "v1_region_registry",
     "synthesizer_prompt",
     "run_language_evolution_boundary",
+    "value_type_from_dict",
     "VocabularyDecision",
     "CandidateLineageEvidence",
 ]

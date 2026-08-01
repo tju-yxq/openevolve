@@ -116,18 +116,6 @@ def get_parser():
         help="Resume from checkpoint_last.pth produced by this script.",
     )
     parser.add_argument(
-        "--inherit-checkpoint",
-        type=str,
-        default=None,
-        help="Calibration-only parent model weights; optimizer/scheduler are reset.",
-    )
-    parser.add_argument(
-        "--inherit-parent-spec",
-        type=str,
-        default=None,
-        help="ArchitectureSpec for --inherit-checkpoint semantic transfer policy.",
-    )
-    parser.add_argument(
         "--evaluate-test",
         action="store_true",
         default=False,
@@ -140,16 +128,10 @@ def get_parser():
         help="Load a completed checkpoint and evaluate validation/test without optimizer steps.",
     )
     parser.add_argument(
-        "--architecture-spec",
-        type=str,
-        default=None,
-        help="JSON ArchitectureSpec. If omitted, use the legacy model registry.",
-    )
-    parser.add_argument(
         "--dsl-program",
         type=str,
         default=None,
-        help="EvoEquiLang JSON program. Mutually exclusive with --architecture-spec.",
+        help="EvoEquiLang JSON program. If omitted, use the trusted model registry.",
     )
     parser.add_argument(
         "--dsl-task-contract",
@@ -168,6 +150,15 @@ def get_parser():
         type=str,
         default=os.environ.get("EQUIFORMER_V2_ROOT", ""),
         help="Optional pinned Equiformer V2 source used by DSL V2 graph fusions.",
+    )
+    parser.add_argument(
+        "--allow-experimental-generic-lowering",
+        action="store_true",
+        default=False,
+        help=(
+            "Explicitly enable audit-only generic DSL graph lowering. "
+            "This does not certify the run for formal V1 ranking."
+        ),
     )
     return parser
 
@@ -393,9 +384,6 @@ def main(args):
         raise ValueError("one validation interval must be positive")
     if args.data_epoch_origin_step < 0 or args.lr_schedule_origin_step < 0:
         raise ValueError("step origins must be non-negative")
-    if args.architecture_spec and args.dsl_program:
-        raise ValueError("--architecture-spec and --dsl-program are mutually exclusive")
-
     # ``args.epochs`` is retained only to construct the original 300-epoch
     # timm cosine scheduler. It is not used as a stopping condition.
     schedule_span_steps = args.max_steps - args.lr_schedule_origin_step
@@ -460,7 +448,7 @@ def main(args):
 
     if args.dsl_program:
         from equivariant_nas.dsl import Compiler, core_registry, reference_motif_registry
-        from equivariant_nas.dsl.backends import build_qm9_dsl_model
+        from equivariant_nas.dsl.backends.qm9_model import build_qm9_dsl_model
         from equivariant_nas.dsl.serialization import load_program, load_task_contract
 
         dsl_program = load_program(args.dsl_program)
@@ -476,25 +464,17 @@ def main(args):
             task_std=task_std,
             atomref=None,
             task=dsl_task,
+            allow_experimental_generic_lowering=args.allow_experimental_generic_lowering,
         ).to(device)
         log.info("DSL architecture ID: {}".format(model.dsl_architecture_id))
         log.info("DSL language version: {}".format(model.dsl_language_version))
         log.info("DSL lowering plan: {}".format(json.dumps(model.lowering_plan, sort_keys=True)))
-    elif args.architecture_spec:
-        from equivariant_nas.builder import build_equiformer
-        from equivariant_nas.spec import ArchitectureSpec
-
-        spec_text = Path(args.architecture_spec).read_text(encoding="utf-8")
-        architecture_spec = ArchitectureSpec.from_json(spec_text)
-        model = build_equiformer(
-            architecture_spec,
-            equiformer_root=args.equiformer_root,
-            task_mean=task_mean,
-            task_std=task_std,
-            atomref=None,
-        ).to(device)
-        log.info("Architecture ID: {}".format(architecture_spec.architecture_id()))
-        log.info("Architecture spec: {}".format(architecture_spec.canonical_json()))
+        if hasattr(model, "generic_lowering_admission"):
+            log.info(
+                "DSL generic Lowering admission: {}".format(
+                    json.dumps(model.generic_lowering_admission, sort_keys=True)
+                )
+            )
     else:
         create_model = base.model_entrypoint(args.model_name)
         model = create_model(
@@ -507,50 +487,6 @@ def main(args):
             atomref=None,
             drop_path=args.drop_path,
         ).to(device)
-    if bool(args.inherit_checkpoint) != bool(args.inherit_parent_spec):
-        raise ValueError(
-            "--inherit-checkpoint and --inherit-parent-spec must be provided together"
-        )
-    if args.resume_step and args.inherit_checkpoint:
-        raise ValueError("exact resume and inherited initialization are mutually exclusive")
-    if args.inherit_checkpoint:
-        if args.evaluate_test:
-            raise ValueError(
-                "inherited initialization is calibration-only and cannot evaluate the test split"
-            )
-        if args.dsl_program:
-            raise ValueError(
-                "legacy field-level inherited initialization is not defined for DSL programs"
-            )
-        if not args.architecture_spec:
-            raise ValueError("inherited initialization requires --architecture-spec")
-        from equivariant_nas.inheritance import apply_transfer
-        from equivariant_nas.spec import ArchitectureSpec
-
-        parent_spec = ArchitectureSpec.from_json(
-            Path(args.inherit_parent_spec).read_text(encoding="utf-8")
-        )
-        checkpoint = torch.load(args.inherit_checkpoint, map_location="cpu")
-        parent_state = checkpoint["model"] if "model" in checkpoint else checkpoint
-        inherited_state, inheritance_report = apply_transfer(
-            parent_spec,
-            architecture_spec,
-            parent_state,
-            model.state_dict(),
-        )
-        model.load_state_dict(inherited_state)
-        report_path = Path(args.output_dir) / "inheritance_report.json"
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(
-            json.dumps(inheritance_report.to_dict(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
-        log.info(
-            "Calibration-only inherited initialization: element_coverage={:.6f}; "
-            "optimizer and scheduler reset; selection_eligible=false".format(
-                inheritance_report.element_coverage
-            )
-        )
     log.info(model)
 
     model_ema = None
@@ -859,6 +795,10 @@ def main(args):
             with metrics_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(evaluation_progress, sort_keys=True) + "\n")
 
+    formal_ranking_admitted = not (
+        args.dsl_program
+        and getattr(model, "lowering_mode", "") == "experimental_node_graph"
+    )
     final_summary = {
         "status": "completed",
         "batch_size": args.batch_size,
@@ -882,9 +822,9 @@ def main(args):
         "best_val_mae": best_val_err,
         "test_evaluated": bool(args.evaluate_test),
         "evaluation_only": bool(args.evaluation_only),
-        "inherited_initialization": bool(args.inherit_checkpoint),
-        "selection_eligible": False if args.inherit_checkpoint else True,
-        "final_training_allowed": False if args.inherit_checkpoint else True,
+        "inherited_initialization": False,
+        "selection_eligible": formal_ranking_admitted,
+        "final_training_allowed": formal_ranking_admitted,
     }
     if args.dsl_program:
         final_summary.update(
@@ -895,6 +835,7 @@ def main(args):
                 "backend_semantics_version": getattr(model, "backend_semantics_version", ""),
                 "lowering_mode": getattr(model, "lowering_mode", ""),
                 "lowering_plan": getattr(model, "lowering_plan", {}),
+                "generic_lowering_admission": getattr(model, "generic_lowering_admission", {}),
             }
         )
     if args.evaluate_test:

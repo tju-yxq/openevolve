@@ -9,7 +9,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from equivariant_nas.pipeline import evaluate_candidate_pipeline
+from equivariant_nas.dsl.pipeline import evaluate_dsl_candidate_pipeline
 
 
 def _now():
@@ -127,7 +127,7 @@ def run(args):
         batch_size=args.batch_size,
         train_subset_file=args.train_subset_file,
         eval_interval_epochs=args.eval_interval_epochs,
-        dsl_task_contract=args.task_contract,
+        task_contract_path=args.task_contract,
         run_symmetry=True,
     )
     stages = (("parent", args.parent_program, "exact_reference"), ("child", args.child_program, "exact_hybrid"))
@@ -151,7 +151,7 @@ def run(args):
                 "results": results,
             },
         )
-        result = evaluate_candidate_pipeline(program_path=program, **common)
+        result = evaluate_dsl_candidate_pipeline(program_path=program, **common)
         results[name] = _enrich_training_identity(result)
         result = results[name]
         _write(root / (name + "_result.json"), result)

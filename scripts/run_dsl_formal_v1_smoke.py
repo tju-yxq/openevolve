@@ -23,8 +23,8 @@ from equivariant_nas.dsl import (
     v1_region_registry,
 )
 from equivariant_nas.dsl.serialization import dumps_program
-from equivariant_nas.pipeline import evaluate_candidate_pipeline
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
+from equivariant_nas.dsl.pipeline import evaluate_dsl_candidate_pipeline
 
 
 def _now():
@@ -239,7 +239,7 @@ def run(args):
         "batch_size": args.batch_size,
         "train_subset_file": args.train_subset_file,
         "eval_interval_epochs": args.eval_interval_epochs,
-        "dsl_task_contract": args.task_contract,
+        "task_contract_path": args.task_contract,
         "run_symmetry": True,
     }
     if args.symmetry_threshold is not None:
@@ -255,7 +255,7 @@ def run(args):
                 "results": results,
             },
         )
-        result = evaluate_candidate_pipeline(program_path=candidate["program_path"], **common)
+        result = evaluate_dsl_candidate_pipeline(program_path=candidate["program_path"], **common)
         results[key] = result
         _write_json(output / "results" / (key + ".json"), result)
         if result.get("test_evaluated"):

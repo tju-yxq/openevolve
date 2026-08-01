@@ -34,6 +34,8 @@ class MotifDefinition:
     output_bindings: Mapping[str, str]
     template_nodes: Tuple[Node, ...]
     required_attrs: Tuple[str, ...] = ()
+    optional_attrs: Mapping[str, str] = field(default_factory=dict)
+    attribute_aliases: Mapping[str, str] = field(default_factory=dict)
     group_families: Tuple[str, ...] = ("O3", "SO3")
     provenance: Mapping[str, Any] = field(default_factory=dict)
     certification: str = "constructive"
@@ -52,6 +54,33 @@ class MotifDefinition:
             root = reference.split(":", 1)[0]
             if root not in local_ids:
                 raise DSLValidationError([Diagnostic("E_MOTIF_003", "motif output references an unknown local node", port=port, actual=reference)])
+        required = set(self.required_attrs)
+        optional = set(self.optional_attrs)
+        if required.intersection(optional):
+            raise DSLValidationError([Diagnostic("E_MOTIF_013", "motif attributes cannot be both required and optional", actual=self.qualified_name)])
+        invalid_targets = set(self.attribute_aliases.values()) - (required | optional)
+        if invalid_targets:
+            raise DSLValidationError([
+                Diagnostic("E_MOTIF_014", "motif attribute alias targets are not declared", actual=self.qualified_name, details={"targets": sorted(invalid_targets)})
+            ])
+
+    def canonical_attrs(self, node_id: str, attrs: Mapping[str, Any]) -> Dict[str, Any]:
+        normalized = dict(attrs)
+        for alias, canonical in self.attribute_aliases.items():
+            if alias not in normalized:
+                continue
+            if canonical in normalized:
+                raise DSLValidationError([
+                    Diagnostic("E_MOTIF_015", "motif attribute alias conflicts with canonical name", node_id=node_id, details={"alias": alias, "canonical": canonical})
+                ])
+            normalized[canonical] = normalized.pop(alias)
+        missing = set(self.required_attrs) - set(normalized)
+        unknown = set(normalized) - (set(self.required_attrs) | set(self.optional_attrs))
+        if missing or unknown:
+            raise DSLValidationError([
+                Diagnostic("E_MOTIF_006", "motif call does not satisfy its attribute schema", node_id=node_id, details={"missing_attrs": sorted(missing), "unknown_attrs": sorted(unknown)})
+            ])
+        return normalized
 
     def content_hash(self) -> str:
         payload = {
@@ -61,6 +90,8 @@ class MotifDefinition:
             "outputs": dict(self.output_bindings),
             "nodes": [item.to_dict() for item in self.template_nodes],
             "required_attrs": self.required_attrs,
+            "optional_attrs": dict(self.optional_attrs),
+            "attribute_aliases": dict(self.attribute_aliases),
             "groups": self.group_families,
             "certification": self.certification,
             "semantic_constraints": self.semantic_constraints,
@@ -77,6 +108,8 @@ class MotifDefinition:
             "output_bindings": dict(self.output_bindings),
             "template_nodes": [item.to_dict() for item in self.template_nodes],
             "required_attrs": list(self.required_attrs),
+            "optional_attrs": dict(self.optional_attrs),
+            "attribute_aliases": dict(self.attribute_aliases),
             "group_families": list(self.group_families),
             "provenance": dict(self.provenance),
             "certification": self.certification,
@@ -88,7 +121,7 @@ class MotifDefinition:
     def from_dict(cls, data: Mapping[str, Any]) -> "MotifDefinition":
         allowed = {
             "name", "version", "input_ports", "output_bindings", "template_nodes",
-            "required_attrs", "group_families", "provenance", "certification",
+            "required_attrs", "optional_attrs", "attribute_aliases", "group_families", "provenance", "certification",
             "semantic_constraints", "edit_guidance",
         }
         unknown = set(data) - allowed
@@ -103,6 +136,8 @@ class MotifDefinition:
             {str(key): str(value) for key, value in data.get("output_bindings", {}).items()},
             tuple(Node.from_dict(item) for item in data.get("template_nodes", ())),
             tuple(str(item) for item in data.get("required_attrs", ())),
+            {str(key): str(value) for key, value in data.get("optional_attrs", {}).items()},
+            {str(key): str(value) for key, value in data.get("attribute_aliases", {}).items()},
             tuple(str(item) for item in data.get("group_families", ())),
             dict(data.get("provenance", {})),
             str(data.get("certification", "constructive")),
@@ -156,16 +191,16 @@ def expand_motifs(program: ArchitectureProgram, registry: MotifRegistry) -> Arch
             expanded.append(call)
             continue
         motif = registry.resolve(call.op)
+        call_attrs = motif.canonical_attrs(call.id, call.attrs)
         missing_inputs = set(motif.input_ports) - set(call.inputs)
         extra_inputs = set(call.inputs) - set(motif.input_ports)
-        missing_attrs = set(motif.required_attrs) - set(call.attrs)
-        if missing_inputs or extra_inputs or missing_attrs:
+        if missing_inputs or extra_inputs:
             raise DSLValidationError([
                 Diagnostic(
                     "E_MOTIF_006",
                     "motif call does not satisfy its signature",
                     node_id=call.id,
-                    details={"missing_inputs": sorted(missing_inputs), "extra_inputs": sorted(extra_inputs), "missing_attrs": sorted(missing_attrs)},
+                    details={"missing_inputs": sorted(missing_inputs), "extra_inputs": sorted(extra_inputs)},
                 )
             ])
         if set(call.outputs) != set(motif.output_bindings):
@@ -196,7 +231,7 @@ def expand_motifs(program: ArchitectureProgram, registry: MotifRegistry) -> Arch
                     template,
                     id=local_map[template.id],
                     inputs=inputs,
-                    attrs=_substitute(template.attrs, call.attrs),
+                    attrs=_substitute(template.attrs, call_attrs),
                     annotations={**dict(template.annotations), "expanded_from": call.id, "motif": motif.qualified_name},
                 )
             )

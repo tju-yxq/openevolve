@@ -28,7 +28,7 @@ from equivariant_nas.dsl import (
     v1_region_registry,
 )
 from equivariant_nas.dsl.serialization import dumps_program
-from equivariant_nas.spec import baseline_spec
+from equivariant_nas.dsl.backends import baseline_spec
 
 
 def sha256(path):

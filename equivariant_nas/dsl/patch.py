@@ -277,6 +277,7 @@ def apply_typed_patch(
     validate_parent_id: bool = True,
     expected_parent_id: str = "",
     validate_child_with_core_registry: bool = True,
+    allowed_new_ops: Sequence[str] = (),
 ) -> ArchitectureProgram:
     """Apply all edits to a copy and commit only if the child type-checks."""
 
@@ -292,6 +293,28 @@ def apply_typed_patch(
     outputs = list(parent.outputs)
     parameters = dict(parent.parameters)
     inserted_node_ids = set()
+    allowed_ops = {
+        name if "@" in name else "{}@1".format(name)
+        for name in allowed_new_ops
+    }
+
+    def assert_op_is_generatable(op: str, target_id: str, existing_op: str = "") -> None:
+        if not allowed_ops:
+            return
+        qualified = op if "@" in op else "{}@1".format(op)
+        existing = existing_op if "@" in existing_op else "{}@1".format(existing_op) if existing_op else ""
+        if existing and qualified == existing:
+            return
+        if qualified not in allowed_ops:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_PATCH_018",
+                    "patch may introduce only operators exposed by the active canonical search surface",
+                    node_id=target_id,
+                    actual=qualified,
+                    details={"allowed_new_ops": sorted(allowed_ops)},
+                )
+            ])
 
     def scope_allows(target: str) -> bool:
         if target.startswith("output:"):
@@ -350,6 +373,7 @@ def apply_typed_patch(
             replacement = Node.from_dict(edit.payload["node"])
             if replacement.id != target.id:
                 raise DSLValidationError([Diagnostic("E_PATCH_008", "replacement must preserve target id", node_id=target.id)])
+            assert_op_is_generatable(replacement.op, target.id, target.op)
             nodes[index] = replacement
         elif edit.kind == "change_attrs":
             nodes[index] = replace(target, attrs=dict(edit.payload["attrs"]))
@@ -363,11 +387,14 @@ def apply_typed_patch(
             inputs[port] = refs
             nodes[index] = replace(target, inputs=inputs)
         elif edit.kind == "instantiate_motif":
-            nodes[index] = replace(target, op=str(edit.payload["op"]), attrs=dict(edit.payload.get("attrs", {})))
+            replacement_op = str(edit.payload["op"])
+            assert_op_is_generatable(replacement_op, target.id, target.op)
+            nodes[index] = replace(target, op=replacement_op, attrs=dict(edit.payload.get("attrs", {})))
         elif edit.kind in ("insert_before", "insert_after"):
             inserted = Node.from_dict(edit.payload["node"])
             if any(item.id == inserted.id for item in nodes):
                 raise DSLValidationError([Diagnostic("E_PATCH_010", "inserted node id already exists", actual=inserted.id)])
+            assert_op_is_generatable(inserted.op, inserted.id)
             offset = 0 if edit.kind == "insert_before" else 1
             nodes.insert(index + offset, inserted)
             inserted_node_ids.add(inserted.id)

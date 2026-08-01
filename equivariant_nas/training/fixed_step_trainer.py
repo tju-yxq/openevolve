@@ -22,6 +22,10 @@ from timm.utils import ModelEmaV2, NativeScaler, dispatch_clip_grad
 from torch.utils.data import Subset
 from torch_geometric.loader import DataLoader
 
+from equivariant_nas.training.torch_scatter_compat import install_torch_scatter_fallback
+
+TORCH_SCATTER_BACKEND = install_torch_scatter_fallback()
+
 EQUIFORMER_ROOT = os.environ.get(
     "EQUIFORMER_ROOT", "/home/20262202788/equiformer"
 )

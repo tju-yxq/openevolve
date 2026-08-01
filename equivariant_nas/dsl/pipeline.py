@@ -322,6 +322,7 @@ def evaluate_dsl_candidate_pipeline(
             "equivariant_nas/dsl/backends/equiformer_v1_constructor.py",
             "equivariant_nas/training/fixed_step_trainer.py",
             "equivariant_nas/training/v3_qm9_runtime.py",
+            "equivariant_nas/training/torch_scatter_compat.py",
         ),
         equiformer_v3_root=equiformer_v3_root,
     )
@@ -480,6 +481,9 @@ def evaluate_dsl_candidate_pipeline(
 
         batch = None
         if run_symmetry or max_steps > 0:
+            from equivariant_nas.training.torch_scatter_compat import install_torch_scatter_fallback
+
+            result["torch_scatter_backend"] = install_torch_scatter_fallback()
             from datasets.pyg.qm9 import QM9
             from torch_geometric.loader import DataLoader
             from torch.utils.data import Subset

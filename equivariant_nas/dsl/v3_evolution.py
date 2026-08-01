@@ -12,12 +12,12 @@ from .canonicalize import architecture_id
 from .diagnostics import DSLValidationError, Diagnostic
 from .inference import TypeChecker
 from .patch import PatchEdit, TypedPatch, apply_typed_patch
-from .reference_programs import equiformer_v3_direct_model_program
+from .reference_programs import equiformer_v3_direct_model_program, equiformer_v3_energy_model_program
 from .registry import PrimitiveRegistry
 from .backends.equiformer_v3_spec import EquiformerV3Spec
 
 
-V3_FIRST_ROUND_MUTATION_VERSION = "v3-shape-preserving-1"
+V3_FIRST_ROUND_MUTATION_VERSION = "v3-shape-preserving-2-three-stage"
 
 
 @dataclass(frozen=True)
@@ -54,6 +54,39 @@ class V3MutationAction:
         }
 
 
+@dataclass(frozen=True)
+class V3MutationRegion:
+    """One router-visible V3 leaf factor and its uniquely owned edit region."""
+
+    factor_id: str
+    region_id: str
+    field: str
+    description: str
+
+    def to_dict(
+        self,
+        *,
+        actions: Sequence[V3MutationAction] = (),
+    ) -> Mapping[str, Any]:
+        selected = tuple(item for item in actions if item.field == self.field)
+        targets = selected[0].targets if selected else ()
+        return {
+            "factor_id": self.factor_id,
+            "region_id": self.region_id,
+            "mutation_family": self.field,
+            "description": self.description,
+            "editable_targets": [item.node_id for item in targets]
+            + ["program.parameters.equiformer_v3_spec.{}".format(self.field)],
+            "allowed_action_ids": [item.action_id for item in selected],
+            "allowed_values": [item.value for item in selected],
+            "preserved_contracts": [
+                "equivariant input/output types unchanged",
+                "parameter shapes unchanged",
+                "all repeated runtime sites updated atomically",
+            ],
+        }
+
+
 _MUTATION_VALUES = {
     "alpha_drop": (0.0, 0.02, 0.05, 0.10, 0.15, 0.20),
     "attn_weights_drop": (0.0, 0.02, 0.05, 0.10, 0.15, 0.20),
@@ -72,6 +105,171 @@ _MUTATION_DESCRIPTIONS = {
     "ffn_drop": "同时改变每个 V3 block 的 FFN 标量与 S2 网格 dropout",
 }
 
+_MUTATION_REGIONS = (
+    V3MutationRegion("V3.F1", "v3_alpha_dropout", "alpha_drop", _MUTATION_DESCRIPTIONS["alpha_drop"]),
+    V3MutationRegion(
+        "V3.F2",
+        "v3_attention_weight_dropout",
+        "attn_weights_drop",
+        _MUTATION_DESCRIPTIONS["attn_weights_drop"],
+    ),
+    V3MutationRegion("V3.F3", "v3_value_dropout", "value_drop", _MUTATION_DESCRIPTIONS["value_drop"]),
+    V3MutationRegion(
+        "V3.F4",
+        "v3_graph_stochastic_depth",
+        "drop_path_rate",
+        _MUTATION_DESCRIPTIONS["drop_path_rate"],
+    ),
+    V3MutationRegion(
+        "V3.F5",
+        "v3_equivariant_projection_dropout",
+        "proj_drop",
+        _MUTATION_DESCRIPTIONS["proj_drop"],
+    ),
+    V3MutationRegion("V3.F6", "v3_ffn_dropout", "ffn_drop", _MUTATION_DESCRIPTIONS["ffn_drop"]),
+)
+
+
+def v3_mutation_regions(
+    actions: Sequence[V3MutationAction] = (),
+) -> Tuple[V3MutationRegion, ...]:
+    """Return certified regions, optionally restricted to currently available actions."""
+
+    if not actions:
+        return _MUTATION_REGIONS
+    fields = {item.field for item in actions}
+    return tuple(item for item in _MUTATION_REGIONS if item.field in fields)
+
+
+def v3_region_by_id(region_id: str) -> V3MutationRegion:
+    matches = tuple(item for item in _MUTATION_REGIONS if item.region_id == str(region_id))
+    if len(matches) != 1:
+        raise DSLValidationError([
+            Diagnostic("E_V3_EVO_009", "unknown V3 mutation region", actual=str(region_id))
+        ])
+    return matches[0]
+
+
+def v3_region_for_field(field: str) -> V3MutationRegion:
+    matches = tuple(item for item in _MUTATION_REGIONS if item.field == str(field))
+    if len(matches) != 1:
+        raise DSLValidationError([
+            Diagnostic("E_V3_EVO_010", "unknown V3 mutation family", actual=str(field))
+        ])
+    return matches[0]
+
+
+def parse_v3_router_response(
+    value: Mapping[str, Any],
+    regions: Sequence[V3MutationRegion],
+) -> Mapping[str, Any]:
+    """Validate the V3 Factor Router response without accepting an edit or value."""
+
+    required = {"factor_id", "region_id", "rationale", "evidence_refs", "expected_value", "risk"}
+    if not isinstance(value, Mapping) or set(value) != required:
+        raise DSLValidationError([
+            Diagnostic("E_V3_LLM_001", "V3 factor router response does not match the exact schema")
+        ])
+    matches = tuple(item for item in regions if item.region_id == str(value["region_id"]))
+    if len(matches) != 1:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_V3_LLM_002",
+                "V3 factor router selected an unauthorized region",
+                actual=str(value["region_id"]),
+            )
+        ])
+    region = matches[0]
+    if str(value["factor_id"]) != region.factor_id:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_V3_LLM_003",
+                "V3 factor router selected a factor that does not own the region",
+                expected=region.factor_id,
+                actual=str(value["factor_id"]),
+            )
+        ])
+    if not str(value["rationale"]).strip() or not str(value["expected_value"]).strip():
+        raise DSLValidationError([
+            Diagnostic("E_V3_LLM_004", "V3 factor router omitted its decision rationale")
+        ])
+    if not isinstance(value["evidence_refs"], Sequence) or isinstance(value["evidence_refs"], (str, bytes)):
+        raise DSLValidationError([
+            Diagnostic("E_V3_LLM_005", "V3 factor router evidence_refs must be an array")
+        ])
+    return dict(value)
+
+
+def parse_v3_critic_response(
+    value: Mapping[str, Any],
+    region: V3MutationRegion,
+    *,
+    immutable_mechanism: str = "",
+) -> Mapping[str, Any]:
+    """Validate a critic response and freeze the routed factor, region, and mechanism."""
+
+    required = {
+        "factor_id",
+        "region_id",
+        "claim",
+        "mechanism",
+        "edit_plan",
+        "preserved_invariants",
+        "evidence_refs",
+        "uncertainty",
+        "risk",
+        "acceptance_metrics",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        fields = set(value) if isinstance(value, Mapping) else set()
+        raise DSLValidationError([
+            Diagnostic(
+                "E_V3_LLM_006",
+                "V3 region critic response does not match the exact schema",
+                details={
+                    "missing_fields": sorted(required - fields),
+                    "unknown_fields": sorted(fields - required),
+                },
+            )
+        ])
+    if str(value["factor_id"]) != region.factor_id:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_V3_LLM_007",
+                "V3 region critic changed the routed factor",
+                expected=region.factor_id,
+                actual=str(value["factor_id"]),
+            )
+        ])
+    if str(value["region_id"]) != region.region_id:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_V3_LLM_008",
+                "V3 region critic changed or widened the routed region",
+                expected=region.region_id,
+                actual=str(value["region_id"]),
+            )
+        ])
+    if immutable_mechanism and str(value["mechanism"]) != immutable_mechanism:
+        raise DSLValidationError([
+            Diagnostic(
+                "E_V3_LLM_009",
+                "V3 critic protocol repair changed the proposed mechanism",
+                expected=immutable_mechanism,
+                actual=str(value["mechanism"]),
+            )
+        ])
+    arrays = ("edit_plan", "preserved_invariants", "evidence_refs", "acceptance_metrics")
+    if any(not isinstance(value[name], Sequence) or isinstance(value[name], (str, bytes)) for name in arrays):
+        raise DSLValidationError([
+            Diagnostic("E_V3_LLM_010", "V3 region critic list fields must be arrays")
+        ])
+    if not str(value["claim"]).strip() or not str(value["mechanism"]).strip() or not value["edit_plan"] or not value["acceptance_metrics"]:
+        raise DSLValidationError([
+            Diagnostic("E_V3_LLM_011", "V3 region critic omitted a falsifiable mechanism or edit plan")
+        ])
+    return dict(value)
+
 
 def v3_program_spec(program: ArchitectureProgram) -> EquiformerV3Spec:
     payload = program.parameters.get("equiformer_v3_spec")
@@ -88,6 +286,22 @@ def v3_program_spec(program: ArchitectureProgram) -> EquiformerV3Spec:
         raise DSLValidationError([
             Diagnostic("E_V3_EVO_002", "V3 program spec is invalid", actual=str(error))
         ]) from error
+
+
+def v3_program_from_spec(
+    spec: EquiformerV3Spec,
+    *,
+    dtype: str = "float32",
+    task_contract: str = "equiformer_v3_evolution_model",
+) -> ArchitectureProgram:
+    """Build the exact energy-only or direct Energy+Force V3 program for a frozen spec."""
+
+    if spec.regress_stress:
+        raise DSLValidationError([
+            Diagnostic("E_V3_EVO_011", "V3 evolution does not yet support the stress head")
+        ])
+    builder = equiformer_v3_direct_model_program if spec.regress_forces else equiformer_v3_energy_model_program
+    return builder(spec, dtype=dtype, task_contract=task_contract)
 
 
 def _target_contract(field: str, node: Node) -> str:
@@ -198,7 +412,7 @@ def v3_first_round_mutation_catalog(program: ArchitectureProgram) -> Tuple[V3Mut
                 {**spec.to_dict(), field: float(value)},
                 strict=True,
             )
-            regenerated = equiformer_v3_direct_model_program(
+            regenerated = v3_program_from_spec(
                 candidate_spec,
                 task_contract=program.task_contract,
             )
@@ -262,15 +476,21 @@ def build_v3_first_round_patch(
         })
     parameter_target = "program.parameters.equiformer_v3_spec.{}".format(action.field)
     edits.append(PatchEdit("change_parameters", parameter_target, {"value": action.value}))
-    claim = {
-        "claim": action.description,
+    region = v3_region_for_field(action.field)
+    claim = dict(hypothesis or {})
+    if not str(claim.get("claim", "")).strip():
+        claim["claim"] = action.description
+    # These fields are compiler-owned identifiers.  An LLM hypothesis may add
+    # scientific detail, but cannot relabel the routed factor or selected action.
+    claim.update({
+        "factor_id": region.factor_id,
+        "region_id": region.region_id,
         "action_id": action.action_id,
         "mutation_family": action.field,
         "current_value": action.current_value,
         "proposed_value": action.value,
         "status": "未经训练验证的候选假设",
-    }
-    claim.update(dict(hypothesis or {}))
+    })
     return TypedPatch(
         "1.0",
         architecture_id(parent, registry),
@@ -299,7 +519,7 @@ def apply_v3_first_round_patch(
     inference = TypeChecker(registry).check(child)
     del inference
     spec = v3_program_spec(child)
-    regenerated = equiformer_v3_direct_model_program(
+    regenerated = v3_program_from_spec(
         spec,
         dtype=str(child.parameters.get("dtype", "float32")),
         task_contract=child.task_contract,

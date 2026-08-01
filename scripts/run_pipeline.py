@@ -11,6 +11,7 @@ def main():
     parser.add_argument("--project-root", required=True)
     parser.add_argument("--equiformer-root", required=True)
     parser.add_argument("--equiformer-v2-root", default="")
+    parser.add_argument("--equiformer-v3-root", default="")
     parser.add_argument("--dsl-task-contract", default="")
     parser.add_argument("--data-path", required=True)
     parser.add_argument("--max-steps", type=int, default=0)
@@ -47,6 +48,7 @@ def main():
         resume_model_only=args.resume_model_only,
         lr_schedule_origin_step=args.lr_schedule_origin_step,
         equiformer_v2_root=args.equiformer_v2_root,
+        equiformer_v3_root=args.equiformer_v3_root,
         task_contract_path=args.dsl_task_contract,
         allow_experimental_generic_lowering=args.allow_experimental_generic_lowering,
     )

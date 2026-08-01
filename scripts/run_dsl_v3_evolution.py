@@ -23,6 +23,8 @@ from equivariant_nas.dsl import (
     COMPILER_SEMANTICS_VERSION,
     V3_FIRST_ROUND_MUTATION_VERSION,
     Compiler,
+    DSLValidationError,
+    TypedPatch,
     TypeChecker,
     apply_v3_first_round_patch,
     architecture_id,
@@ -30,10 +32,14 @@ from equivariant_nas.dsl import (
     canonicalize,
     choose_deterministic_v3_action,
     core_registry,
-    equiformer_v3_direct_model_program,
+    parse_v3_critic_response,
+    parse_v3_router_response,
     v3_evolution_state,
     v3_first_round_mutation_catalog,
+    v3_mutation_regions,
+    v3_program_from_spec,
     v3_program_spec,
+    v3_region_by_id,
 )
 from equivariant_nas.dsl.backends import E3NNGraphBackend, EquiformerV3Spec, V3_REFERENCE_COMMIT
 from equivariant_nas.dsl.serialization import dumps_program, load_program
@@ -76,7 +82,7 @@ def _load_seed(args):
         return load_program(args.seed_program), {"source": "seed_program", "path": str(Path(args.seed_program).resolve())}
     payload = _load_mapping(Path(args.model_config))
     spec, manifest = EquiformerV3Spec.from_official_config(payload)
-    return equiformer_v3_direct_model_program(spec), {
+    return v3_program_from_spec(spec), {
         "source": "official_model_config",
         "path": str(Path(args.model_config).resolve()),
         "import_manifest": manifest.to_dict(),
@@ -125,60 +131,15 @@ def _extract_json_object(text: str):
     return value
 
 
-def _select_with_glm(args, program, actions, history):
+def _call_glm(args, prompt):
     key = os.environ.get(args.api_key_env, "")
     if not key:
         raise RuntimeError("missing LLM credential environment variable {}".format(args.api_key_env))
-    current_spec = v3_program_spec(program)
-    request_payload = {
-        "round": sum(1 for item in history if int(item.get("round", 0)) > 0) + 1,
-        "goal": "从当前 Equiformer V3 Typed DSL 父代中选择一个值得训练的局部变异",
-        "constraints": [
-            "只能选择 available_actions 中的一个 action_id",
-            "不得声称已经提高精度，效果只能作为待训练假设",
-            "优先避免与历史轮次重复的变异逻辑",
-            "这些动作保持参数形状与等变类型合同，但会改变训练期随机计算路径",
-        ],
-        "current_stochastic_spec": {
-            field: getattr(current_spec, field)
-            for field in (
-                "alpha_drop",
-                "attn_weights_drop",
-                "value_drop",
-                "drop_path_rate",
-                "proj_drop",
-                "ffn_drop",
-            )
-        },
-        "history": [
-            {
-                "round": item.get("round"),
-                "action_id": item.get("action_id"),
-                "hypothesis": item.get("hypothesis", {}),
-            }
-            for item in history[-6:]
-        ],
-        "available_actions": [item.to_dict() for item in actions],
-        "response_schema": {
-            "action_id": "exact id copied from available_actions",
-            "hypothesis": {
-                "claim": "one concise Chinese hypothesis",
-                "rationale": "why this local change may help",
-                "risk": "main failure risk",
-            },
-        },
-    }
     body = {
         "model": args.model,
         "messages": [
-            {
-                "role": "system",
-                "content": "你是等变神经网络架构变异规划器。只输出一个 JSON 对象，不要输出 Markdown。",
-            },
-            {
-                "role": "user",
-                "content": json.dumps(request_payload, ensure_ascii=False, sort_keys=True),
-            },
+            {"role": "system", "content": prompt["system"]},
+            {"role": "user", "content": prompt["user"]},
         ],
         "temperature": args.temperature,
         "top_p": args.top_p,
@@ -194,48 +155,387 @@ def _select_with_glm(args, program, actions, history):
     with urllib.request.urlopen(request, timeout=args.timeout) as response:
         payload = json.loads(response.read().decode("utf-8"))
     content = payload["choices"][0]["message"]["content"]
-    selected = _extract_json_object(content)
-    selected["latency_seconds"] = time.time() - started
-    selected["transport"] = "openai_compatible"
-    selected["model"] = args.model
-    selected["raw_response"] = content
-    return selected
+    return {
+        "response": _extract_json_object(content),
+        "latency_seconds": time.time() - started,
+        "transport": "openai_compatible",
+        "model": args.model,
+        "raw_response": content,
+    }
 
 
-def _select_action(args, program, actions, history, seen_states, round_index):
-    allowed = {item.action_id: item for item in actions}
-    failures = []
+def _deterministic_envelope(response, role):
+    return {
+        "response": dict(response),
+        "latency_seconds": 0.0,
+        "transport": "deterministic_test_protocol",
+        "model": "",
+        "role": role,
+        "raw_response": json.dumps(response, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _router_prompt(program, actions, history, round_index):
+    spec = v3_program_spec(program)
+    regions = v3_mutation_regions(actions)
+    payload = {
+        "round": round_index,
+        "goal": "选择一个最值得审查的 Equiformer V3 局部叶子因子与其唯一编辑区域",
+        "current_stochastic_spec": {
+            item.field: float(getattr(spec, item.field)) for item in regions
+        },
+        "regions": [item.to_dict(actions=actions) for item in regions],
+        "history": [
+            {
+                "round": item.get("round"),
+                "factor_id": item.get("factor_id"),
+                "region_id": item.get("region_id"),
+                "action_id": item.get("action_id"),
+            }
+            for item in history[-6:]
+            if int(item.get("round", 0)) > 0
+        ],
+        "rules": [
+            "只选择一个已列出的 factor_id 与它唯一拥有的 region_id",
+            "本阶段不得选择具体 action_id、数值、补丁或代码",
+            "所有收益均是待训练验证的预期，不得声称已经提高精度",
+        ],
+        "response_schema": {
+            "factor_id": "exact factor_id from regions",
+            "region_id": "the uniquely owned exact region_id",
+            "rationale": "why this factor has high information value",
+            "evidence_refs": [],
+            "expected_value": "one falsifiable expected benefit",
+            "risk": "main risk",
+        },
+    }
+    return {
+        "system": (
+            "你是 Typed 等变架构搜索的 Factor Router。只决定叶子因子和局部区域，"
+            "不得提出补丁、动作值或代码。只输出严格匹配 response_schema 的 JSON 对象。"
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _critic_prompt(program, actions, region, router, history, round_index):
+    selected = tuple(item for item in actions if item.field == region.field)
+    node_ids = {target.node_id for action in selected for target in action.targets}
+    nodes = {node.id: node for node in program.nodes}
+    payload = {
+        "round": round_index,
+        "router_decision": dict(router),
+        "selected_region": region.to_dict(actions=selected),
+        "local_parent_ast": [nodes[node_id].to_dict() for node_id in sorted(node_ids)],
+        "recent_history": [
+            {
+                "round": item.get("round"),
+                "action_id": item.get("action_id"),
+                "hypothesis": item.get("hypothesis", {}),
+            }
+            for item in history[-6:]
+            if int(item.get("round", 0)) > 0
+        ],
+        "rules": [
+            "只分析 router 已选择的 factor_id、region_id 与局部边界",
+            "提出可证伪机制和有序编辑计划，但不得生成 Typed Patch 或源代码",
+            "不得扩大到另一个 mutation family",
+            "必须明确保持等变类型、参数形状和重复节点同步修改合同",
+        ],
+        "response_schema": {
+            "factor_id": region.factor_id,
+            "region_id": region.region_id,
+            "claim": "one falsifiable local hypothesis",
+            "mechanism": "why this local stochastic computation may affect optimization or generalization",
+            "edit_plan": ["ordered abstract edits inside the selected family"],
+            "preserved_invariants": ["contracts that must remain true"],
+            "evidence_refs": [],
+            "uncertainty": "main uncertainty",
+            "risk": "main correctness or optimization risk",
+            "acceptance_metrics": ["training or validation measurements that can falsify the claim"],
+        },
+    }
+    return {
+        "system": (
+            "你是独立的 V3 Region Critic。只审查 Router 冻结的局部区域，给出机制与编辑计划，"
+            "不得生成补丁或改变 factor/region。只输出严格 JSON 对象。"
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _critic_repair_prompt(original_prompt, rejected, diagnostics, region, immutable_mechanism):
+    schema = json.loads(original_prompt["user"])["response_schema"]
+    required_keys = list(schema)
+    rejected_keys = set(rejected) if isinstance(rejected, dict) else set()
+    missing_keys = [name for name in required_keys if name not in rejected_keys]
+    unknown_keys = sorted(rejected_keys - set(required_keys))
+    payload = {
+        "instruction": (
+            "仅修复 JSON 协议错误。不得改变 factor_id、region_id、原始 mechanism 或科学干预方向；"
+            "不得加入补丁、代码、Markdown 或额外字段。最终对象必须逐一包含 required_keys 中的全部键。"
+        ),
+        "required_keys": required_keys,
+        "missing_keys_that_must_be_added": missing_keys,
+        "unknown_keys_that_must_be_removed": unknown_keys,
+        "immutable_factor_id": region.factor_id,
+        "immutable_region_id": region.region_id,
+        "immutable_mechanism": immutable_mechanism,
+        "response_schema": schema,
+        "required_field_example": {
+            "acceptance_metrics": ["validation metric", "Energy rotation error", "Force rotation error"]
+        },
+        "rejected_response": rejected,
+        "diagnostics": diagnostics,
+    }
+    return {
+        "system": (
+            "你是严格的 Region Critic JSON 协议修复器。只输出一个 JSON 对象。"
+            "遗漏 required_keys 中任何一个键都视为修复失败。"
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _patch_hypothesis(critic):
+    return {
+        name: critic[name]
+        for name in (
+            "claim",
+            "mechanism",
+            "edit_plan",
+            "preserved_invariants",
+            "evidence_refs",
+            "uncertainty",
+            "risk",
+            "acceptance_metrics",
+        )
+    }
+
+
+def _allowed_typed_patches(program, actions, registry, critic):
+    hypothesis = _patch_hypothesis(critic)
+    return {
+        action.action_id: build_v3_first_round_patch(
+            program,
+            action.action_id,
+            registry,
+            hypothesis=hypothesis,
+        )
+        for action in actions
+    }
+
+
+def _synthesizer_prompt(program, region, router, critic, allowed_patches, round_index):
+    payload = {
+        "round": round_index,
+        "router_decision": dict(router),
+        "critic_plan": dict(critic),
+        "immutable_factor_id": region.factor_id,
+        "immutable_region_id": region.region_id,
+        "immutable_mechanism": critic["mechanism"],
+        "allowed_typed_patches": [
+            {"action_id": action_id, "typed_patch": patch.to_dict()}
+            for action_id, patch in allowed_patches.items()
+        ],
+        "rules": [
+            "从 allowed_typed_patches 中选择一个完整 Typed Patch 并逐字段原样输出 typed_patch 对象",
+            "不得输出外层 action_id 包装、Markdown、解释或额外字段",
+            "不得改变 factor_id、region_id、mechanism、scope、edits、前后置条件或父代身份",
+            "效果仍是待训练假设，不得宣称已经获得性能提升",
+        ],
+    }
+    return {
+        "system": (
+            "你是 V3 Patch Synthesizer。依据冻结的 Router 和 Critic 决策，从编译器认证的候选中"
+            "输出一个完整 Typed Patch JSON 对象；不得扩大范围或改写补丁。"
+        ),
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _compiler_repair_prompt(original_prompt, rejected, diagnostics, region, critic, allowed_patches):
+    payload = {
+        "instruction": (
+            "根据编译器诊断重写完整 Typed Patch。只能逐字段复制 allowed_typed_patches 中的一个；"
+            "factor_id、region_id、mechanism、scope 和科学干预方向全部冻结。"
+        ),
+        "immutable_factor_id": region.factor_id,
+        "immutable_region_id": region.region_id,
+        "immutable_mechanism": critic["mechanism"],
+        "diagnostics": diagnostics,
+        "rejected_response": rejected,
+        "original_synthesizer_request": json.loads(original_prompt["user"]),
+        "allowed_typed_patches": [patch.to_dict() for patch in allowed_patches.values()],
+    }
+    return {
+        "system": "你是编译器引导的 Typed Patch 修复器。只输出一个完整 JSON 补丁对象。",
+        "user": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+    }
+
+
+def _error_diagnostics(error):
+    if isinstance(error, DSLValidationError):
+        return [item.to_dict() for item in error.diagnostics]
+    return [{"code": "E_V3_WORKFLOW", "message": str(error), "error_type": type(error).__name__}]
+
+
+def _parse_synthesized_patch(value, allowed_patches, region, critic):
+    patch = TypedPatch.from_dict(value)
+    action_id = str(patch.hypothesis.get("action_id", ""))
+    expected = allowed_patches.get(action_id)
+    if expected is None:
+        raise ValueError("synthesizer selected an action outside the routed region: {!r}".format(action_id))
+    if str(patch.hypothesis.get("factor_id", "")) != region.factor_id:
+        raise ValueError("synthesizer changed the routed factor")
+    if str(patch.hypothesis.get("region_id", "")) != region.region_id:
+        raise ValueError("synthesizer changed the routed region")
+    if str(patch.hypothesis.get("mechanism", "")) != str(critic["mechanism"]):
+        raise ValueError("synthesizer changed the critic mechanism")
+    if patch.to_dict() != expected.to_dict():
+        raise ValueError("synthesizer changed the compiler-certified patch envelope, scope, or edits")
+    return patch, action_id
+
+
+def _write_stage_exchange(round_dir, stem, prompt, envelope):
+    _write_json(round_dir / "{}_prompt.json".format(stem), prompt)
+    _write_json(round_dir / "{}_response.json".format(stem), envelope)
+
+
+def _run_three_stage_round(args, program, actions, history, seen_states, round_index, round_dir, registry):
+    regions = v3_mutation_regions(actions)
+    router_prompt = _router_prompt(program, actions, history, round_index)
     if args.selection_mode == "glm":
-        for attempt in range(1, args.llm_attempts + 1):
+        router_envelope = _call_glm(args, router_prompt)
+    else:
+        region = regions[(round_index - 1) % len(regions)]
+        router_envelope = _deterministic_envelope({
+            "factor_id": region.factor_id,
+            "region_id": region.region_id,
+            "rationale": "确定性覆盖六个 V3 叶子因子",
+            "evidence_refs": [],
+            "expected_value": "验证三阶段协议和 Typed Patch 闭环",
+            "risk": "尚未经过训练排序",
+        }, "factor_router")
+    _write_stage_exchange(round_dir, "router", router_prompt, router_envelope)
+    router = parse_v3_router_response(router_envelope["response"], regions)
+    region = v3_region_by_id(router["region_id"])
+    routed_actions = tuple(item for item in actions if item.field == region.field)
+
+    critic_prompt = _critic_prompt(program, routed_actions, region, router, history, round_index)
+    if args.selection_mode == "glm":
+        critic_envelope = _call_glm(args, critic_prompt)
+    else:
+        critic_envelope = _deterministic_envelope({
+            "factor_id": region.factor_id,
+            "region_id": region.region_id,
+            "claim": "调整 {} 可能改变正则化强度与优化稳定性".format(region.field),
+            "mechanism": "只改变训练期随机路径概率，同时保持所有等变类型与参数形状不变",
+            "edit_plan": ["选择一个未访问的合法概率", "同步更新全部重复运行时节点与 V3 规格字段"],
+            "preserved_invariants": ["等变类型不变", "参数形状不变", "重复节点同步修改"],
+            "evidence_refs": [],
+            "uncertainty": "短期结构检查不能预测训练后的精度",
+            "risk": "随机正则过强可能导致欠拟合",
+            "acceptance_metrics": ["验证集指标", "Energy 旋转误差", "Force 旋转误差"],
+        }, "region_critic")
+    _write_stage_exchange(round_dir, "critic", critic_prompt, critic_envelope)
+    critic_repair_count = 0
+    immutable_mechanism = ""
+    rejected_critic = critic_envelope["response"]
+    try:
+        critic = parse_v3_critic_response(rejected_critic, region)
+    except DSLValidationError as error:
+        if args.selection_mode != "glm":
+            raise
+        if isinstance(rejected_critic, dict):
+            immutable_mechanism = str(rejected_critic.get("mechanism", "")).strip()
+        last_error = error
+        critic = None
+        for repair_index in range(1, args.critic_repair_attempts + 1):
+            repair_prompt = _critic_repair_prompt(
+                critic_prompt,
+                rejected_critic,
+                _error_diagnostics(last_error),
+                region,
+                immutable_mechanism,
+            )
+            repair_envelope = _call_glm(args, repair_prompt)
+            _write_stage_exchange(round_dir, "critic_repair_{:03d}".format(repair_index), repair_prompt, repair_envelope)
+            rejected_critic = repair_envelope["response"]
             try:
-                response = _select_with_glm(args, program, actions, history)
-                action_id = str(response.get("action_id", ""))
-                if action_id not in allowed:
-                    raise ValueError("LLM selected unavailable action {!r}".format(action_id))
-                hypothesis = response.get("hypothesis")
-                if not isinstance(hypothesis, dict):
-                    raise ValueError("LLM hypothesis must be one object")
-                return allowed[action_id], hypothesis, {**response, "attempt": attempt, "selected_by": "glm"}
-            except (OSError, KeyError, ValueError, json.JSONDecodeError, urllib.error.URLError) as error:
-                failures.append({"attempt": attempt, "error_type": type(error).__name__, "error": str(error)})
-        if not args.allow_deterministic_fallback:
-            raise RuntimeError("LLM selection failed: {}".format(failures))
-    action = choose_deterministic_v3_action(
-        program,
-        round_index=round_index,
-        seen_states=seen_states,
-    )
-    if action.action_id not in allowed:
-        action = actions[0]
-    hypothesis = {
-        "claim": "确定性 smoke 选择 {}".format(action.description),
-        "rationale": "覆盖第一轮形状保持变异目录并验证完整 DSL 闭环",
-        "risk": "尚未经过真实训练排序",
-    }
-    return action, hypothesis, {
-        "selected_by": "deterministic" if args.selection_mode == "deterministic" else "deterministic_fallback",
-        "failures": failures,
-    }
+                critic = parse_v3_critic_response(
+                    rejected_critic,
+                    region,
+                    immutable_mechanism=immutable_mechanism,
+                )
+                critic_repair_count = repair_index
+                break
+            except DSLValidationError as repair_error:
+                last_error = repair_error
+        if critic is None:
+            raise last_error
+
+    allowed_patches = _allowed_typed_patches(program, routed_actions, registry, critic)
+    synth_prompt = _synthesizer_prompt(program, region, router, critic, allowed_patches, round_index)
+    if args.selection_mode == "glm":
+        synth_envelope = _call_glm(args, synth_prompt)
+    else:
+        preferred = choose_deterministic_v3_action(
+            program,
+            round_index=round_index,
+            seen_states=seen_states,
+        )
+        if preferred.action_id not in allowed_patches:
+            preferred = routed_actions[0]
+        synth_envelope = _deterministic_envelope(
+            allowed_patches[preferred.action_id].to_dict(),
+            "patch_synthesizer",
+        )
+    _write_stage_exchange(round_dir, "synthesizer", synth_prompt, synth_envelope)
+
+    rejected_patch = synth_envelope["response"]
+    compiler_repair_count = 0
+    last_error = None
+    for attempt in range(args.compiler_repair_attempts + 1):
+        try:
+            patch, action_id = _parse_synthesized_patch(rejected_patch, allowed_patches, region, critic)
+            child, child_spec = apply_v3_first_round_patch(program, patch, registry)
+            state = v3_evolution_state(child)
+            if state in set(seen_states):
+                raise ValueError("synthesized patch recreated an ancestor state")
+            action = next(item for item in routed_actions if item.action_id == action_id)
+            compiler_repair_count = attempt
+            return {
+                "router": router,
+                "critic": critic,
+                "patch": patch,
+                "action": action,
+                "child": child,
+                "child_spec": child_spec,
+                "state": state,
+                "router_response": router_envelope["response"],
+                "critic_response": critic,
+                "synthesizer_response": rejected_patch,
+                "critic_repair_count": critic_repair_count,
+                "compiler_repair_count": compiler_repair_count,
+            }
+        except (DSLValidationError, ValueError, RuntimeError) as error:
+            last_error = error
+            if args.selection_mode != "glm" or attempt >= args.compiler_repair_attempts:
+                raise
+            repair_index = attempt + 1
+            repair_prompt = _compiler_repair_prompt(
+                synth_prompt,
+                rejected_patch,
+                _error_diagnostics(error),
+                region,
+                critic,
+                allowed_patches,
+            )
+            repair_envelope = _call_glm(args, repair_prompt)
+            _write_stage_exchange(round_dir, "compiler_repair_{:03d}".format(repair_index), repair_prompt, repair_envelope)
+            rejected_patch = repair_envelope["response"]
+    raise last_error
 
 
 def _index(indices, target_size):
@@ -367,6 +667,26 @@ def _read_history(path: Path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def _prepare_round_dir(output: Path, round_index: int, *, resume: bool) -> Path:
+    """Create a round directory while preserving any failed incomplete attempt."""
+
+    round_dir = output / "round_{:03d}".format(round_index)
+    if round_dir.exists():
+        if not resume:
+            raise RuntimeError("round evidence directory already exists: {}".format(round_dir))
+        failed_root = output / "failed_attempts"
+        failed_root.mkdir(parents=True, exist_ok=True)
+        attempt = 1
+        while True:
+            archived = failed_root / "round_{:03d}_attempt_{:03d}".format(round_index, attempt)
+            if not archived.exists():
+                round_dir.replace(archived)
+                break
+            attempt += 1
+    round_dir.mkdir(parents=True, exist_ok=False)
+    return round_dir
+
+
 def run(args):
     output = Path(args.output).resolve()
     evolution_path = output / "evolution.jsonl"
@@ -389,6 +709,12 @@ def run(args):
         "seed_architecture_id": seed_id,
         "seed_source": seed_source,
         "selection_mode": args.selection_mode,
+        "workflow": [
+            "factor_router",
+            "region_critic",
+            "patch_synthesizer",
+            "conditional_compiler_repair",
+        ],
         "model": args.model if args.selection_mode == "glm" else "",
         "api_key_env": args.api_key_env if args.selection_mode == "glm" else "",
         "credential_serialized": False,
@@ -406,6 +732,7 @@ def run(args):
             "official_v3_commit",
             "seed_architecture_id",
             "selection_mode",
+            "workflow",
             "model",
             "validation_level",
             "equiformer_v3_root",
@@ -449,20 +776,23 @@ def run(args):
         actions = _available_actions(parent, seen_states)
         if not actions:
             raise RuntimeError("no unseen first-round V3 mutations remain at round {}".format(round_index))
-        action, hypothesis, selection = _select_action(
+        round_dir = _prepare_round_dir(output, round_index, resume=args.resume)
+        workflow = _run_three_stage_round(
             args,
             parent,
             actions,
             history,
             seen_states,
             round_index,
+            round_dir,
+            registry,
         )
-        patch = build_v3_first_round_patch(parent, action.action_id, registry, hypothesis=hypothesis)
-        child, child_spec = apply_v3_first_round_patch(parent, patch, registry)
+        action = workflow["action"]
+        patch = workflow["patch"]
+        child = workflow["child"]
+        child_spec = workflow["child_spec"]
         child_id = architecture_id(child, registry)
-        state = v3_evolution_state(child)
-        if state in seen_states:
-            raise RuntimeError("selected mutation recreated an ancestor state")
+        state = workflow["state"]
         validation = _validate_candidate(
             child,
             registry,
@@ -470,14 +800,11 @@ def run(args):
             validation_level=args.validation_level,
             seed=args.seed + round_index,
         )
-        round_dir = output / "round_{:03d}".format(round_index)
-        round_dir.mkdir(parents=True, exist_ok=False)
         candidate_path = round_dir / "candidate.dsl.json"
         canonical_path = round_dir / "candidate.canonical.dsl.json"
         candidate_path.write_text(dumps_program(child), encoding="utf-8")
         canonical_path.write_text(dumps_program(canonicalize(child, registry)), encoding="utf-8")
         _write_json(round_dir / "patch.json", patch.to_dict())
-        _write_json(round_dir / "selection.json", selection)
         _write_json(round_dir / "lowering_manifest.json", validation)
         record = {
             "round": round_index,
@@ -487,8 +814,21 @@ def run(args):
             "official_spec_id": child_spec.architecture_id(),
             "action_id": action.action_id,
             "mutation_family": action.field,
-            "hypothesis": hypothesis,
-            "selected_by": selection.get("selected_by"),
+            "factor_id": workflow["router"]["factor_id"],
+            "region_id": workflow["router"]["region_id"],
+            "hypothesis": dict(patch.hypothesis),
+            "router_response": workflow["router_response"],
+            "critic_response": workflow["critic_response"],
+            "synthesizer_response": workflow["synthesizer_response"],
+            "critic_repair_count": workflow["critic_repair_count"],
+            "compiler_repair_count": workflow["compiler_repair_count"],
+            "workflow": [
+                "factor_router",
+                "region_critic",
+                "patch_synthesizer",
+                "conditional_compiler_repair",
+            ],
+            "selected_by": args.selection_mode,
             "candidate_path": str(candidate_path),
             "canonical_path": str(canonical_path),
             "patch_path": str(round_dir / "patch.json"),
@@ -519,6 +859,14 @@ def run(args):
         "final_architecture_id": architecture_id(parent, registry),
         "selection_mode": args.selection_mode,
         "selection_provenance": sorted({str(item.get("selected_by")) for item in candidates}),
+        "workflow": [
+            "factor_router",
+            "region_critic",
+            "patch_synthesizer",
+            "conditional_compiler_repair",
+        ],
+        "total_critic_repairs": sum(int(item.get("critic_repair_count", 0)) for item in candidates),
+        "total_compiler_repairs": sum(int(item.get("compiler_repair_count", 0)) for item in candidates),
         "validation_level": args.validation_level,
         "mutation_version": V3_FIRST_ROUND_MUTATION_VERSION,
         "candidate_records": candidates,
@@ -552,9 +900,11 @@ def get_parser():
     parser.add_argument("--api-key-env", default="GLM_API_KEY")
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-p", type=float, default=0.95)
-    parser.add_argument("--max-tokens", type=int, default=700)
+    parser.add_argument("--max-tokens", type=int, default=12000)
     parser.add_argument("--timeout", type=float, default=180.0)
     parser.add_argument("--llm-attempts", type=int, default=3)
+    parser.add_argument("--critic-repair-attempts", type=int, default=2)
+    parser.add_argument("--compiler-repair-attempts", type=int, default=2)
     parser.add_argument("--allow-deterministic-fallback", action="store_true")
     parser.add_argument("--validation-level", choices=("static", "build", "full"), default="static")
     parser.add_argument(

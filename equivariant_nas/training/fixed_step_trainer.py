@@ -152,6 +152,12 @@ def get_parser():
         help="Optional pinned Equiformer V2 source used by DSL V2 graph fusions.",
     )
     parser.add_argument(
+        "--equiformer-v3-root",
+        type=str,
+        default=os.environ.get("EQUIFORMER_V3_ROOT", ""),
+        help="Pinned Equiformer V3 source used by generic V3 primitive Lowering.",
+    )
+    parser.add_argument(
         "--allow-experimental-generic-lowering",
         action="store_true",
         default=False,
@@ -378,8 +384,8 @@ def main(args):
         raise ValueError("--max-steps must be positive")
     if args.resume_model_only and not args.resume_step:
         raise ValueError("--resume-model-only requires --resume-step")
-    if args.reference_steps_per_epoch <= 0 or args.checkpoint_interval_steps <= 0:
-        raise ValueError("reference/checkpoint step intervals must be positive")
+    if args.reference_steps_per_epoch < 0 or args.checkpoint_interval_steps < 0:
+        raise ValueError("reference/checkpoint step intervals must be non-negative")
     if args.eval_interval_epochs <= 0 and args.eval_interval_steps <= 0:
         raise ValueError("one validation interval must be positive")
     if args.data_epoch_origin_step < 0 or args.lr_schedule_origin_step < 0:
@@ -421,6 +427,12 @@ def main(args):
     )
     args.training_dataset_id = training_dataset_id
     data_steps_per_epoch = steps_per_data_epoch(len(train_dataset), args.batch_size)
+    if args.reference_steps_per_epoch <= 0:
+        args.reference_steps_per_epoch = data_steps_per_epoch
+    if args.checkpoint_interval_steps <= 0:
+        args.checkpoint_interval_steps = data_steps_per_epoch
+    if args.reference_steps_per_epoch <= 0 or args.checkpoint_interval_steps <= 0:
+        raise ValueError("resolved reference/checkpoint step intervals must be positive")
     val_dataset = base.QM9(args.data_path, "valid", feature_type=args.feature_type)
     test_dataset = (
         base.QM9(args.data_path, "test", feature_type=args.feature_type)
@@ -454,18 +466,28 @@ def main(args):
         dsl_program = load_program(args.dsl_program)
         dsl_task = load_task_contract(args.dsl_task_contract) if args.dsl_task_contract else None
         dsl_compiler = Compiler(core_registry(), reference_motif_registry())
-        model = build_qm9_dsl_model(
-            dsl_program,
-            dsl_compiler,
-            radius=args.radius,
-            equiformer_root=args.equiformer_root,
-            equiformer_v2_root=args.equiformer_v2_root or None,
-            task_mean=task_mean,
-            task_std=task_std,
-            atomref=None,
-            task=dsl_task,
-            allow_experimental_generic_lowering=args.allow_experimental_generic_lowering,
-        ).to(device)
+        if "equiformer_v3_spec" in dsl_program.parameters:
+            if not args.equiformer_v3_root:
+                raise ValueError("V3 DSL training requires --equiformer-v3-root")
+            from equivariant_nas.training.v3_qm9_runtime import build_lowered_v3_qm9_model
+
+            model = build_lowered_v3_qm9_model(
+                dsl_program,
+                equiformer_v3_root=args.equiformer_v3_root,
+            ).to(device)
+        else:
+            model = build_qm9_dsl_model(
+                dsl_program,
+                dsl_compiler,
+                radius=args.radius,
+                equiformer_root=args.equiformer_root,
+                equiformer_v2_root=args.equiformer_v2_root or None,
+                task_mean=task_mean,
+                task_std=task_std,
+                atomref=None,
+                task=dsl_task,
+                allow_experimental_generic_lowering=args.allow_experimental_generic_lowering,
+            ).to(device)
         log.info("DSL architecture ID: {}".format(model.dsl_architecture_id))
         log.info("DSL language version: {}".format(model.dsl_language_version))
         log.info("DSL lowering plan: {}".format(json.dumps(model.lowering_plan, sort_keys=True)))

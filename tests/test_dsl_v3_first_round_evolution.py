@@ -1,4 +1,5 @@
 import json
+from argparse import Namespace
 from pathlib import Path
 
 import pytest
@@ -14,12 +15,20 @@ from equivariant_nas.dsl import (
     choose_deterministic_v3_action,
     core_registry,
     equiformer_v3_direct_model_program,
+    parse_v3_critic_response,
+    parse_v3_router_response,
     v3_evolution_state,
     v3_first_round_mutation_catalog,
+    v3_mutation_regions,
 )
 from equivariant_nas.dsl.backends import EquiformerV3Spec
 from scripts.export_dsl_v3_seed import export_seed
-from scripts.run_dsl_v3_evolution import get_parser
+from scripts.run_dsl_v3_evolution import (
+    _available_actions,
+    _parse_synthesized_patch,
+    _run_three_stage_round,
+    get_parser,
+)
 
 
 def _spec():
@@ -159,3 +168,120 @@ def test_v3_seed_export_and_evolution_cli_default_to_ten_rounds(tmp_path):
     ])
     assert args.rounds == 10
     assert args.selection_mode == "glm"
+
+
+def test_v3_router_and_critic_freeze_factor_region_and_mechanism():
+    program = equiformer_v3_direct_model_program(_spec())
+    actions = v3_first_round_mutation_catalog(program)
+    regions = v3_mutation_regions(actions)
+    region = regions[0]
+    router = {
+        "factor_id": region.factor_id,
+        "region_id": region.region_id,
+        "rationale": "test",
+        "evidence_refs": [],
+        "expected_value": "test",
+        "risk": "test",
+    }
+    assert parse_v3_router_response(router, regions)["region_id"] == region.region_id
+    with pytest.raises(DSLValidationError):
+        parse_v3_router_response({**router, "factor_id": regions[1].factor_id}, regions)
+
+    critic = {
+        "factor_id": region.factor_id,
+        "region_id": region.region_id,
+        "claim": "test claim",
+        "mechanism": "frozen mechanism",
+        "edit_plan": ["one local edit"],
+        "preserved_invariants": ["equivariance"],
+        "evidence_refs": [],
+        "uncertainty": "unknown",
+        "risk": "risk",
+        "acceptance_metrics": ["metric"],
+    }
+    assert parse_v3_critic_response(critic, region)["mechanism"] == "frozen mechanism"
+    with pytest.raises(DSLValidationError):
+        parse_v3_critic_response(
+            {**critic, "mechanism": "changed mechanism"},
+            region,
+            immutable_mechanism="frozen mechanism",
+        )
+
+
+def test_v3_synthesizer_cannot_expand_routed_scope():
+    registry = core_registry()
+    program = equiformer_v3_direct_model_program(_spec())
+    actions = v3_first_round_mutation_catalog(program)
+    region = v3_mutation_regions(actions)[0]
+    routed = tuple(item for item in actions if item.field == region.field)
+    critic = {
+        "factor_id": region.factor_id,
+        "region_id": region.region_id,
+        "claim": "test claim",
+        "mechanism": "frozen mechanism",
+        "edit_plan": ["one local edit"],
+        "preserved_invariants": ["equivariance"],
+        "evidence_refs": [],
+        "uncertainty": "unknown",
+        "risk": "risk",
+        "acceptance_metrics": ["metric"],
+    }
+    allowed = {
+        action.action_id: build_v3_first_round_patch(program, action.action_id, registry, hypothesis=critic)
+        for action in routed
+    }
+    patch = next(iter(allowed.values())).to_dict()
+    patch["scope"] = list(patch["scope"]) + ["block0_ffn_scalar_dropout"]
+    with pytest.raises(ValueError, match="scope, or edits"):
+        _parse_synthesized_patch(patch, allowed, region, critic)
+
+
+def test_ten_deterministic_rounds_persist_all_three_stage_exchanges(tmp_path):
+    registry = core_registry()
+    parent = equiformer_v3_direct_model_program(_spec())
+    seen_states = [v3_evolution_state(parent)]
+    history = []
+    args = Namespace(
+        selection_mode="deterministic",
+        critic_repair_attempts=0,
+        compiler_repair_attempts=0,
+    )
+    architecture_ids = set()
+    for round_index in range(1, 11):
+        actions = _available_actions(parent, seen_states)
+        round_dir = tmp_path / "round_{:03d}".format(round_index)
+        round_dir.mkdir()
+        workflow = _run_three_stage_round(
+            args,
+            parent,
+            actions,
+            history,
+            seen_states,
+            round_index,
+            round_dir,
+            registry,
+        )
+        for filename in (
+            "router_prompt.json",
+            "router_response.json",
+            "critic_prompt.json",
+            "critic_response.json",
+            "synthesizer_prompt.json",
+            "synthesizer_response.json",
+        ):
+            assert (round_dir / filename).is_file()
+        child = workflow["child"]
+        child_id = architecture_id(child, registry)
+        assert child_id not in architecture_ids
+        assert workflow["state"] not in seen_states
+        architecture_ids.add(child_id)
+        seen_states.append(workflow["state"])
+        history.append({
+            "round": round_index,
+            "action_id": workflow["action"].action_id,
+            "factor_id": workflow["router"]["factor_id"],
+            "region_id": workflow["router"]["region_id"],
+            "hypothesis": dict(workflow["patch"].hypothesis),
+        })
+        parent = child
+    assert len(architecture_ids) == 10

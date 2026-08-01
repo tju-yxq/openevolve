@@ -57,6 +57,7 @@ def build_runtime_manifest(
     data_path: str,
     train_subset_sha256: str,
     critical_files: Iterable[str],
+    equiformer_v3_root: str = "",
 ) -> Dict[str, Any]:
     project = Path(project_root).resolve()
     files = {}
@@ -71,6 +72,11 @@ def build_runtime_manifest(
         "task_contract_hash": task_contract_hash,
         "project_git": _git_identity(project),
         "equiformer_git": _git_identity(Path(equiformer_root).resolve()),
+        "equiformer_v3_git": (
+            _git_identity(Path(equiformer_v3_root).resolve())
+            if equiformer_v3_root
+            else {"root": "", "commit": "", "dirty": None}
+        ),
         "critical_file_sha256": files,
         "python": {"executable": sys.executable, "version": platform.python_version()},
         "dependencies": {
@@ -88,6 +94,7 @@ def build_runtime_manifest(
         "lowering_plan": dict(lowering_plan),
         "project_commit": manifest["project_git"]["commit"],
         "equiformer_commit": manifest["equiformer_git"]["commit"],
+        "equiformer_v3_commit": manifest["equiformer_v3_git"]["commit"],
         "critical_file_sha256": files,
     }
     manifest["executable_id"] = hashlib.sha256(

@@ -1,0 +1,18 @@
+{
+  "contract_id": "v3-qm9-alpha-so3-permutation-v1",
+  "input_actions": [
+    "global_translation_of_positions",
+    "global_SO3_rotation_of_positions",
+    "within_graph_atom_permutation"
+  ],
+  "output_contracts": {
+    "energy": [
+      "translation_invariant",
+      "SO3_invariant_scalar",
+      "atom_permutation_invariant"
+    ]
+  },
+  "pretrain_gate": true,
+  "posttrain_gate": true,
+  "rules_mutable_during_search": false
+}

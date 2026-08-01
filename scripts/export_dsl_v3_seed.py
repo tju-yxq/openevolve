@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from equivariant_nas.dsl import TypeChecker, architecture_id, core_registry, equiformer_v3_direct_model_program
+from equivariant_nas.dsl import TypeChecker, architecture_id, core_registry, v3_program_from_spec
 from equivariant_nas.dsl.backends import EquiformerV3Spec, V3_REFERENCE_COMMIT
 from equivariant_nas.dsl.serialization import save_program
 
@@ -31,7 +31,7 @@ def _load_payload(path: Path):
 def export_seed(model_config: Path, output: Path):
     payload = _load_payload(model_config)
     spec, import_manifest = EquiformerV3Spec.from_official_config(payload)
-    program = equiformer_v3_direct_model_program(spec)
+    program = v3_program_from_spec(spec)
     registry = core_registry()
     inference = TypeChecker(registry).check(program)
     output.mkdir(parents=True, exist_ok=True)

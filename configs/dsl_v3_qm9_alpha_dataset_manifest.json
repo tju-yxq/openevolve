@@ -1,0 +1,14 @@
+{
+  "dataset_id": "QM9-alpha-official-split",
+  "dataset": "QM9",
+  "target_index": 1,
+  "target_name": "alpha",
+  "target_unit": "bohr^3",
+  "stored_split_contract": "equiformer/datasets/pyg/qm9.py",
+  "full_training_split": "train",
+  "validation_split": "valid",
+  "test_split": "test",
+  "quarter_subset_file": "data_splits/qm9_train_quarter_seed201.npz",
+  "quarter_subset_seed": 201,
+  "search_test_access": false
+}

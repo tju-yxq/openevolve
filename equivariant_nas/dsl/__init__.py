@@ -30,7 +30,8 @@ from .task import ResourceContract, TaskContract, task_reasoning_context, valida
 from .search import DSLGenerationEngine, GenerationResult
 from .search_surface import CanonicalSearchSurface, SEARCH_SURFACE_VERSION, default_canonical_search_surface
 from .types import AffinePointType, AxisSpec, Carrier, CategoricalTensorType, EquivarianceLevel, EquivariantTensorType, EquivariantType, FeatureRole, Frame, GraphTopologyType, GridSpec, GridTensorType, IndexMapType, InvariantTensorType, LatticeShiftType, LatticeType, RecordType, RepresentationLayout, ResolutionSpec, TupleType, VALUE_TYPE_SCHEMA_VERSION, ValueType, value_type_from_dict
-from .v3_evolution import V3_FIRST_ROUND_MUTATION_VERSION, V3MutationAction, V3MutationTarget, apply_v3_first_round_patch, build_v3_first_round_patch, choose_deterministic_v3_action, v3_evolution_state, v3_first_round_mutation_catalog, v3_program_spec
+from .v3_evolution import V3_FIRST_ROUND_MUTATION_VERSION, V3MutationAction, V3MutationRegion, V3MutationTarget, apply_v3_first_round_patch, build_v3_first_round_patch, choose_deterministic_v3_action, parse_v3_critic_response, parse_v3_router_response, v3_evolution_state, v3_first_round_mutation_catalog, v3_mutation_regions, v3_program_from_spec, v3_program_spec, v3_region_by_id, v3_region_for_field
+from .v3_multifidelity import V3FidelityStage, V3MultiFidelityProtocol, rank_v3_stage_records
 
 __all__ = [
     "ArchitectureProgram",
@@ -186,11 +187,21 @@ __all__ = [
     "CandidateLineageEvidence",
     "V3_FIRST_ROUND_MUTATION_VERSION",
     "V3MutationAction",
+    "V3MutationRegion",
     "V3MutationTarget",
+    "V3FidelityStage",
+    "V3MultiFidelityProtocol",
     "apply_v3_first_round_patch",
     "build_v3_first_round_patch",
     "choose_deterministic_v3_action",
+    "parse_v3_critic_response",
+    "parse_v3_router_response",
+    "rank_v3_stage_records",
     "v3_evolution_state",
     "v3_first_round_mutation_catalog",
+    "v3_mutation_regions",
+    "v3_program_from_spec",
     "v3_program_spec",
+    "v3_region_by_id",
+    "v3_region_for_field",
 ]

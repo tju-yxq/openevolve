@@ -1,0 +1,39 @@
+{
+  "protocol_version": "v3-qm9-alpha-8-4-2@1",
+  "cycle_count": 10,
+  "batch_size": 8,
+  "seed": 201,
+  "dataset_id": "QM9-alpha-official-split",
+  "dataset_manifest": "configs/dsl_v3_qm9_alpha_dataset_manifest.json",
+  "quarter_subset": "data_splits/qm9_train_quarter_seed201.npz",
+  "equivariance_contract": "configs/dsl_v3_qm9_alpha_equivariance_contract.json",
+  "selection_metric": "validation_alpha_mae",
+  "selection_direction": "min",
+  "test_during_search": false,
+  "stages": [
+    {
+      "name": "quarter_8k",
+      "endpoint_steps": 8000,
+      "candidate_count": 8,
+      "training_data": "fixed_quarter",
+      "resume_from": "",
+      "optimizer_transition": "new_optimizer"
+    },
+    {
+      "name": "quarter_80k",
+      "endpoint_steps": 80000,
+      "candidate_count": 4,
+      "training_data": "fixed_quarter",
+      "resume_from": "quarter_8k",
+      "optimizer_transition": "resume_full_state"
+    },
+    {
+      "name": "full_250k",
+      "endpoint_steps": 250000,
+      "candidate_count": 2,
+      "training_data": "full_train",
+      "resume_from": "quarter_80k",
+      "optimizer_transition": "model_only_optimizer_restart"
+    }
+  ]
+}

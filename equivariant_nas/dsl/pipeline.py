@@ -92,13 +92,20 @@ def _observable_symmetry_report(model, batch) -> Dict[str, Any]:
             torch.cat([nodes.roll(1) for nodes in graph_nodes]),
         )
         for index, permutation in enumerate(permutations):
+            inverse_permutation = torch.empty_like(permutation)
+            inverse_permutation[permutation] = torch.arange(
+                permutation.numel(), device=permutation.device
+            )
+            permuted_edge_index = inverse_permutation.index_select(
+                0, batch.edge_d_index.reshape(-1)
+            ).reshape_as(batch.edge_d_index)
             permuted = model(
                 f_in=batch.x.index_select(0, permutation),
                 pos=batch.pos.index_select(0, permutation),
                 batch=batch.batch.index_select(0, permutation),
                 node_atom=batch.z.index_select(0, permutation),
-                edge_d_index=None,
-                edge_d_attr=None,
+                edge_d_index=permuted_edge_index,
+                edge_d_attr=batch.edge_d_attr,
             )
             key = "permutation_{:02d}".format(index)
             errors[key] = _relative_error(permuted, reference)
@@ -217,6 +224,7 @@ def evaluate_dsl_candidate_pipeline(
     resume_model_only: bool = False,
     lr_schedule_origin_step: int = 0,
     equiformer_v2_root: str = "",
+    equiformer_v3_root: str = "",
     task_contract_path: str = "",
     allow_experimental_generic_lowering: bool = False,
 ) -> Dict[str, Any]:
@@ -228,12 +236,25 @@ def evaluate_dsl_candidate_pipeline(
     task = load_task_contract(task_contract_path) if task_contract_path else None
     compiler = Compiler(core_registry(), reference_motif_registry())
     artifact = compiler.analyze(program, task)
-    lowering = compiler.plan_lowering(program, task)
-    formal_ranking_admitted = lowering.mode in {
-        "exact_reference",
-        "exact_constructor",
-        "exact_hybrid",
-    }
+    is_v3_program = "equiformer_v3_spec" in program.parameters
+    if is_v3_program:
+        if not equiformer_v3_root:
+            raise ValueError("V3 DSL pipeline requires equiformer_v3_root")
+        from .backends import E3NNGraphBackend
+
+        v3_backend = E3NNGraphBackend(core_registry(), equiformer_v3_root=equiformer_v3_root)
+        support = v3_backend.support_report(program)
+        if support.unsupported_nodes or support.composition_errors or support.missing_dependencies:
+            raise ValueError("V3 program lacks complete generic Lowering support: {}".format(support.to_dict()))
+        lowering = compiler.plan_lowering(program, task, graph_backend=v3_backend)
+        formal_ranking_admitted = True
+    else:
+        lowering = compiler.plan_lowering(program, task)
+        formal_ranking_admitted = lowering.mode in {
+            "exact_reference",
+            "exact_constructor",
+            "exact_hybrid",
+        }
     architecture_id = artifact.architecture_id
     subset_fingerprint = ""
     if train_subset_file:
@@ -259,7 +280,9 @@ def evaluate_dsl_candidate_pipeline(
             "equivariant_nas/dsl/backends/qm9_model.py",
             "equivariant_nas/dsl/backends/equiformer_v1_constructor.py",
             "equivariant_nas/training/fixed_step_trainer.py",
+            "equivariant_nas/training/v3_qm9_runtime.py",
         ),
+        equiformer_v3_root=equiformer_v3_root,
     )
     executable_id = runtime_manifest["executable_id"]
     runtime_manifest_sha256 = manifest_hash(runtime_manifest)
@@ -282,6 +305,7 @@ def evaluate_dsl_candidate_pipeline(
         "equiformer_v2_commit": (
             "d5ad4be729b56f74012ebb7f097f77c5b00a1004" if equiformer_v2_root else ""
         ),
+        "equiformer_v3_root": str(Path(equiformer_v3_root).resolve()) if equiformer_v3_root else "",
         "task_contract_hash": task.content_hash() if task is not None else "unresolved-task-contract",
         "lowering_plan_hash": lowering.content_hash(),
         "backend_semantics_version": lowering.backend_semantics_version,
@@ -366,15 +390,25 @@ def evaluate_dsl_candidate_pipeline(
             torch.cuda.manual_seed_all(seed)
         if lowering.mode == "representation_only":
             raise ValueError("representation-flow-only V1 programs are not trainable candidates")
-        model = build_qm9_dsl_model(
-            program,
-            compiler,
-            radius=float(program.parameters.get("radius", 5.0)),
-            equiformer_root=equiformer_root,
-            equiformer_v2_root=equiformer_v2_root or None,
-            task=task,
-            allow_experimental_generic_lowering=allow_experimental_generic_lowering,
-        )
+        def build_candidate_model():
+            if is_v3_program:
+                from equivariant_nas.training.v3_qm9_runtime import build_lowered_v3_qm9_model
+
+                return build_lowered_v3_qm9_model(
+                    program,
+                    equiformer_v3_root=equiformer_v3_root,
+                )
+            return build_qm9_dsl_model(
+                program,
+                compiler,
+                radius=float(program.parameters.get("radius", 5.0)),
+                equiformer_root=equiformer_root,
+                equiformer_v2_root=equiformer_v2_root or None,
+                task=task,
+                allow_experimental_generic_lowering=allow_experimental_generic_lowering,
+            )
+
+        model = build_candidate_model()
         parameter_count = _count_parameters(model)
         parameter_ratio = parameter_count / BASELINE_PARAMETERS
         degrees = [
@@ -501,10 +535,17 @@ def evaluate_dsl_candidate_pipeline(
                 "--no-model-ema",
                 "--no-amp",
             ]
+            if is_v3_program:
+                reference_index = command.index("--reference-steps-per-epoch") + 1
+                checkpoint_index = command.index("--checkpoint-interval-steps") + 1
+                command[reference_index] = "0"
+                command[checkpoint_index] = "0"
             if task_contract_path:
                 command.extend(["--dsl-task-contract", str(Path(task_contract_path).resolve())])
             if equiformer_v2_root:
                 command.extend(["--equiformer-v2-root", equiformer_v2_root])
+            if equiformer_v3_root:
+                command.extend(["--equiformer-v3-root", equiformer_v3_root])
             if allow_experimental_generic_lowering:
                 command.append("--allow-experimental-generic-lowering")
             if train_subset_file:
@@ -560,20 +601,17 @@ def evaluate_dsl_candidate_pipeline(
                 "combined_score": -validation_mae,
                 "resumed_from": effective_resume,
                 "batch_size": int(summary.get("batch_size", batch_size)),
+                "training_dataset_id": str(summary.get("training_dataset_id", "")),
+                "training_dataset_size": int(summary.get("training_dataset_size", 0)),
+                "start_global_step": int(summary.get("start_global_step", 0)),
+                "steps_executed_current_job": int(summary.get("steps_executed_current_job", 0)),
+                "data_epoch_origin_step": int(summary.get("data_epoch_origin_step", 0)),
                 "test_evaluated": bool(summary.get("test_evaluated", False)),
             })
             if result["test_evaluated"]:
                 raise ValueError("search pipeline must not evaluate the test split")
             if run_symmetry:
-                audited = build_qm9_dsl_model(
-                    program,
-                    compiler,
-                    radius=float(program.parameters.get("radius", 5.0)),
-                    equiformer_root=equiformer_root,
-                    equiformer_v2_root=equiformer_v2_root or None,
-                    task=task,
-                    allow_experimental_generic_lowering=allow_experimental_generic_lowering,
-                ).to("cuda")
+                audited = build_candidate_model().to("cuda")
                 checkpoint = torch.load(train_dir / "checkpoint_last.pth", map_location="cpu")
                 audited.load_state_dict(checkpoint["model"])
                 post = _observable_symmetry_report(audited, batch)

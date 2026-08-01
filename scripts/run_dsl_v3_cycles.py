@@ -74,6 +74,7 @@ def run(args):
         "cycle_count": requested_cycles,
         "initial_model_config": str(Path(args.model_config).resolve()),
         "selection_mode": args.selection_mode,
+        "mutation_mode": args.mutation_mode,
         "llm_model": args.model if args.selection_mode == "glm" else "",
         "equiformer_root": str(Path(args.equiformer_root).resolve()),
         "equiformer_v3_root": str(Path(args.equiformer_v3_root).resolve()),
@@ -103,11 +104,13 @@ def run(args):
     state = _read_json(state_path, {
         "protocol_hash": protocol.content_hash(),
         "completed_cycles": [],
+        "architecture_archive": [],
         "next_cycle": 1,
         "created_at": _now(),
     })
     if state.get("protocol_hash") != protocol.content_hash():
         raise RuntimeError("cycle state protocol hash changed")
+    state.setdefault("architecture_archive", [])
     stop = root / "STOP"
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(PROJECT_ROOT)
@@ -123,6 +126,12 @@ def run(args):
         cycle_root = root / "cycle_{:03d}".format(cycle_index)
         cohort_dir = cycle_root / "cohort"
         training_dir = cycle_root / "multifidelity"
+        archive_snapshot = cycle_root / "architecture_archive_input.json"
+        if not archive_snapshot.exists():
+            _write_json(
+                archive_snapshot,
+                {"architecture_ids": sorted(set(state.get("architecture_archive", ())))},
+            )
         cohort_command = [
             sys.executable,
             str(PROJECT_ROOT / "scripts/run_dsl_v3_cohort.py"),
@@ -136,6 +145,10 @@ def run(args):
             str(protocol.cohort_size),
             "--selection-mode",
             args.selection_mode,
+            "--mutation-mode",
+            args.mutation_mode,
+            "--architecture-archive",
+            str(archive_snapshot),
             "--model",
             args.model,
             "--validation-level",
@@ -165,6 +178,24 @@ def run(args):
                         cycle_index, cohort_parent_id, expected_parent_id
                     )
                 )
+        cohort_records_path = cohort_dir / "cohort.jsonl"
+        cohort_records = [
+            json.loads(line)
+            for line in cohort_records_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if len(cohort_records) != protocol.cohort_size:
+            raise RuntimeError("cycle {} did not generate eight archived structural candidates".format(cycle_index))
+        generated_ids = {str(item.get("architecture_id", "")) for item in cohort_records}
+        if "" in generated_ids or len(generated_ids) != protocol.cohort_size:
+            raise RuntimeError("cycle {} cohort architecture identities are incomplete or duplicated".format(cycle_index))
+        snapshot_payload = _read_json(archive_snapshot, {"architecture_ids": []})
+        forbidden_at_generation = set(snapshot_payload.get("architecture_ids", ()))
+        if generated_ids & forbidden_at_generation:
+            raise RuntimeError("cycle {} regenerated an architecture from the global archive".format(cycle_index))
+        previous_archive = set(state.get("architecture_archive", ()))
+        state["architecture_archive"] = sorted(previous_archive | generated_ids | {cohort_parent_id})
+        _write_json(state_path, state)
 
         training_command = [
             sys.executable,
@@ -201,6 +232,8 @@ def run(args):
         if str(training_state.get("parent_architecture_id", "")) != cohort_parent_id:
             raise RuntimeError("V3 training state disagrees with the generated cohort parent")
         next_parent = training_state["next_cycle_parent"]
+        if str(next_parent.get("architecture_id", "")) not in generated_ids:
+            raise RuntimeError("V3 cycle winner is not one of the eight generated structural candidates")
         if str(next_parent["architecture_id"]) == str(training_state["parent_architecture_id"]):
             raise RuntimeError("V3 cycle winner unexpectedly equals its fixed parent architecture")
         if int(next_parent.get("endpoint_step", 0)) != protocol.stages[-1].endpoint_steps:
@@ -254,6 +287,7 @@ def get_parser():
     parser.add_argument("--training-python", default=os.environ.get("EQUIFORMER_PYTHON", sys.executable))
     parser.add_argument("--cycles", type=int, default=0)
     parser.add_argument("--selection-mode", choices=("glm", "deterministic"), default="glm")
+    parser.add_argument("--mutation-mode", choices=("structural", "probability"), default="structural")
     parser.add_argument("--model", default="glm-5.2")
     parser.add_argument("--generation-validation-level", choices=("static", "build"), default="static")
     parser.add_argument("--gpu-budget-hours", type=float, default=float(os.environ.get("NAS_GPU_BUDGET_HOURS", "80")))

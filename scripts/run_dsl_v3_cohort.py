@@ -19,6 +19,7 @@ from equivariant_nas.dsl import (
     BACKEND_SEMANTICS_VERSION,
     COMPILER_SEMANTICS_VERSION,
     V3_FIRST_ROUND_MUTATION_VERSION,
+    V3_STRUCTURAL_MUTATION_VERSION,
     TypeChecker,
     V3MultiFidelityProtocol,
     architecture_id,
@@ -26,6 +27,7 @@ from equivariant_nas.dsl import (
     core_registry,
     v3_evolution_state,
     v3_program_spec,
+    v3_structural_novelty_report,
 )
 from equivariant_nas.dsl.backends import E3NNGraphBackend, V3_REFERENCE_COMMIT
 from equivariant_nas.dsl.serialization import dumps_program, load_program
@@ -100,6 +102,19 @@ def _read_records(path: Path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def _read_architecture_archive(path):
+    if not path:
+        return set(), ""
+    archive_path = Path(path).resolve()
+    if not archive_path.is_file():
+        raise FileNotFoundError(archive_path)
+    payload = json.loads(archive_path.read_text(encoding="utf-8"))
+    values = payload.get("architecture_ids", ()) if isinstance(payload, dict) else payload
+    if not isinstance(values, list) or not all(isinstance(item, str) and item for item in values):
+        raise ValueError("architecture archive must contain a list of nonempty architecture IDs")
+    return set(values), _sha256(archive_path)
+
+
 def run(args):
     output = Path(args.output).resolve()
     protocol = load_frozen_protocol(Path(args.protocol_config))
@@ -109,6 +124,7 @@ def run(args):
     registry = core_registry()
     TypeChecker(registry).check(parent)
     parent_id = architecture_id(parent, registry)
+    archived_ids, archive_sha256 = _read_architecture_archive(args.architecture_archive)
     if set(item.name for item in parent.outputs) not in ({"energy"}, {"energy", "forces"}):
         raise ValueError("V3 cohort parent must expose energy or direct Energy+Force outputs")
 
@@ -125,7 +141,14 @@ def run(args):
         "parent_source": parent_source,
         "protocol": protocol.to_dict(),
         "protocol_hash": protocol.content_hash(),
-        "mutation_version": V3_FIRST_ROUND_MUTATION_VERSION,
+        "mutation_mode": args.mutation_mode,
+        "mutation_version": (
+            V3_STRUCTURAL_MUTATION_VERSION
+            if args.mutation_mode == "structural"
+            else V3_FIRST_ROUND_MUTATION_VERSION
+        ),
+        "architecture_archive_sha256": archive_sha256,
+        "forbidden_architecture_count": len(archived_ids),
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
         "backend_semantics_version": BACKEND_SEMANTICS_VERSION,
         "official_v3_commit": V3_REFERENCE_COMMIT,
@@ -151,7 +174,10 @@ def run(args):
             "cohort_size",
             "fixed_parent_architecture_id",
             "protocol_hash",
+            "mutation_mode",
             "mutation_version",
+            "architecture_archive_sha256",
+            "forbidden_architecture_count",
             "compiler_semantics_version",
             "backend_semantics_version",
             "official_v3_commit",
@@ -173,12 +199,18 @@ def run(args):
     completed = len(records)
     if completed > protocol.cohort_size:
         raise RuntimeError("cohort contains more records than its frozen size")
-    seen_states = [v3_evolution_state(parent)] + [str(item["state"]) for item in records]
-    seen_ids = {parent_id} | {str(item["architecture_id"]) for item in records}
+    parent_state = parent_id if args.mutation_mode == "structural" else v3_evolution_state(parent)
+    seen_states = list(archived_ids) + [parent_state] + [str(item["state"]) for item in records]
+    seen_ids = set(archived_ids) | {parent_id} | {str(item["architecture_id"]) for item in records}
     backend = E3NNGraphBackend(registry, equiformer_v3_root=args.equiformer_v3_root)
 
     for candidate_index in range(completed + 1, protocol.cohort_size + 1):
-        actions = _available_actions(parent, seen_states)
+        actions = _available_actions(
+            parent,
+            seen_states,
+            mutation_mode=args.mutation_mode,
+            registry=registry,
+        )
         if not actions:
             raise RuntimeError("fixed parent cannot produce eight unseen certified V3 siblings")
         candidate_dir = _candidate_dir(output, candidate_index, resume=args.resume)
@@ -203,12 +235,25 @@ def run(args):
             validation_level=args.validation_level,
             seed=protocol.seed + args.cycle_index * 1000 + candidate_index,
         )
+        novelty = (
+            v3_structural_novelty_report(parent, child, registry)
+            if args.mutation_mode == "structural"
+            else {
+                "parent_architecture_id": parent_id,
+                "child_architecture_id": child_id,
+                "is_structurally_novel": False,
+                "only_attribute_changed": True,
+            }
+        )
+        if args.mutation_mode == "structural" and not novelty["is_structurally_novel"]:
+            raise RuntimeError("formal structural mutation changed no operators, nodes, or graph edges")
         candidate_path = candidate_dir / "candidate.dsl.json"
         canonical_path = candidate_dir / "candidate.canonical.dsl.json"
         candidate_path.write_text(dumps_program(child), encoding="utf-8")
         canonical_path.write_text(dumps_program(canonicalize(child, registry)), encoding="utf-8")
         _write_json(candidate_dir / "patch.json", workflow["patch"].to_dict())
         _write_json(candidate_dir / "lowering_manifest.json", validation)
+        _write_json(candidate_dir / "structural_novelty.json", novelty)
         record = {
             "cycle_index": args.cycle_index,
             "candidate_index": candidate_index,
@@ -217,6 +262,8 @@ def run(args):
             "official_spec_id": workflow["child_spec"].architecture_id(),
             "action_id": workflow["action"].action_id,
             "mutation_family": workflow["action"].field,
+            "mutation_mode": args.mutation_mode,
+            "mutation_level": getattr(workflow["action"], "level", "attribute"),
             "factor_id": workflow["router"]["factor_id"],
             "region_id": workflow["router"]["region_id"],
             "hypothesis": dict(workflow["patch"].hypothesis),
@@ -230,6 +277,8 @@ def run(args):
             "canonical_path": str(canonical_path),
             "patch_path": str(candidate_dir / "patch.json"),
             "lowering_manifest_path": str(candidate_dir / "lowering_manifest.json"),
+            "structural_novelty_path": str(candidate_dir / "structural_novelty.json"),
+            "structural_novelty": novelty,
             "protocol_hash": protocol.content_hash(),
             "dataset_manifest_sha256": protocol.dataset_manifest_sha256,
             "quarter_subset_sha256": protocol.quarter_subset_sha256,
@@ -280,6 +329,11 @@ def get_parser():
     parser.add_argument("--output", required=True)
     parser.add_argument("--cycle-index", type=int, default=1)
     parser.add_argument("--cohort-size", type=int, default=8)
+    parser.add_argument(
+        "--mutation-mode",
+        choices=("structural", "probability"),
+        default="structural",
+    )
     parser.add_argument("--selection-mode", choices=("glm", "deterministic"), default="glm")
     parser.add_argument("--model", default="glm-5.2")
     parser.add_argument("--api-base", default=os.environ.get("GLM_API_BASE", "https://glm.llm.autos/v1"))
@@ -293,6 +347,7 @@ def get_parser():
     parser.add_argument("--critic-repair-attempts", type=int, default=2)
     parser.add_argument("--compiler-repair-attempts", type=int, default=2)
     parser.add_argument("--validation-level", choices=("static", "build", "full"), default="static")
+    parser.add_argument("--architecture-archive", default="")
     parser.add_argument(
         "--equiformer-v3-root",
         default=os.environ.get("EQUIFORMER_V3_ROOT", "") or (str(DEFAULT_V3_ROOT) if DEFAULT_V3_ROOT.exists() else ""),

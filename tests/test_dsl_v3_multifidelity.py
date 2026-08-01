@@ -298,6 +298,18 @@ def test_ten_cycle_controller_chains_each_250k_winner_as_next_parent(monkeypatch
                     "fixed_parent_architecture_id": parent_id,
                 },
             )
+            candidate_ids = ["winner_{:03d}".format(cycle)] + [
+                "cycle_{:03d}_candidate_{:02d}".format(cycle, index)
+                for index in range(2, 9)
+            ]
+            (cohort_dir / "cohort.jsonl").write_text(
+                "\n".join(
+                    json.dumps({"architecture_id": architecture_id})
+                    for architecture_id in candidate_ids
+                )
+                + "\n",
+                encoding="utf-8",
+            )
             return
         cycle_root = Path(option(command, "--root"))
         cycle = int(cycle_root.parent.name.split("_")[-1])
@@ -332,6 +344,7 @@ def test_ten_cycle_controller_chains_each_250k_winner_as_next_parent(monkeypatch
         training_python="python",
         cycles=10,
         selection_mode="deterministic",
+        mutation_mode="structural",
         model="",
         generation_validation_level="static",
         gpu_budget_hours=1.0,
@@ -342,6 +355,7 @@ def test_ten_cycle_controller_chains_each_250k_winner_as_next_parent(monkeypatch
     assert state["stage"] == "all_cycles_complete"
     assert len(state["completed_cycles"]) == 10
     assert state["final_parent"]["architecture_id"] == "winner_010"
+    assert len(state["architecture_archive"]) == 81
     assert observed_seed_programs == [
         str(tmp_path / "winner_{:03d}.dsl.json".format(index)) for index in range(1, 10)
     ]

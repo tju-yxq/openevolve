@@ -1598,8 +1598,8 @@ tests/dsl_v2/
 | M7：V2 精确复刻 | 未开始，排在 V3 之后 | 待生成 |
 | M8：V3 精确复刻 | 进行中，当前最高优先级 | 官方源码固定为 `atomicarchitects/equiformer_v3@a7300c58df683dc99cb48027d5bfd4c887486c48`；已完成完整构造规格、真实 YAML 严格导入、24 节点正式输入/EdgeDegreeEmbedding及其官方数值 oracle，单 Attention 基础配置 30 节点、真实 dropout 配置 31 节点且冻结小配置完成参数/前向/全部梯度官方对齐；当前 103/103 registry/Lowering 覆盖 23 节点 FFN、62 节点 TransBlock、12 层 768 节点 backbone、9 节点 energy head、31 节点 direct force head，以及共享唯一 final norm 的 808 节点 energy+force 程序。新增 `carrier_scalar` 与 completion-only 单位轴压缩原语后，Energy Head 精确输出官方 `[graph]` 布局；两层 186 节点确定性 Direct Energy+Force 整网已完成 116 参数张量/4,482 参数双射、初始化/前向 RNG、两图 Energy/Force 前向、位置梯度和全部参数梯度官方对齐。进一步完成 190 节点非零随机整网闭环，六类随机率同时启用时 train/eval、前向 RNG、Energy、Force、位置梯度和全部参数梯度与官方对齐，且实际 Lowering 不含官方整网、Block、Attention 或任务头构造器。12 层小宽度运行 smoke 为 329 模块、486 参数张量/17,779 参数并完成一维 Energy、Force、位置梯度和全部参数梯度。尚缺 checkpoint/state-dict round trip、stress head、优化器更新/短训练轨迹和真实生产宽度数值 oracle；旧 133 节点组合式程序仍不计为官方完整映射 |
 | M9：代表性网络扩展性 | 未开始 | 待生成 |
-| M10：有界变异完备性 | 未开始；词表分层前置项已完成 | 当前 103 个执行注册项被折叠为 48 个规范数学族，并建立生成/补全/context 门禁；可逆编辑、状态图强连通、非零可达概率和行为/性能新颖性仍未开始验收 |
-| M11：训练与论文实验 | 进行中 | 已完成 V3 QM9-alpha 正式 10 周期控制器：每周期固定父代生成 8 个唯一直接子代，按固定 1/4 数据 8k 全训、Top4 同数据续训 80k、Top2 全量数据训至 250k，Validation 赢家成为下一父代；控制器级 mock 验证 8→4→2 和十周期父子链。真实 GPU 训练尚未启动 |
+| M10：有界变异完备性 | 进行中 | 已完成 V3 第一版局部结构搜索面：生产宽度父架构可枚举 56 个动作，覆盖 Block 分支拓扑、算子增删/重排和 FFN 门控算子内部子图重实现；五类动作均有逆操作、Typed Patch、结构新颖性证据、通用 Lowering、前反向和等变审计。尚未完成任意合法子图合成、跨 Block 连接、表示宽度/阶数变化、全状态图强连通、非零可达概率及行为/性能新颖性验收 |
+| M11：训练与论文实验 | 进行中 | 已完成 V3 QM9-alpha 正式 10 周期控制器：正式默认使用结构变异，每周期固定父代生成 8 个架构 ID 唯一且静态结构新颖的直接子代，按固定 1/4 数据 8k 全训、Top4 同数据续训 80k、Top2 全量数据训至 250k，Validation 赢家成为下一父代；全局架构档案阻止跨周期重复，控制器级 mock 验证 8→4→2 和十周期父子链。旧概率变异仅保留作消融；真实 GPU 训练尚未启动 |
 
 当前已经存在的 V1/V2 简化 Lowering、V3 组合式支持和 F6.3 读出支路证据属于 v1 基线，不将其误标为 M6 至 M8 完成。M8 的完成标准仍是官方配置无损导入、规范化 DSL、逐基础原语 Lowering、参数/checkpoint 映射以及前向、梯度和训练级对齐。
 

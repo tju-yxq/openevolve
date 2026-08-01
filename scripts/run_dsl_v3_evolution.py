@@ -22,15 +22,19 @@ from equivariant_nas.dsl import (
     BACKEND_SEMANTICS_VERSION,
     COMPILER_SEMANTICS_VERSION,
     V3_FIRST_ROUND_MUTATION_VERSION,
+    V3_STRUCTURAL_MUTATION_VERSION,
     Compiler,
     DSLValidationError,
     TypedPatch,
     TypeChecker,
     apply_v3_first_round_patch,
+    apply_v3_structural_patch,
     architecture_id,
     build_v3_first_round_patch,
+    build_v3_structural_patch,
     canonicalize,
     choose_deterministic_v3_action,
+    choose_deterministic_v3_structural_action,
     core_registry,
     parse_v3_critic_response,
     parse_v3_router_response,
@@ -40,6 +44,8 @@ from equivariant_nas.dsl import (
     v3_program_from_spec,
     v3_program_spec,
     v3_region_by_id,
+    v3_structural_mutation_catalog,
+    v3_structural_regions,
 )
 from equivariant_nas.dsl.backends import E3NNGraphBackend, EquiformerV3Spec, V3_REFERENCE_COMMIT
 from equivariant_nas.dsl.serialization import dumps_program, load_program
@@ -89,18 +95,33 @@ def _load_seed(args):
     }
 
 
-def _candidate_state_for_action(program, action):
+def _candidate_state_for_action(program, action, *, mutation_mode="probability", registry=None):
+    if mutation_mode == "structural":
+        registry = registry or core_registry()
+        patch = build_v3_structural_patch(program, action.action_id, registry)
+        child, _ = apply_v3_structural_patch(program, patch, registry)
+        return architecture_id(child, registry)
     values = json.loads(v3_evolution_state(program))
     values[action.field] = action.value
     return json.dumps(values, sort_keys=True, separators=(",", ":"))
 
 
-def _available_actions(program, seen_states):
+def _available_actions(program, seen_states, *, mutation_mode="probability", registry=None):
     seen = set(seen_states)
+    if mutation_mode == "structural":
+        registry = registry or core_registry()
+        catalog = v3_structural_mutation_catalog(program)
+    else:
+        catalog = v3_first_round_mutation_catalog(program)
     return tuple(
         action
-        for action in v3_first_round_mutation_catalog(program)
-        if _candidate_state_for_action(program, action) not in seen
+        for action in catalog
+        if _candidate_state_for_action(
+            program,
+            action,
+            mutation_mode=mutation_mode,
+            registry=registry,
+        ) not in seen
     )
 
 
@@ -175,15 +196,23 @@ def _deterministic_envelope(response, role):
     }
 
 
-def _router_prompt(program, actions, history, round_index):
+def _router_prompt(program, actions, history, round_index, *, mutation_mode="probability"):
     spec = v3_program_spec(program)
-    regions = v3_mutation_regions(actions)
+    regions = v3_structural_regions(actions) if mutation_mode == "structural" else v3_mutation_regions(actions)
+    if mutation_mode == "structural":
+        current_state = {
+            item.field: sorted({action.current_value for action in actions if action.field == item.field})
+            for item in regions
+        }
+        goal = "选择一个最值得审查的 Equiformer V3 局部结构因子与其唯一编辑区域"
+    else:
+        current_state = {item.field: float(getattr(spec, item.field)) for item in regions}
+        goal = "选择一个最值得审查的 Equiformer V3 局部叶子因子与其唯一编辑区域"
     payload = {
         "round": round_index,
-        "goal": "选择一个最值得审查的 Equiformer V3 局部叶子因子与其唯一编辑区域",
-        "current_stochastic_spec": {
-            item.field: float(getattr(spec, item.field)) for item in regions
-        },
+        "mutation_mode": mutation_mode,
+        "goal": goal,
+        "current_parent_state": current_state,
         "regions": [item.to_dict(actions=actions) for item in regions],
         "history": [
             {
@@ -226,7 +255,8 @@ def _critic_prompt(program, actions, region, router, history, round_index):
         "round": round_index,
         "router_decision": dict(router),
         "selected_region": region.to_dict(actions=selected),
-        "local_parent_ast": [nodes[node_id].to_dict() for node_id in sorted(node_ids)],
+        "local_parent_ast": [nodes[node_id].to_dict() for node_id in sorted(node_ids) if node_id in nodes],
+        "locally_absent_authorized_nodes": sorted(node_id for node_id in node_ids if node_id not in nodes),
         "recent_history": [
             {
                 "round": item.get("round"),
@@ -240,13 +270,13 @@ def _critic_prompt(program, actions, region, router, history, round_index):
             "只分析 router 已选择的 factor_id、region_id 与局部边界",
             "提出可证伪机制和有序编辑计划，但不得生成 Typed Patch 或源代码",
             "不得扩大到另一个 mutation family",
-            "必须明确保持等变类型、参数形状和重复节点同步修改合同",
+            "必须明确保持等变类型和冻结的 V3 张量维度；若插入或删除参数化原语，必须显式报告参数树变化",
         ],
         "response_schema": {
             "factor_id": region.factor_id,
             "region_id": region.region_id,
             "claim": "one falsifiable local hypothesis",
-            "mechanism": "why this local stochastic computation may affect optimization or generalization",
+            "mechanism": "why this local computation graph may affect expressivity, optimization, or generalization",
             "edit_plan": ["ordered abstract edits inside the selected family"],
             "preserved_invariants": ["contracts that must remain true"],
             "evidence_refs": [],
@@ -313,10 +343,11 @@ def _patch_hypothesis(critic):
     }
 
 
-def _allowed_typed_patches(program, actions, registry, critic):
+def _allowed_typed_patches(program, actions, registry, critic, *, mutation_mode="probability"):
     hypothesis = _patch_hypothesis(critic)
+    builder = build_v3_structural_patch if mutation_mode == "structural" else build_v3_first_round_patch
     return {
-        action.action_id: build_v3_first_round_patch(
+        action.action_id: builder(
             program,
             action.action_id,
             registry,
@@ -403,8 +434,15 @@ def _write_stage_exchange(round_dir, stem, prompt, envelope):
 
 
 def _run_three_stage_round(args, program, actions, history, seen_states, round_index, round_dir, registry):
-    regions = v3_mutation_regions(actions)
-    router_prompt = _router_prompt(program, actions, history, round_index)
+    mutation_mode = getattr(args, "mutation_mode", "probability")
+    regions = v3_structural_regions(actions) if mutation_mode == "structural" else v3_mutation_regions(actions)
+    router_prompt = _router_prompt(
+        program,
+        actions,
+        history,
+        round_index,
+        mutation_mode=mutation_mode,
+    )
     if args.selection_mode == "glm":
         router_envelope = _call_glm(args, router_prompt)
     else:
@@ -412,30 +450,51 @@ def _run_three_stage_round(args, program, actions, history, seen_states, round_i
         router_envelope = _deterministic_envelope({
             "factor_id": region.factor_id,
             "region_id": region.region_id,
-            "rationale": "确定性覆盖六个 V3 叶子因子",
+            "rationale": "确定性覆盖当前 V3 局部变异因子",
             "evidence_refs": [],
             "expected_value": "验证三阶段协议和 Typed Patch 闭环",
             "risk": "尚未经过训练排序",
         }, "factor_router")
     _write_stage_exchange(round_dir, "router", router_prompt, router_envelope)
     router = parse_v3_router_response(router_envelope["response"], regions)
-    region = v3_region_by_id(router["region_id"])
+    region = next(item for item in regions if item.region_id == router["region_id"])
     routed_actions = tuple(item for item in actions if item.field == region.field)
 
     critic_prompt = _critic_prompt(program, routed_actions, region, router, history, round_index)
     if args.selection_mode == "glm":
         critic_envelope = _call_glm(args, critic_prompt)
     else:
+        structural = mutation_mode == "structural"
         critic_envelope = _deterministic_envelope({
             "factor_id": region.factor_id,
             "region_id": region.region_id,
-            "claim": "调整 {} 可能改变正则化强度与优化稳定性".format(region.field),
-            "mechanism": "只改变训练期随机路径概率，同时保持所有等变类型与参数形状不变",
-            "edit_plan": ["选择一个未访问的合法概率", "同步更新全部重复运行时节点与 V3 规格字段"],
-            "preserved_invariants": ["等变类型不变", "参数形状不变", "重复节点同步修改"],
+            "claim": (
+                "重组 {} 局部数据流可能改变表示能力与优化路径".format(region.field)
+                if structural
+                else "调整 {} 可能改变正则化强度与优化稳定性".format(region.field)
+            ),
+            "mechanism": (
+                "只重写编译器授权的局部原语图，同时保持等变类型和 V3 张量维度合同"
+                if structural
+                else "只改变训练期随机路径概率，同时保持所有等变类型与参数形状不变"
+            ),
+            "edit_plan": (
+                ["选择一个未访问的结构重写", "应用可逆 Typed Patch 并执行通用 Lowering 与等变审计"]
+                if structural
+                else ["选择一个未访问的合法概率", "同步更新全部重复运行时节点与 V3 规格字段"]
+            ),
+            "preserved_invariants": (
+                ["等变类型不变", "V3 张量维度不变", "局部作用域不扩张"]
+                if structural
+                else ["等变类型不变", "参数形状不变", "重复节点同步修改"]
+            ),
             "evidence_refs": [],
             "uncertainty": "短期结构检查不能预测训练后的精度",
-            "risk": "随机正则过强可能导致欠拟合",
+            "risk": (
+                "局部重组虽满足类型合同，但可能降低信息流质量或优化稳定性"
+                if structural
+                else "随机正则过强可能导致欠拟合"
+            ),
             "acceptance_metrics": ["验证集指标", "Energy 旋转误差", "Force 旋转误差"],
         }, "region_critic")
     _write_stage_exchange(round_dir, "critic", critic_prompt, critic_envelope)
@@ -475,16 +534,30 @@ def _run_three_stage_round(args, program, actions, history, seen_states, round_i
         if critic is None:
             raise last_error
 
-    allowed_patches = _allowed_typed_patches(program, routed_actions, registry, critic)
+    allowed_patches = _allowed_typed_patches(
+        program,
+        routed_actions,
+        registry,
+        critic,
+        mutation_mode=mutation_mode,
+    )
     synth_prompt = _synthesizer_prompt(program, region, router, critic, allowed_patches, round_index)
     if args.selection_mode == "glm":
         synth_envelope = _call_glm(args, synth_prompt)
     else:
-        preferred = choose_deterministic_v3_action(
-            program,
-            round_index=round_index,
-            seen_states=seen_states,
-        )
+        if mutation_mode == "structural":
+            preferred = choose_deterministic_v3_structural_action(
+                program,
+                round_index=round_index,
+                seen_states=seen_states,
+                registry=registry,
+            )
+        else:
+            preferred = choose_deterministic_v3_action(
+                program,
+                round_index=round_index,
+                seen_states=seen_states,
+            )
         if preferred.action_id not in allowed_patches:
             preferred = routed_actions[0]
         synth_envelope = _deterministic_envelope(
@@ -499,8 +572,12 @@ def _run_three_stage_round(args, program, actions, history, seen_states, round_i
     for attempt in range(args.compiler_repair_attempts + 1):
         try:
             patch, action_id = _parse_synthesized_patch(rejected_patch, allowed_patches, region, critic)
-            child, child_spec = apply_v3_first_round_patch(program, patch, registry)
-            state = v3_evolution_state(child)
+            if mutation_mode == "structural":
+                child, child_spec = apply_v3_structural_patch(program, patch, registry)
+                state = architecture_id(child, registry)
+            else:
+                child, child_spec = apply_v3_first_round_patch(program, patch, registry)
+                state = v3_evolution_state(child)
             if state in set(seen_states):
                 raise ValueError("synthesized patch recreated an ancestor state")
             action = next(item for item in routed_actions if item.action_id == action_id)
@@ -701,8 +778,15 @@ def run(args):
         raise RuntimeError("output directory is nonempty; pass --resume to continue the same lineage")
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "run_manifest.json"
+    mutation_mode = getattr(args, "mutation_mode", "structural")
+    mutation_version = (
+        V3_STRUCTURAL_MUTATION_VERSION
+        if mutation_mode == "structural"
+        else V3_FIRST_ROUND_MUTATION_VERSION
+    )
     manifest = {
-        "mutation_version": V3_FIRST_ROUND_MUTATION_VERSION,
+        "mutation_mode": mutation_mode,
+        "mutation_version": mutation_version,
         "compiler_semantics_version": COMPILER_SEMANTICS_VERSION,
         "backend_semantics_version": BACKEND_SEMANTICS_VERSION,
         "official_v3_commit": V3_REFERENCE_COMMIT,
@@ -726,6 +810,7 @@ def run(args):
     if manifest_path.exists():
         existing = json.loads(manifest_path.read_text(encoding="utf-8"))
         frozen_keys = (
+            "mutation_mode",
             "mutation_version",
             "compiler_semantics_version",
             "backend_semantics_version",
@@ -755,7 +840,7 @@ def run(args):
             "architecture_id": seed_id,
             "official_spec_id": v3_program_spec(seed).architecture_id(),
             "candidate_path": str(seed_path),
-            "state": v3_evolution_state(seed),
+            "state": seed_id if mutation_mode == "structural" else v3_evolution_state(seed),
             "created_at": _now(),
         })
         history = _read_history(evolution_path)
@@ -773,7 +858,12 @@ def run(args):
     )
 
     for round_index in range(completed + 1, args.rounds + 1):
-        actions = _available_actions(parent, seen_states)
+        actions = _available_actions(
+            parent,
+            seen_states,
+            mutation_mode=mutation_mode,
+            registry=registry,
+        )
         if not actions:
             raise RuntimeError("no unseen first-round V3 mutations remain at round {}".format(round_index))
         round_dir = _prepare_round_dir(output, round_index, resume=args.resume)
@@ -814,6 +904,8 @@ def run(args):
             "official_spec_id": child_spec.architecture_id(),
             "action_id": action.action_id,
             "mutation_family": action.field,
+            "mutation_mode": mutation_mode,
+            "mutation_level": getattr(action, "level", "attribute"),
             "factor_id": workflow["router"]["factor_id"],
             "region_id": workflow["router"]["region_id"],
             "hypothesis": dict(patch.hypothesis),
@@ -894,6 +986,12 @@ def get_parser():
     source.add_argument("--seed-program")
     parser.add_argument("--output", required=True)
     parser.add_argument("--rounds", type=int, default=10)
+    parser.add_argument(
+        "--mutation-mode",
+        choices=("structural", "probability"),
+        default="structural",
+        help="Use structural Typed DSL rewrites by default; probability mode is retained only as an ablation.",
+    )
     parser.add_argument("--selection-mode", choices=("glm", "deterministic"), default="glm")
     parser.add_argument("--model", default="glm-5.2")
     parser.add_argument("--api-base", default=os.environ.get("GLM_API_BASE", "https://glm.llm.autos/v1"))

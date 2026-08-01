@@ -25,6 +25,15 @@ _EDIT_KINDS = {
     "change_parameters",
 }
 
+_AUTHORIZED_PROGRAM_PARAMETER_PATHS = frozenset({
+    "program.parameters.equiformer_v3_spec.alpha_drop",
+    "program.parameters.equiformer_v3_spec.attn_weights_drop",
+    "program.parameters.equiformer_v3_spec.value_drop",
+    "program.parameters.equiformer_v3_spec.drop_path_rate",
+    "program.parameters.equiformer_v3_spec.proj_drop",
+    "program.parameters.equiformer_v3_spec.ffn_drop",
+})
+
 _CONDITION_FIELDS = {
     "node_exists": {"kind", "node_id"},
     "node_absent": {"kind", "node_id"},
@@ -323,11 +332,64 @@ def apply_typed_patch(
             return True
         return any(target == item or target.startswith(item + "__") or target.startswith(item + ".") for item in patch.scope)
 
+    def replace_program_parameter(target: str, value: Any) -> None:
+        if target not in _AUTHORIZED_PROGRAM_PARAMETER_PATHS:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_PATCH_020",
+                    "program parameter path is not authorized by the current typed patch protocol",
+                    actual=target,
+                    details={"authorized_paths": sorted(_AUTHORIZED_PROGRAM_PARAMETER_PATHS)},
+                )
+            ])
+        prefix = "program.parameters."
+        path = target[len(prefix):]
+        parts = tuple(item for item in path.split(".") if item)
+        if not parts or ".".join(parts) != path:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_PATCH_019",
+                    "program parameter target must be a nonempty dotted path",
+                    actual=target,
+                )
+            ])
+        cursor = parameters
+        for part in parts[:-1]:
+            current = cursor.get(part)
+            if not isinstance(current, Mapping):
+                raise DSLValidationError([
+                    Diagnostic(
+                        "E_PATCH_019",
+                        "program parameter path does not name an existing mapping",
+                        actual=target,
+                    )
+                ])
+            copied = dict(current)
+            cursor[part] = copied
+            cursor = copied
+        leaf = parts[-1]
+        if leaf not in cursor:
+            raise DSLValidationError([
+                Diagnostic(
+                    "E_PATCH_019",
+                    "program parameter path does not name an existing value",
+                    actual=target,
+                )
+            ])
+        cursor[leaf] = value
+
     for edit in patch.edits:
         if edit.kind == "change_parameters":
-            if not edit.target.startswith("constructor."):
+            if not (
+                edit.target.startswith("constructor.")
+                or edit.target.startswith("program.parameters.")
+            ):
                 raise DSLValidationError([
-                    Diagnostic("E_PATCH_016", "change_parameters target must be a constructor parameter path", actual=edit.target)
+                    Diagnostic(
+                        "E_PATCH_016",
+                        "change_parameters target must be a constructor.* or program.parameters.* path",
+                        actual=edit.target,
+                    )
                 ])
             if not scope_allows(edit.target):
                 raise DSLValidationError([Diagnostic("E_PATCH_007", "patch edit escapes its declared scope", node_id=edit.target)])
@@ -335,7 +397,10 @@ def apply_typed_patch(
                 raise DSLValidationError([
                     Diagnostic("E_PATCH_017", "change_parameters payload must contain exactly value", actual=sorted(edit.payload))
                 ])
-            parameters[edit.target] = edit.payload["value"]
+            if edit.target.startswith("constructor."):
+                parameters[edit.target] = edit.payload["value"]
+            else:
+                replace_program_parameter(edit.target, edit.payload["value"])
             continue
         if edit.kind == "rewire_output":
             if not edit.target.startswith("output:") or edit.target.count(":") != 1:

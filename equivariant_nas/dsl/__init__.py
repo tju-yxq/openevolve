@@ -30,6 +30,7 @@ from .task import ResourceContract, TaskContract, task_reasoning_context, valida
 from .search import DSLGenerationEngine, GenerationResult
 from .search_surface import CanonicalSearchSurface, SEARCH_SURFACE_VERSION, default_canonical_search_surface
 from .types import AffinePointType, AxisSpec, Carrier, CategoricalTensorType, EquivarianceLevel, EquivariantTensorType, EquivariantType, FeatureRole, Frame, GraphTopologyType, GridSpec, GridTensorType, IndexMapType, InvariantTensorType, LatticeShiftType, LatticeType, RecordType, RepresentationLayout, ResolutionSpec, TupleType, VALUE_TYPE_SCHEMA_VERSION, ValueType, value_type_from_dict
+from .v3_evolution import V3_FIRST_ROUND_MUTATION_VERSION, V3MutationAction, V3MutationTarget, apply_v3_first_round_patch, build_v3_first_round_patch, choose_deterministic_v3_action, v3_evolution_state, v3_first_round_mutation_catalog, v3_program_spec
 
 __all__ = [
     "ArchitectureProgram",
@@ -183,4 +184,13 @@ __all__ = [
     "value_type_from_dict",
     "VocabularyDecision",
     "CandidateLineageEvidence",
+    "V3_FIRST_ROUND_MUTATION_VERSION",
+    "V3MutationAction",
+    "V3MutationTarget",
+    "apply_v3_first_round_patch",
+    "build_v3_first_round_patch",
+    "choose_deterministic_v3_action",
+    "v3_evolution_state",
+    "v3_first_round_mutation_catalog",
+    "v3_program_spec",
 ]

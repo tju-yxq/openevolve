@@ -68,6 +68,21 @@ def trusted_legacy_torch_load():
         torch.load = original_load
 
 
+def load_trusted_training_checkpoint(path, *, map_location="cpu"):
+    """Load a checkpoint produced by this repository's fixed-step trainer.
+
+    These resumable checkpoints intentionally contain optimizer, scheduler,
+    and NumPy/PyTorch RNG state in addition to tensor weights.  PyTorch 2.6's
+    ``weights_only=True`` default rejects that trusted local payload, so every
+    internal checkpoint consumer must opt in explicitly instead of relying on
+    the version-dependent default.
+    """
+
+    import torch
+
+    return torch.load(path, map_location=map_location, weights_only=False)
+
+
 def scatter_fallback(src, index, dim=-1, out=None, dim_size=None, reduce="sum"):
     """Differentiable PyTorch implementation of the torch_scatter.scatter API subset."""
 

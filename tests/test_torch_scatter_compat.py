@@ -6,6 +6,7 @@ from equivariant_nas.training.torch_scatter_compat import (
     install_torch_cluster_fallback,
     install_torch_scatter_fallback,
     install_torchvision_schema_stubs,
+    load_trusted_training_checkpoint,
     scatter_fallback,
     radius_graph_fallback,
     trusted_legacy_torch_load,
@@ -99,6 +100,22 @@ def test_trusted_legacy_torch_load_only_changes_the_implicit_default(monkeypatch
 
     assert torch.load is original
     assert calls == [{"weights_only": False}, {"weights_only": True}]
+
+
+def test_trusted_training_checkpoint_disables_weights_only(monkeypatch):
+    torch = pytest.importorskip("torch")
+    calls = []
+
+    def fake_load(*args, **kwargs):
+        calls.append((args, kwargs.copy()))
+        return {"model": {}}
+
+    monkeypatch.setattr(torch, "load", fake_load)
+
+    assert load_trusted_training_checkpoint("checkpoint_last.pth") == {"model": {}}
+    assert calls == [
+        (("checkpoint_last.pth",), {"map_location": "cpu", "weights_only": False})
+    ]
 
 
 def test_torchvision_schema_compat_is_idempotent():

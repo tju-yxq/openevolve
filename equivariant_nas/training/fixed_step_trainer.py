@@ -23,6 +23,7 @@ from equivariant_nas.training.torch_scatter_compat import (
     install_torch_cluster_fallback,
     install_torch_scatter_fallback,
     install_torchvision_schema_stubs,
+    load_trusted_training_checkpoint,
     trusted_legacy_torch_load,
 )
 
@@ -587,7 +588,7 @@ def main(args):
     best_test_err = None
 
     if args.resume_step:
-        checkpoint = torch.load(args.resume_step, map_location="cpu")
+        checkpoint = load_trusted_training_checkpoint(args.resume_step)
         checkpoint_args = checkpoint.get("args", {})
         previous_dataset_id = checkpoint_args.get("training_dataset_id", "")
         dataset_changed = bool(previous_dataset_id) and previous_dataset_id != training_dataset_id

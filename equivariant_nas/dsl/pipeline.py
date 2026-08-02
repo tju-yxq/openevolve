@@ -657,7 +657,13 @@ def evaluate_dsl_candidate_pipeline(
                 raise ValueError("search pipeline must not evaluate the test split")
             if run_symmetry:
                 audited = build_candidate_model().to("cuda")
-                checkpoint = torch.load(train_dir / "checkpoint_last.pth", map_location="cpu")
+                from equivariant_nas.training.torch_scatter_compat import (
+                    load_trusted_training_checkpoint,
+                )
+
+                checkpoint = load_trusted_training_checkpoint(
+                    train_dir / "checkpoint_last.pth"
+                )
                 audited.load_state_dict(checkpoint["model"])
                 post = _observable_symmetry_report(audited, batch)
                 result["posttrain_symmetry_report"] = post

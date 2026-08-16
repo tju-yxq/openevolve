@@ -19,7 +19,26 @@ def install_torchvision_schema_stubs() -> str:
     to import timm's scheduler and EMA utilities without inventing kernels.
     """
 
+    import importlib.util
+    from pathlib import Path
+
     import torch
+
+    # A normally working CUDA torchvision exposes its schemas only after its C++
+    # extension has been loaded. Looking at ``torch.ops`` before that load
+    # incorrectly labels the native nms schema as missing; defining a stub first
+    # then makes torchvision abort when it loads its real implementation.
+    spec = importlib.util.find_spec("torchvision")
+    if spec is not None and spec.submodule_search_locations:
+        extension_path = Path(next(iter(spec.submodule_search_locations))) / "_C.so"
+        if extension_path.is_file():
+            try:
+                torch.ops.load_library(str(extension_path))
+            except (OSError, RuntimeError):
+                # Some CPU-incompatible builds cannot load _C.so. In that case
+                # retain the narrowly scoped schema fallback below so old timm
+                # can be imported for the QM9 scheduler/EMA utilities.
+                pass
 
     schemas = {
         "nms": "nms(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor",

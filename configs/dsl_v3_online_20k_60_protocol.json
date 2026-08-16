@@ -4,9 +4,9 @@
   "batch_size": 8,
   "dataset": {
     "dataset_id": "QM9-alpha-official-split",
-    "dataset_manifest_sha256": "8aea37206e780df22c022d687286745ac8904462ff135cfbe96b25dc1d90744e",
+    "dataset_manifest_sha256": "2d8c4cf2b8540d04c8b052e982236d7c08441cfbea94e81ad14194d238648ce3",
     "quarter_subset_sha256": "d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
-    "equivariance_contract_sha256": "a1365e408d6932d8f4049c36b68c08b03b3290b34d73dd749c23c2c0c4475c8a"
+    "equivariance_contract_sha256": "e38289b67eaab224e90a548e493eb5f6473c8083decd1243bcc79f8a72294089"
   },
   "search": {"valid_child_target": 60, "maximum_generation_attempts": 180, "num_islands": 5, "one_child_per_round": true},
   "parent_sampling": {"elite_archive": 0.30, "island_uniform": 0.25, "island_rank_weighted": 0.20, "novelty": 0.15, "global_cross_island": 0.10},

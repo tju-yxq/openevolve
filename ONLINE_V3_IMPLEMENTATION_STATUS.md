@@ -4,7 +4,7 @@
 
 实施分支：`codex/v3-online-20k-60`
 
-协议哈希：`2ad771d6ca161bd9e83d6c4cbceeeaa796910177348730f6a9089c565600acac`
+协议哈希：`8de5571b11dacfffe09818e8738bee6b3302450b187588dc17e7971699435e94`
 
 ## 已完成
 

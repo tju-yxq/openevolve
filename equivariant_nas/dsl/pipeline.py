@@ -29,6 +29,15 @@ def _resolve_pipeline_run_root(project: Path) -> Path:
     return Path(configured).expanduser().resolve() if configured else project / "runs"
 
 
+def _checkpoint_interval_steps(*, is_v3_program: bool, max_steps: int) -> int:
+    if not is_v3_program:
+        return 859
+    configured = int(os.environ.get("NAS_V3_CHECKPOINT_INTERVAL_STEPS", "1000"))
+    if configured <= 0:
+        raise ValueError("NAS_V3_CHECKPOINT_INTERVAL_STEPS must be positive")
+    return min(configured, max(int(max_steps), 1))
+
+
 def _count_parameters(model) -> int:
     return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
 
@@ -336,6 +345,10 @@ def evaluate_dsl_candidate_pipeline(
     )
     executable_id = runtime_manifest["executable_id"]
     runtime_manifest_sha256 = manifest_hash(runtime_manifest)
+    checkpoint_interval_steps = _checkpoint_interval_steps(
+        is_v3_program=is_v3_program,
+        max_steps=max_steps,
+    )
     protocol = {
         "pipeline_version": "dsl-formal-v1",
         "architecture_id": architecture_id,
@@ -350,6 +363,7 @@ def evaluate_dsl_candidate_pipeline(
         "batch_size": int(batch_size),
         "train_subset_sha256": subset_fingerprint,
         "eval_interval_epochs": int(eval_interval_epochs),
+        "checkpoint_interval_steps": checkpoint_interval_steps,
         "data_epoch_origin_step": int(data_epoch_origin_step),
         "lr_schedule_origin_step": int(lr_schedule_origin_step),
         "equiformer_v2_commit": (
@@ -574,7 +588,7 @@ def evaluate_dsl_candidate_pipeline(
                 "--eval-interval-epochs", str(eval_interval_epochs),
                 "--data-epoch-origin-step", str(data_epoch_origin_step),
                 "--lr-schedule-origin-step", str(lr_schedule_origin_step),
-                "--checkpoint-interval-steps", "859",
+                "--checkpoint-interval-steps", str(checkpoint_interval_steps),
                 "--epochs", "300",
                 "--radius", str(program.parameters.get("radius", 5.0)),
                 "--num-basis", "128",
@@ -590,9 +604,7 @@ def evaluate_dsl_candidate_pipeline(
             ]
             if is_v3_program:
                 reference_index = command.index("--reference-steps-per-epoch") + 1
-                checkpoint_index = command.index("--checkpoint-interval-steps") + 1
                 command[reference_index] = "0"
-                command[checkpoint_index] = "0"
             if task_contract_path:
                 command.extend(["--dsl-task-contract", str(Path(task_contract_path).resolve())])
             if equiformer_v2_root:

@@ -22,6 +22,13 @@ from .serialization import load_program, load_task_contract
 from .backends.qm9_model import build_qm9_dsl_model
 
 
+def _resolve_pipeline_run_root(project: Path) -> Path:
+    """Keep large training artifacts off the source checkout when configured."""
+
+    configured = os.environ.get("EQUINAS_PIPELINE_RUN_ROOT") or os.environ.get("EQUINAS_RUN_ROOT")
+    return Path(configured).expanduser().resolve() if configured else project / "runs"
+
+
 def _count_parameters(model) -> int:
     return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
 
@@ -357,7 +364,8 @@ def evaluate_dsl_candidate_pipeline(
         "allow_experimental_generic_lowering": bool(allow_experimental_generic_lowering),
     }
     protocol_id = hashlib.sha256(json.dumps(protocol, sort_keys=True).encode("utf-8")).hexdigest()[:10]
-    run_dir = project / "runs" / "dsl_candidates" / architecture_id / (
+    pipeline_run_root = _resolve_pipeline_run_root(project)
+    run_dir = pipeline_run_root / "dsl_candidates" / architecture_id / (
         "seed{}_steps{}_{}".format(seed, max_steps, protocol_id)
     )
     result_path = run_dir / "result.json"
@@ -408,7 +416,7 @@ def evaluate_dsl_candidate_pipeline(
         os.environ.get("NAS_GPU_BUDGET_HOURS", "5.0")
     )
     ledger = BudgetLedger(
-        os.environ.get("NAS_BUDGET_LEDGER", str(project / "runs" / "budget_ledger.jsonl")),
+        os.environ.get("NAS_BUDGET_LEDGER", str(pipeline_run_root / "budget_ledger.jsonl")),
         resolved_budget,
     )
     started = time.perf_counter()

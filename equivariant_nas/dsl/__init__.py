@@ -33,6 +33,11 @@ from .types import AffinePointType, AxisSpec, Carrier, CategoricalTensorType, Eq
 from .v3_evolution import V3_FIRST_ROUND_MUTATION_VERSION, V3MutationAction, V3MutationRegion, V3MutationTarget, apply_v3_first_round_patch, build_v3_first_round_patch, choose_deterministic_v3_action, parse_v3_critic_response, parse_v3_router_response, v3_evolution_state, v3_first_round_mutation_catalog, v3_mutation_regions, v3_program_from_spec, v3_program_spec, v3_region_by_id, v3_region_for_field
 from .v3_multifidelity import V3FidelityStage, V3MultiFidelityProtocol, rank_v3_stage_records
 from .v3_structural_evolution import V3_STRUCTURAL_MUTATION_VERSION, V3StructuralAction, V3StructuralRegion, V3StructuralTarget, apply_v3_structural_patch, build_v3_structural_patch, choose_deterministic_v3_structural_action, v3_structural_mutation_catalog, v3_structural_novelty_report, v3_structural_regions
+from .fidelity_aware_parent_sampler import FidelityAwareParentSampler, ParentSelection
+from .online_controller import OnlineV3Controller
+from .online_promotion import fidelity_trust_report, select_20k_to_80k, select_80k_to_250k
+from .online_protocol import OnlineV3Protocol
+from .online_state import OnlineEvolutionState, atomic_write_json
 
 __all__ = [
     "ArchitectureProgram",
@@ -192,6 +197,11 @@ __all__ = [
     "V3MutationTarget",
     "V3FidelityStage",
     "V3MultiFidelityProtocol",
+    "FidelityAwareParentSampler",
+    "ParentSelection",
+    "OnlineEvolutionState",
+    "OnlineV3Controller",
+    "OnlineV3Protocol",
     "V3_STRUCTURAL_MUTATION_VERSION",
     "V3StructuralAction",
     "V3StructuralRegion",
@@ -205,6 +215,10 @@ __all__ = [
     "parse_v3_critic_response",
     "parse_v3_router_response",
     "rank_v3_stage_records",
+    "atomic_write_json",
+    "fidelity_trust_report",
+    "select_20k_to_80k",
+    "select_80k_to_250k",
     "v3_evolution_state",
     "v3_first_round_mutation_catalog",
     "v3_mutation_regions",

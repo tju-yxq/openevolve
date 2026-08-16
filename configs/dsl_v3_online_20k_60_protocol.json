@@ -1,0 +1,25 @@
+{
+  "protocol_version": "online-v3-20k-60@1",
+  "seed": 201,
+  "batch_size": 8,
+  "dataset": {
+    "dataset_id": "QM9-alpha-official-split",
+    "dataset_manifest_sha256": "8aea37206e780df22c022d687286745ac8904462ff135cfbe96b25dc1d90744e",
+    "quarter_subset_sha256": "d12a515fb90534582880858752b42274b523fa66c686f8a3adba15cabf0b3ba0",
+    "equivariance_contract_sha256": "a1365e408d6932d8f4049c36b68c08b03b3290b34d73dd749c23c2c0c4475c8a"
+  },
+  "search": {"valid_child_target": 60, "maximum_generation_attempts": 180, "num_islands": 5, "one_child_per_round": true},
+  "parent_sampling": {"elite_archive": 0.30, "island_uniform": 0.25, "island_rank_weighted": 0.20, "novelty": 0.15, "global_cross_island": 0.10},
+  "promotion": {
+    "stages": [
+      {"name": "quarter_20k", "endpoint_steps": 20000, "candidate_count": 60, "training_data": "fixed_quarter", "optimizer_transition": "new_optimizer"},
+      {"name": "quarter_80k", "endpoint_steps": 80000, "candidate_count": 15, "training_data": "fixed_quarter", "optimizer_transition": "resume_full_state"},
+      {"name": "full_250k", "endpoint_steps": 250000, "candidate_count": 10, "training_data": "full_train", "optimizer_transition": "model_only_optimizer_restart"}
+    ],
+    "from_20k_to_80k": {"top_validation": 10, "top_novelty": 3, "random_lower_half": 2},
+    "from_80k_to_250k": {"top_validation": 10}
+  },
+  "storage": {"run_root_env": "EQUINAS_RUN_ROOT", "default_run_root": "/mlplatform/equiNAS/online_v3_20k_60", "minimum_free_gib": 150},
+  "test_policy": {"during_search": false, "winner_only": true, "maximum_evaluations": 1},
+  "archive": {"during_training": false, "ready_stage": "ready_for_tos_archive", "tos_prefix_template": "tos://c20250512/yifei/equiNAS/online_v3_20k_60_{experiment_id}/"}
+}

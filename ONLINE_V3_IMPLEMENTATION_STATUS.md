@@ -28,12 +28,16 @@
 - `git diff --check`：通过；
 - 全仓测试：`393 passed, 48 skipped, 28 failed`。失败项来自本地缺少仓库外的 sibling Equiformer/Equiformer-V3 checkout，以及基线分支中一个旧 Compiler API 测试不一致；新增在线测试全部通过。
 
-## 尚未完成的正式启动门
+## 新实例正式启动门结果
 
-- 目标 A100 服务器 `115.190.90.101:56144` 当前 TCP 超时；
-- 因服务器不可达，尚未停止远端 `tmux gpu_scheduler`；
-- 尚未在 `/mlplatform` 执行 1～10 step checkpoint 保存与恢复 smoke；
-- 正式 60 轮长训练未启动；
-- 最终 Test evaluation-only adapter 应在 250k Validation 赢家冻结后单独审核，不在搜索入口中隐式执行。
+- `115.190.90.101:56144` 已于 2026-08-16 14:58（北京时间）恢复；
+- 新实例 `di-20260612175839-qv4pn`、Conda `equiNAS`、A100 80GB 检查通过；
+- `tmux gpu_scheduler` 当前不存在，preflight 确认未运行；
+- `/mlplatform` 可写且可用空间约 2.1 TiB；
+- Linux checkout 下 dataset、quarter subset 和 equivariance contract SHA-256 全部通过；
+- 新实例 focused tests：`16 passed`；
+- 真实 84,961,153 参数 V3 child 已在 A100 上完成 step 0→1 和 checkpoint 1→2 恢复；
+- 两个 checkpoint 均写入 `/mlplatform`，恢复结果证明 `start_global_step=1`、`endpoint_step=2`、本 job 仅执行 1 step；
+- 两次 smoke 均为 `valid=true`、`test_evaluated=false`。
 
-服务器恢复后必须先完成上述前三项，再允许正式启动。
+正式 60 轮长训练仍未自动启动。最终 Test evaluation-only adapter 应在 250k Validation 赢家冻结后单独审核，不在搜索入口中隐式执行。

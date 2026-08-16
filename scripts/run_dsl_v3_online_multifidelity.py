@@ -9,6 +9,7 @@ import os
 import shlex
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -21,9 +22,23 @@ from equivariant_nas.dsl.online_protocol import OnlineV3Protocol
 
 def _invoke(template: str, payload, **values):
     env = os.environ.copy()
-    env["EQUINAS_REQUEST_JSON"] = json.dumps(payload, ensure_ascii=False)
+    run_root = Path(values.get("run_root", os.environ.get("EQUINAS_RUN_ROOT", ".")))
+    request_root = run_root / "requests"
+    request_root.mkdir(parents=True, exist_ok=True)
+    descriptor, request_name = tempfile.mkstemp(prefix="request_", suffix=".json", dir=str(request_root))
+    request_path = Path(request_name)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    env.pop("EQUINAS_REQUEST_JSON", None)
+    env["EQUINAS_REQUEST_JSON_PATH"] = str(request_path.resolve())
     command = template.format(**{key: shlex.quote(str(value)) for key, value in values.items()})
-    completed = subprocess.run(command, shell=True, text=True, capture_output=True, env=env, check=False)
+    try:
+        completed = subprocess.run(command, shell=True, text=True, capture_output=True, env=env, check=False)
+    finally:
+        request_path.unlink(missing_ok=True)
     if completed.returncode:
         raise RuntimeError(f"adapter exited {completed.returncode}: {completed.stderr[-4000:]}")
     try:

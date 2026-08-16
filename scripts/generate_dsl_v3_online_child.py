@@ -20,8 +20,15 @@ from equivariant_nas.dsl.v3_structural_evolution import (
 )
 
 
+def load_request():
+    request_path = os.environ.get("EQUINAS_REQUEST_JSON_PATH", "")
+    if request_path:
+        return json.loads(Path(request_path).read_text(encoding="utf-8"))
+    return json.loads(os.environ["EQUINAS_REQUEST_JSON"])
+
+
 def main():
-    request = json.loads(os.environ["EQUINAS_REQUEST_JSON"])
+    request = load_request()
     attempt = int(request["attempt"]); parent_record = request.get("parent")
     parent_path = str(parent_record.get("program", "")) if parent_record else os.environ.get("EQUINAS_INITIAL_PROGRAM", "")
     if not parent_path:
@@ -47,4 +54,3 @@ def main():
 
 
 if __name__ == "__main__": main()
-

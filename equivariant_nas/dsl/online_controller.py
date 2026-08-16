@@ -118,10 +118,15 @@ class OnlineV3Controller:
 
     def _fidelity_record(self, record: Mapping[str, Any], endpoint: int) -> dict[str, Any]:
         value = dict(record)
+        checkpoint = str(value.get("checkpoint") or value.get("checkpoint_last") or "")
+        checkpoint_global_step = int(value.get("checkpoint_global_step") or value.get("endpoint_step") or endpoint)
+        value["checkpoint"] = checkpoint
+        value["checkpoint_last"] = checkpoint
+        value["checkpoint_global_step"] = checkpoint_global_step
         metrics = dict(value.get("metrics_by_fidelity", {}))
         metrics[str(endpoint)] = {
             "validation_alpha_mae": float(value["validation_alpha_mae"]),
-            "checkpoint": str(value.get("checkpoint", "")),
+            "checkpoint": checkpoint,
             "endpoint_step": endpoint,
             "training_data": str(value.get("training_data", "")),
         }
@@ -135,6 +140,11 @@ class OnlineV3Controller:
             "quarter_subset_sha256": dataset["quarter_subset_sha256"],
             "equivariance_contract_sha256": dataset["equivariance_contract_sha256"],
         })
+        # Full compiler/lowering evidence remains in each pipeline run's result.json.
+        # Keeping it again in the controller state makes generation IPC and every
+        # atomic state update unnecessarily huge.
+        for bulky_key in ("compiler_obligations", "lowering_plan", "backend_support", "traceback"):
+            value.pop(bulky_key, None)
         return value
 
 

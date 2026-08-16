@@ -13,6 +13,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def load_request():
+    request_path = os.environ.get("EQUINAS_REQUEST_JSON_PATH", "")
+    if request_path:
+        return json.loads(Path(request_path).read_text(encoding="utf-8"))
+    return json.loads(os.environ["EQUINAS_REQUEST_JSON"])
+
+
 def required_env(name):
     value = os.environ.get(name, "")
     if not value: raise RuntimeError(f"required environment variable {name} is empty")
@@ -22,7 +29,7 @@ def required_env(name):
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument("--endpoint", type=int, required=True); parser.add_argument("--checkpoint", default=""); args = parser.parse_args()
     if args.endpoint not in {20000, 80000, 250000}: raise ValueError("unsupported frozen endpoint")
-    candidate = json.loads(os.environ["EQUINAS_REQUEST_JSON"])
+    candidate = load_request()
     python = os.environ.get("EQUIFORMER_PYTHON", sys.executable)
     command = [python, str(PROJECT_ROOT / "scripts/run_pipeline.py"), "--program", candidate["program"], "--project-root", str(PROJECT_ROOT), "--equiformer-root", required_env("EQUIFORMER_ROOT"), "--equiformer-v3-root", required_env("EQUIFORMER_V3_ROOT"), "--data-path", required_env("EQUINAS_QM9_PATH"), "--max-steps", str(args.endpoint), "--seed", "201", "--batch-size", "8", "--eval-interval-epochs", os.environ.get("EQUINAS_EVAL_INTERVAL_EPOCHS", "10")]
     task = os.environ.get("EQUINAS_TASK_CONTRACT", "")
